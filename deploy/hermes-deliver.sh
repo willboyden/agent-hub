@@ -59,7 +59,10 @@ case "$(basename "$COMPOSE")" in
   docker-compose.yml | docker-compose.yaml | compose.yml | compose.yaml) ;;
   *) echo "hermes-deliver: refusing: HERMES_COMPOSE_FILE must be named docker-compose.y[a]ml or compose.y[a]ml" >&2; exit 2 ;;
 esac
-[ -f "$COMPOSE" ] && [ ! -L "$COMPOSE" ] || { echo "hermes-deliver: compose file missing or a symlink: $COMPOSE" >&2; exit 1; }
+if [ ! -f "$COMPOSE" ] || [ -L "$COMPOSE" ]; then
+  echo "hermes-deliver: compose file missing or a symlink: $COMPOSE" >&2
+  exit 1
+fi
 
 DOCKER=(docker)
 if [ -n "${HERMES_DOCKER_CONTEXT:-}" ]; then
