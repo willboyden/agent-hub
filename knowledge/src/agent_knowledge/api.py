@@ -1,5 +1,5 @@
 """HTTP routes. EVERY router carries the `authenticate` dependency, and every handler then names the scope it needs
-(admin / write on ns / read on ns). tests/test_scopes.py walks the route table to prove no route is left open."""
+(admin / write on ns / read on ns). tests/test_api.py walks the route table to prove no route is left open."""
 from __future__ import annotations
 
 import asyncio

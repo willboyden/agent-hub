@@ -112,7 +112,7 @@ for that client**. Content may only be stricter. What it forbids:
 * Enabling an MCP server whose `scan_status` is not `clean`; an MCP egress host with no explicit `egress_host allow`
   rule (or one that is denied); a non-loopback URL host not declared in the server's `egress_hosts`.
 * Floor deny rules are always merged into the rendered permission set and cannot be removed by content.
-* Since the second audit (section 12): paths are normalised before comparison, catch-all command/egress allows are
+* Since the internal review (section 12): paths are normalised before comparison, catch-all command/egress allows are
   detected by probe strings as well as literal patterns, MCP `clean` is digest-bound, allow rules that would cover an
   unscanned MCP server are `floor_mcp_rule` violations, and the floor is re-checked on the rendered artifacts
   (`floor_violation_rendered`).
@@ -213,9 +213,10 @@ implemented.**
   tell what the value is. The router for text queries must still be reached through a credential broker; the template
   does not wire that.
 
-## 12. Second audit round and the re-audit (fixed, and what remains)
+## 12. Hardening history (internal review)
 
-Findings from the second audit and what was done about them, from `ARCHITECTURE.md` Addendum E and the code.
+Findings from the project's own AI-assisted and self-review passes, and what was done about them, from `ARCHITECTURE.md`
+Addendum E and the code. This is **not** an independent or third-party audit. The IDs are kept only as stable references.
 
 | ID | Finding | What was fixed |
 |---|---|---|
@@ -230,7 +231,7 @@ Findings from the second audit and what was done about them, from `ARCHITECTURE.
 | M7 | Knowledge service | Dedicated embeddings key name, keyed Qdrant, per-namespace store locks and timeouts (`store_busy`, `store_timeout`), filter node cap, admin-only `/tokens`, `/indexes`, `/backends`, `/metrics`. See `KNOWLEDGE-PLANE.md`. |
 | L1-L5 | Assorted | Verify hashes the managed **slice** for json/yaml/block artifacts (I1); a non-loopback `HUB_HOST` is refused unless `HUB_ALLOW_NONLOOPBACK=1`; state dirs are 0700 and tightened at start; viewers cannot read knowledge `tokens|indexes|backends`; git runs with literal pathspecs, no textconv, no attributes file; plan snapshots come from `ls-tree` + `cat-file`, not `git archive`; `commit` stages only known content paths and reports `strays`; discarding everything needs `confirm: true` (`dry_run: true` lists it first). |
 
-### Re-verification audit
+### Re-verification pass
 
 The subcommands and defaults named here are present in the code (`hubctl --help` lists `migrate-content`, `attest-mcp`, `rollback`, `applies`, `doctor`, `retire-bootstrap-key`).
 
@@ -247,8 +248,6 @@ The subcommands and defaults named here are present in the code (`hubctl --help`
 
 `attest.key` sits in the state dir and has the same same-user-readable limit as the admin key (M5): whoever can read it can
 forge an attestation.
-
-I map L1-L5 to these items from the ARCHITECTURE addendum; the grouping is approximate.
 
 **Remaining limits:**
 

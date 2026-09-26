@@ -37,6 +37,12 @@ deny_path_write:
   - "~/.config/gcloud/**"
   - "~/.gnupg/**"
   - "~/.netrc"
+  - "~/.config/agent-hub/**"
+  - "~/.local/share/agent-hub/**"       # hub state: keys, DB, backups, locks, plans
+  - "~/.config/agent-knowledge/**"
+  - "~/.local/share/agent-knowledge/**"
+  - "**/bootstrap-admin.key"
+  - "**/admin.key"
 
 # Per-tool posture. `default` applies when no content rule names the tool; `max` is the most permissive decision
 # content may grant (deny < ask < allow). web tools are off by default and can at most be "ask".

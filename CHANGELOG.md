@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0
 
 First public build. Review your first apply in the UI plan view.
 
@@ -22,7 +22,7 @@ First public build. Review your first apply in the UI plan view.
 - CI workflow (lint, `mypy --strict`, tests, dependency audit per project).
 
 ### Security work included in 0.1.0
-- First audit round (H1, H2, M1-M7, L1-L5) and re-audit (N1, N1b, N2, N4, N6): delivery-target checks against the floor,
+- Internal review fixes (H1, H2, M1-M7, L1-L5, then N1, N1b, N2, N4, N6; self and AI-assisted review, not an independent audit): delivery-target checks against the floor,
   HMAC-bound MCP scan attestation, marker-injection and skill-frontmatter refusals, floor pattern probes and a
   rendered-artifact re-check, directory-fd writes with compare-and-swap, content repo moved out of the project tree with
   unsafe-repo refusal, per-namespace store locks and keyed Qdrant in the knowledge service. See `docs/SECURITY.md` section 12.

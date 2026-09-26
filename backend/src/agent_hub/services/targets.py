@@ -8,7 +8,8 @@ from pathlib import Path
 from agent_hub.services.floor import FloorPolicy, norm_path
 
 _SECRET_HOME_DIRS = (".ssh", ".aws", ".config/gcloud", ".gnupg", ".config/agent-hub", ".config/agent-knowledge",
-                     ".local/share/agent-hub", ".local/share/agent-knowledge")
+                     ".local/share/agent-hub", ".local/share/agent-knowledge",
+                     ".bashrc", ".profile", ".zshrc", ".config/autostart", ".config/systemd", ".local/bin")
 
 
 def _real(p: str | Path) -> Path:
