@@ -1,0 +1,73 @@
+# OPT-IN TEMPLATE: nothing installs or enables this automatically (host-level changes need a human decision).
+# Template: review every CHANGEME before enabling. This is the HOST-PROCESS deployment (127.0.0.1:8795). It is invisible to containers on
+# rootless internal networks; for those use deploy/knowledge/docker-compose.broker.yml.
+#
+# Install by hand, after reading it:
+#   1. Edit every line marked CHANGEME.
+#   2. mkdir -p ~/.local/share/agent-knowledge ~/.config/agent-knowledge
+#      Every ReadWritePaths entry must EXIST or the unit fails to start (status=226).
+#   3. Write ~/.config/agent-knowledge/config.yaml (keys: knowledge/src/agent_knowledge/config.py; unknown keys are rejected).
+#      Put lance_dir on an SSD path, never tmpfs. Set ingest_roots only to directories you want indexable.
+#   4. Write ~/.config/agent-knowledge/env, mode 0600, KEY=value lines (names below are the config defaults):
+#        KNOWLEDGE_EMBED_API_KEY=<an embeddings-only router VIRTUAL key, never the router master key>
+#        KNOWLEDGE_QDRANT_API_KEY=<the same value Qdrant runs with as QDRANT__SERVICE__API_KEY>   # only if you use Qdrant
+#      A separate file from the hub's on purpose: the hub env holds the knowledge ADMIN key, this one holds router/Qdrant keys.
+#   5. cp deploy/agent-knowledge.service ~/.config/systemd/user/
+#      systemctl --user daemon-reload && systemctl --user enable --now agent-knowledge
+#   6. The admin key is created on first start at ~/.local/share/agent-knowledge/admin.key (0600). The hub reads that file by
+#      default (KNOWLEDGE_ADMIN_KEY_FILE), or set HUB_KNOWLEDGE_ADMIN_KEY in ~/.config/agent-hub/env (0600).
+[Unit]
+Description=Agent Knowledge (vector-store service for agents, 127.0.0.1:8795)
+Documentation=file:%h/CHANGEME/agent-hub/docs/KNOWLEDGE-PLANE.md
+After=network.target
+
+[Service]
+Type=simple
+# CHANGEME: <checkout>/knowledge
+WorkingDirectory=%h/CHANGEME/agent-hub/knowledge
+# The venv's own entry point (no uv cache or venv writes needed; run `make setup-knowledge` first). The service refuses a
+# non-loopback host unless --allow-bind-any is passed; do not pass it here.
+# CHANGEME: path to the venv entry point
+ExecStart=%h/CHANGEME/agent-hub/knowledge/.venv/bin/agent-knowledge --config %h/.config/agent-knowledge/config.yaml
+# Secrets stay out of the unit (the config refers to env var NAMES only). Leading dash: optional file.
+EnvironmentFile=-%h/.config/agent-knowledge/env
+Restart=on-failure
+RestartSec=3
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+# CHANGEME: the data dir (SQLite registry, admin.key, audit.jsonl) and, if you moved it with lance_dir, the LanceDB dir.
+# ingest_roots are only READ, so they need no entry here. Nothing else is writable.
+ReadWritePaths=%h/.local/share/agent-knowledge
+# Home read-only; this service needs no docker socket, so /run/user being covered by ProtectHome is fine.
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+# Loopback only: the API, the router (127.0.0.1:4000) for embeddings, Qdrant (127.0.0.1:6333). AF_UNIX is kept for resolver helpers.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# If the first start misbehaves, comment out both lines.
+IPAddressDeny=any
+IPAddressAllow=localhost
+RestrictNamespaces=yes
+RestrictRealtime=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+UMask=0077
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+SystemCallArchitectures=native
+# MemoryDenyWriteExecute is intentionally NOT set: lancedb/pyarrow native wheels may need W+X mappings.
+# Bound host RAM for the LanceDB page cache and search buffers (RAM is scarce on this host); tune to your corpus.
+MemoryHigh=3G
+MemoryMax=4G
+
+[Install]
+WantedBy=default.target

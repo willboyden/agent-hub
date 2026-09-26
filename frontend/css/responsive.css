@@ -1,0 +1,52 @@
+/* Responsive tiers. Loaded LAST so these overrides win over the component rules in components.css / views.css. */
+@media (max-width: 1400px) {
+  .lib-filters { grid-template-columns: repeat(4, minmax(120px, 1fr)); }
+}
+@media (max-width: 1100px) {
+  .grid.two { grid-template-columns: 1fr; }
+  .editor-grid { grid-template-columns: 1fr; }
+  .spec-grid { grid-template-columns: 1fr; }
+  .lib-filters { grid-template-columns: repeat(3, minmax(120px, 1fr)); }
+}
+@media (max-width: 1023px) {
+  /* One column: rows size to content (auto) and the page area takes the rest, otherwise the two grid rows split 100vh
+     and the nav bar stretches to half the screen. */
+  .shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .sidebar { position: sticky; top: 0; z-index: 40; height: auto; flex-direction: row; align-items: center; gap: var(--s3); overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--border); padding: var(--s2) var(--s3); }
+  .nav { flex-direction: row; align-self: center; flex-wrap: nowrap; }
+  .nav a { padding: var(--s2); } .nav-label, .brand-name { display: none; }
+  .nav-badge { position: absolute; top: -2px; right: -4px; margin: 0; min-width: 16px; font-size: 10px; line-height: 16px; padding: 0 4px; }
+  .topbar { position: static; padding: var(--s2) var(--s4); }
+  main { padding: var(--s4); }
+  .coll-layout { grid-template-columns: 1fr; }
+  .coll-side { position: static; max-height: none; overflow: visible; }
+  .coll-tree { flex-direction: row; overflow-x: auto; padding-bottom: var(--s3); }
+  .coll-node { flex: none; max-width: 260px; } .coll-side .hint { display: none; }
+  .mx-corner, .mx-gh, .mx-item { min-width: 230px; }
+  .mx-wrap { max-height: calc(100vh - 260px); }
+  ah-toasts { top: 60px; }
+  .bulkbar, .unsaved-bar { left: 0; max-width: calc(100vw - 2 * var(--s3)); }
+}
+@media (max-width: 720px) {
+  main { padding: var(--s3); }
+  .filters, .lib-filters, .form-grid { grid-template-columns: 1fr; }
+  .lib-grid, .inbox-grid { grid-template-columns: 1fr; }
+  .grid.two, .grid.three { grid-template-columns: 1fr; }
+  .palette-label, .palette-btn kbd { display: none; }
+  .page-head, .editor-head { align-items: flex-start; }
+  .tabs { overflow-x: auto; flex-wrap: nowrap; } .tab { white-space: nowrap; }
+  .md-editor { grid-template-columns: 1fr; }
+  .editor-files { grid-template-columns: 1fr; }
+  .steps { gap: var(--s2); } .steps li span:last-child { display: none; } .steps li.now span:last-child { display: inline; }
+  .checklist li { grid-template-columns: 28px minmax(0, 1fr); } .checklist li .btn { grid-column: 2; justify-self: start; }
+  .bulkbar, .unsaved-bar { left: var(--s2); right: var(--s2); bottom: var(--s2); width: auto; max-width: none; margin: 0; }
+  .mx-corner, .mx-gh, .mx-item { min-width: 170px; } .mx-col { min-width: 96px; } .mx-count { display: none; }
+  .mx-item-in .badge { display: none; }
+  .counts { grid-template-columns: repeat(2, 1fr); }
+  .scope-row { grid-template-columns: 1fr; }
+  .kv { grid-template-columns: 1fr; gap: 0; }
+  .coll-move { opacity: 1; }
+  /* Tables scroll inside their card instead of stretching the page. */
+  .tablewrap table:not(.matrix) { min-width: 560px; }
+  .lib-table { min-width: 720px !important; }
+}

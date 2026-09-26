@@ -1,0 +1,28 @@
+# Example spec: adjust to your client's current config format. Covers .cursor/mcp.json with `mcpServers` and AGENTS.md at
+# the project root. Check the paths before enabling `manage`.
+# Its job is to prove that a new client needs a spec, not code.
+id: cursor
+adapter: generic
+display_name: Cursor (example spec)
+description: Instructions into AGENTS.md (hub block) and MCP servers into .cursor/mcp.json. Skills/agents are not mapped.
+strict: false
+roots:
+  project: ~/path/to/project
+manage: {skills: false, agents: false, instructions: true, mcp: false, permissions: false, memory: false}
+spec:
+  version: 1
+  notes: Example spec. Cursor rules (.cursor/rules/*.mdc) are not mapped; add an `agents`-style section if you need them.
+  instructions:
+    root: project
+    file: AGENTS.md
+    mode: block
+  mcp:
+    root: project
+    file: .cursor/mcp.json
+    format: json
+    key_path: mcpServers
+    env_style: dollar_brace
+    entry:
+      stdio: {command: "{command}", args: "{args}", env: "{env}"}
+      http: {url: "{url}"}
+      sse: {url: "{url}"}

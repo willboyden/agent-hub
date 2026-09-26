@@ -1,0 +1,59 @@
+[project]
+name = "agent-knowledge"
+version = "0.1.0"
+description = "Agent Hub knowledge plane: scoped vector stores (Qdrant service / LanceDB embedded) behind a hardened localhost API"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "fastapi>=0.141.1",
+    "httpx>=0.28.1",
+    "lancedb>=0.39.0",
+    "prometheus-client>=0.26.0",
+    "pydantic>=2.13.5",
+    "pyyaml>=6.0.3",
+    "uvicorn>=0.53.0",
+]
+
+[project.scripts]
+agent-knowledge = "agent_knowledge.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_knowledge"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = ["live: needs real LanceDB / Qdrant; skipped unless AK_LIVE=1"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 130
+target-version = "py313"
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "ASYNC", "SIM"]
+ignore = ["S101", "ASYNC240"]
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S105", "S106", "S108", "E501"]
+
+[tool.mypy]
+strict = true
+python_version = "3.13"
+plugins = ["pydantic.mypy"]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "respx>=0.23.1",
+    "ruff>=0.16.8",
+    "types-pyyaml>=6.0.12.20260906",
+]
+
+[[tool.mypy.overrides]]
+module = ["pyarrow", "pyarrow.*", "lancedb", "lancedb.*"]
+ignore_missing_imports = true

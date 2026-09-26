@@ -1,0 +1,158 @@
+{
+  "artifacts": [
+    {
+      "content": "{\n  \"about\": \"Builds things.\",\n  \"allowedTools\": {\n    \"fs.read\": true,\n    \"fs.write\": true,\n    \"sh\": true\n  },\n  \"id\": \"builder\",\n  \"kind\": \"helper\",\n  \"model\": \"acme-small\",\n  \"prompt\": \"You build.\\n\"\n}\n",
+      "kind": "agent",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".acme/agents/builder.json",
+      "root": "project",
+      "source_ids": [
+        "builder"
+      ]
+    },
+    {
+      "content": "{\n  \"about\": \"Reviews changes; read-only.\",\n  \"allowedTools\": {\n    \"fs.read\": true,\n    \"fs.write\": false,\n    \"sh\": true\n  },\n  \"id\": \"reviewer\",\n  \"kind\": \"helper\",\n  \"prompt\": \"You review.\\n\"\n}\n",
+      "kind": "agent",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".acme/agents/reviewer.json",
+      "root": "project",
+      "source_ids": [
+        "reviewer"
+      ]
+    },
+    {
+      "content": "tools:\n  mcp:\n    docs:\n      endpoint: http://mcpo:8000/docs\n    serena:\n      environment:\n        SERENA_HOME: ${SERENA_HOME}\n      exec:\n      - ./run-sandboxed.sh\n      - --\n      - serena\n      - start-mcp-server\n      label: srv-serena\n",
+      "kind": "mcp",
+      "managed_keys": [
+        "tools.mcp"
+      ],
+      "merge": "yaml_keys",
+      "path": ".acme/mcp.yaml",
+      "root": "project",
+      "source_ids": [
+        "docs",
+        "serena"
+      ]
+    },
+    {
+      "content": "---\nid: m1\ntype: project\ntitle: Fact\n---\n\nBody.\n",
+      "kind": "memory",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".acme/memory/m1.md",
+      "root": "project",
+      "source_ids": [
+        "m1"
+      ]
+    },
+    {
+      "content": "{\n  \"rules\": {\n    \"allow\": [\n      \"shell:docker compose *\"\n    ],\n    \"deny\": [\n      \"read:**/private-keys/**\",\n      \"stat:**/private-keys/**\"\n    ]\n  }\n}\n",
+      "kind": "rule",
+      "managed_keys": [
+        "rules.allow",
+        "rules.deny"
+      ],
+      "merge": "json_keys",
+      "path": ".acme/policy.json",
+      "root": "project",
+      "source_ids": [
+        "command:docker compose *",
+        "command:sudo *",
+        "egress_host:pypi.org",
+        "path_read:**/private-keys/**",
+        "tool:web_fetch"
+      ]
+    },
+    {
+      "content": "---\nname: example-other-skill\ndescription: Does a thing. Use when asked.\n---\n\n# example-other-skill\n\nSteps.\n",
+      "kind": "skill",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".acme/skills/example-other-skill/SKILL.md",
+      "root": "project",
+      "source_ids": [
+        "example-other-skill"
+      ]
+    },
+    {
+      "content": "---\nname: example-skill\ndescription: Does a thing. Use when asked.\n---\n\n# example-skill\n\nSteps.\n",
+      "kind": "skill",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".acme/skills/example-skill/SKILL.md",
+      "root": "project",
+      "source_ids": [
+        "example-skill"
+      ]
+    },
+    {
+      "content": "#!/bin/sh\necho hi\n",
+      "kind": "skill",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".acme/skills/example-skill/scripts/run.sh",
+      "root": "project",
+      "source_ids": [
+        "example-skill"
+      ]
+    },
+    {
+      "content": "<!-- agent-hub:begin (managed block; edits inside are overwritten) -->\n## First\n\nOne.\n\n## Second\n\nTwo.\n<!-- agent-hub:end -->\n",
+      "kind": "instruction",
+      "managed_keys": [],
+      "merge": "block",
+      "path": "ACME.md",
+      "root": "project",
+      "source_ids": [
+        "a-first",
+        "b-second"
+      ]
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "mcp_not_clean",
+      "item": "docs",
+      "message": "scan_status=unscanned; the core blocks enabling unscanned servers",
+      "severity": "info"
+    },
+    {
+      "code": "no_model_mapping",
+      "item": "reviewer",
+      "message": "no model mapped for tier 'standard'",
+      "severity": "info"
+    },
+    {
+      "code": "unsupported_capability",
+      "item": "builder",
+      "message": "capability 'edit' has no native tool in this spec",
+      "severity": "warn"
+    },
+    {
+      "code": "unsupported_capability",
+      "item": "builder",
+      "message": "capability 'web_fetch' has no native tool in this spec",
+      "severity": "warn"
+    },
+    {
+      "code": "unsupported_decision",
+      "item": null,
+      "message": "client has no 'ask' list; rule command:sudo * dropped",
+      "severity": "warn"
+    },
+    {
+      "code": "unsupported_rule",
+      "item": null,
+      "message": "rule egress_host:pypi.org has no mapping in spec.permissions",
+      "severity": "warn"
+    },
+    {
+      "code": "unsupported_rule",
+      "item": null,
+      "message": "rule tool:web_fetch has no mapping in spec.permissions",
+      "severity": "warn"
+    }
+  ]
+}

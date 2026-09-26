@@ -1,0 +1,124 @@
+{
+  "artifacts": [
+    {
+      "content": "---\nname: builder\ndescription: Builds things.\ntools: Read, Grep, Glob, Write, Edit, Bash, WebFetch\nmodel: haiku\n---\n\nYou build.\n",
+      "kind": "agent",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".claude/agents/builder.md",
+      "root": "project",
+      "source_ids": [
+        "builder"
+      ]
+    },
+    {
+      "content": "---\nname: reviewer\ndescription: Reviews changes; read-only.\ntools: Read, Grep, Glob, Bash\nmodel: sonnet\n---\n\nYou review.\n",
+      "kind": "agent",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".claude/agents/reviewer.md",
+      "root": "project",
+      "source_ids": [
+        "reviewer"
+      ]
+    },
+    {
+      "content": "{\n  \"permissions\": {\n    \"allow\": [\n      \"Bash(docker compose:*)\",\n      \"WebFetch(domain:pypi.org)\"\n    ],\n    \"ask\": [\n      \"Bash(sudo:*)\",\n      \"WebFetch\"\n    ],\n    \"deny\": [\n      \"Read(**/private-keys/**)\"\n    ]\n  }\n}\n",
+      "kind": "rule",
+      "managed_keys": [
+        "permissions.allow",
+        "permissions.ask",
+        "permissions.deny"
+      ],
+      "merge": "json_keys",
+      "path": ".claude/settings.json",
+      "root": "project",
+      "source_ids": [
+        "command:docker compose *",
+        "command:sudo *",
+        "egress_host:pypi.org",
+        "path_read:**/private-keys/**",
+        "tool:web_fetch"
+      ]
+    },
+    {
+      "content": "---\nname: example-other-skill\ndescription: Does a thing. Use when asked.\n---\n\n# example-other-skill\n\nSteps.\n",
+      "kind": "skill",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".claude/skills/example-other-skill/SKILL.md",
+      "root": "project",
+      "source_ids": [
+        "example-other-skill"
+      ]
+    },
+    {
+      "content": "---\nname: example-skill\ndescription: Does a thing. Use when asked.\n---\n\n# example-skill\n\nSteps.\n",
+      "kind": "skill",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".claude/skills/example-skill/SKILL.md",
+      "root": "project",
+      "source_ids": [
+        "example-skill"
+      ]
+    },
+    {
+      "content": "#!/bin/sh\necho hi\n",
+      "kind": "skill",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".claude/skills/example-skill/scripts/run.sh",
+      "root": "project",
+      "source_ids": [
+        "example-skill"
+      ]
+    },
+    {
+      "content": "{\n  \"mcpServers\": {\n    \"docs\": {\n      \"type\": \"http\",\n      \"url\": \"http://mcpo:8000/docs\"\n    },\n    \"serena\": {\n      \"args\": [\n        \"--\",\n        \"serena\",\n        \"start-mcp-server\"\n      ],\n      \"command\": \"./run-sandboxed.sh\",\n      \"env\": {\n        \"SERENA_HOME\": \"${SERENA_HOME}\"\n      }\n    }\n  }\n}\n",
+      "kind": "mcp",
+      "managed_keys": [
+        "mcpServers"
+      ],
+      "merge": "json_keys",
+      "path": ".mcp.json",
+      "root": "project",
+      "source_ids": [
+        "docs",
+        "serena"
+      ]
+    },
+    {
+      "content": "<!-- agent-hub:begin (managed block; edits inside are overwritten) -->\n## First\n\nOne.\n\n## Second\n\nTwo.\n<!-- agent-hub:end -->\n",
+      "kind": "instruction",
+      "managed_keys": [],
+      "merge": "block",
+      "path": "CLAUDE.md",
+      "root": "project",
+      "source_ids": [
+        "a-first",
+        "b-second"
+      ]
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "unsupported_capability",
+      "item": null,
+      "message": "memory is not rendered for Claude Code (use the curated CLAUDE.md instructions instead)",
+      "severity": "error"
+    },
+    {
+      "code": "egress_advisory",
+      "item": null,
+      "message": "egress_host rules render as WebFetch(domain:...) only; Bash network egress is governed by the sandbox settings, which the hub never writes",
+      "severity": "info"
+    },
+    {
+      "code": "mcp_not_clean",
+      "item": "docs",
+      "message": "scan_status=unscanned; the core blocks enabling unscanned servers",
+      "severity": "info"
+    }
+  ]
+}

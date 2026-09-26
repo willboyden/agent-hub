@@ -1,0 +1,107 @@
+{
+  "artifacts": [
+    {
+      "content": "---\ndescription: Builds things.\nmode: subagent\ntemperature: 0.1\nmodel: provider/fast-model\ntools:\n  task: false\n  todowrite: false\npermission:\n  bash: ask\n  webfetch: ask\n---\n\nYou build.\n",
+      "kind": "agent",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".opencode/agent/builder.md",
+      "root": "project",
+      "source_ids": [
+        "builder"
+      ]
+    },
+    {
+      "content": "---\ndescription: Reviews changes; read-only.\nmode: subagent\ntemperature: 0.1\ntools:\n  edit: false\n  task: false\n  todowrite: false\n  webfetch: false\n  write: false\npermission:\n  bash: ask\n  edit: deny\n---\n\nYou review.\n",
+      "kind": "agent",
+      "managed_keys": [],
+      "merge": "own",
+      "path": ".opencode/agent/reviewer.md",
+      "root": "project",
+      "source_ids": [
+        "reviewer"
+      ]
+    },
+    {
+      "content": "<!-- agent-hub:begin (managed block; edits inside are overwritten) -->\n## First\n\nOne.\n\n## Second\n\nTwo.\n<!-- agent-hub:end -->\n",
+      "kind": "instruction",
+      "managed_keys": [],
+      "merge": "block",
+      "path": "AGENTS.md",
+      "root": "project",
+      "source_ids": [
+        "a-first",
+        "b-second"
+      ]
+    },
+    {
+      "content": "{\n  \"mcp\": {\n    \"docs\": {\n      \"enabled\": true,\n      \"type\": \"remote\",\n      \"url\": \"http://mcpo:8000/docs\"\n    },\n    \"serena\": {\n      \"command\": [\n        \"./run-sandboxed.sh\",\n        \"--\",\n        \"serena\",\n        \"start-mcp-server\"\n      ],\n      \"enabled\": true,\n      \"environment\": {\n        \"SERENA_HOME\": \"{env:SERENA_HOME}\"\n      },\n      \"type\": \"local\"\n    }\n  }\n}\n",
+      "kind": "mcp",
+      "managed_keys": [
+        "mcp"
+      ],
+      "merge": "json_keys",
+      "path": "opencode.json",
+      "root": "project",
+      "source_ids": [
+        "docs",
+        "serena"
+      ]
+    },
+    {
+      "content": "{\n  \"permission\": {\n    \"bash\": {\n      \"*\": \"ask\",\n      \"* **/private-keys/**\": \"deny\",\n      \"docker compose *\": \"allow\",\n      \"sudo *\": \"ask\"\n    },\n    \"webfetch\": \"ask\"\n  }\n}\n",
+      "kind": "rule",
+      "managed_keys": [
+        "permission"
+      ],
+      "merge": "json_keys",
+      "path": "opencode.json",
+      "root": "project",
+      "source_ids": [
+        "command:docker compose *",
+        "command:sudo *",
+        "egress_host:pypi.org",
+        "path_read:**/private-keys/**",
+        "tool:web_fetch"
+      ]
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "approximated",
+      "item": null,
+      "message": "path_read deny '**/private-keys/**' rendered as a bash glob (opencode has no path ACL)",
+      "severity": "info"
+    },
+    {
+      "code": "mcp_not_clean",
+      "item": "docs",
+      "message": "scan_status=unscanned; the core blocks enabling unscanned servers",
+      "severity": "info"
+    },
+    {
+      "code": "no_model_mapping",
+      "item": "reviewer",
+      "message": "no model mapped for tier 'standard'; agent inherits the default model",
+      "severity": "info"
+    },
+    {
+      "code": "unsupported_capability",
+      "item": null,
+      "message": "memory is not rendered for opencode",
+      "severity": "warn"
+    },
+    {
+      "code": "unsupported_capability",
+      "item": null,
+      "message": "opencode has no known skills directory (set params.skills_via_claude_dir to try .claude/skills)",
+      "severity": "warn"
+    },
+    {
+      "code": "unsupported_rule",
+      "item": null,
+      "message": "rule egress_host:pypi.org:allow has no opencode equivalent",
+      "severity": "warn"
+    }
+  ]
+}

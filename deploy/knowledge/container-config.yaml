@@ -1,0 +1,13 @@
+# Config for the containerised agent-knowledge in docker-compose.broker.yml (template).
+host: 0.0.0.0                     # only with --allow-bind-any, only on an internal network
+port: 8795
+allowed_hosts: ["agent-knowledge:8795"]   # Host header the broker sends (DNS-rebinding allowlist)
+data_dir: /data
+lance_dir: /data/lance
+# qdrant_url: http://qdrant:6333
+router_url: http://router:4000            # any OpenAI-compatible /v1/embeddings endpoint (e.g. a LiteLLM router); reach it via your own broker
+                                          # (also overridable with the env var KNOWLEDGE_ROUTER_URL)
+router_api_key_env: KNOWLEDGE_EMBED_API_KEY   # env var NAME (an embeddings-only router VIRTUAL key, never the master key); value comes from env, never written here
+qdrant_api_key_env: KNOWLEDGE_QDRANT_API_KEY  # only used when qdrant_url is set
+default_embedding_model: text-embedding-3-small   # example; use a model your endpoint serves
+ingest_roots: []                          # no host filesystem is mounted, so path ingest is off

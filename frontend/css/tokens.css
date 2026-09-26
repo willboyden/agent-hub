@@ -1,0 +1,32 @@
+/* Design tokens. Dark is the default; light via [data-theme="light"]. Contrast targets WCAG AA:
+   text on surface >= 4.5:1, large/UI >= 3:1. Spacing scale is 4px based. */
+:root {
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px;
+  --r1: 6px; --r2: 10px; --r3: 14px;
+  --fs-sm: 0.8125rem; --fs: 0.9375rem; --fs-lg: 1.125rem; --fs-xl: 1.5rem;
+  --sidebar-w: 216px;
+  color-scheme: dark;
+  --bg: #0e1116; --surface: #161b22; --surface-2: #1d242d; --surface-3: #262f3a;
+  --border: #2d3743; --border-strong: #46525f;
+  --text: #e8ebf0; --text-2: #a7b1be; --text-3: #8a96a5;
+  --accent: #6ea8fe; --accent-fg: #0a1526; --accent-soft: #16263d;
+  --ok: #4cc38a; --ok-soft: #12291f; --warn: #e8b04b; --warn-soft: #2e2412; --bad: #f2867b; --bad-soft: #341a17; --info: #6ea8fe; --info-soft: #16263d;
+  --focus: #9ec5ff;
+  --c1: #6ea8fe; --c2: #4cc38a; --c3: #e8b04b; --c4: #c792ea; --c5: #f2867b; --c6: #5fd0d6;
+  --shadow: 0 8px 30px rgba(0, 0, 0, .45);
+  --heat0: #1a212a; --heat1: #1d3a5c; --heat2: #2a5f9c; --heat3: #4f8fdc; --heat4: #9ec5ff;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f6f9; --surface: #ffffff; --surface-2: #eef1f5; --surface-3: #e3e8ee;
+  --border: #d3dae3; --border-strong: #8b97a6;
+  --text: #14181d; --text-2: #46505d; --text-3: #5a6572;
+  --accent: #1a5bcc; --accent-fg: #ffffff; --accent-soft: #e4edfb;
+  --ok: #17694a; --ok-soft: #e1f3ea; --warn: #855400; --warn-soft: #fbf0d9; --bad: #b02419; --bad-soft: #fbe6e3; --info: #1a5bcc; --info-soft: #e4edfb;
+  --focus: #1a5bcc;
+  --c1: #1a5bcc; --c2: #17694a; --c3: #855400; --c4: #7b3fb0; --c5: #b02419; --c6: #0d727a;
+  --shadow: 0 8px 30px rgba(20, 30, 50, .18);
+  --heat0: #e9edf2; --heat1: #c5d8f4; --heat2: #8db3ea; --heat3: #4a84d8; --heat4: #1a4fa8;
+}

@@ -1,0 +1,113 @@
+{
+  "artifacts": [
+    {
+      "content": "## First\n\nOne.\n\n## Second\n\nTwo.\n",
+      "kind": "instruction",
+      "managed_keys": [],
+      "merge": "own",
+      "path": "AGENTS.md",
+      "root": "stage",
+      "source_ids": [
+        "a-first",
+        "b-second"
+      ]
+    },
+    {
+      "content": "mcp_servers:\n  docs:\n    url: http://mcpo:8000/docs\n  serena:\n    args:\n    - start-mcp-server\n    command: serena\n",
+      "kind": "mcp",
+      "managed_keys": [
+        "mcp_servers"
+      ],
+      "merge": "yaml_keys",
+      "path": "config.mcp.fragment.yaml",
+      "root": "stage",
+      "source_ids": [
+        "docs",
+        "serena"
+      ]
+    },
+    {
+      "content": "agent:\n  disabled_toolsets:\n  - bfl\n  - browser\n  - code_execution\n  - computer_use\n  - cronjob\n  - desktop_ui\n  - homeassistant\n  - image_gen\n  - search\n  - tts\n  - video\n  - video_gen\n  - web\n  - x_search\napprovals:\n  deny:\n  - '**/private-keys/**'\n",
+      "kind": "rule",
+      "managed_keys": [
+        "agent.disabled_toolsets",
+        "approvals.deny"
+      ],
+      "merge": "yaml_keys",
+      "path": "config.policy.fragment.yaml",
+      "root": "stage",
+      "source_ids": [
+        "command:docker compose *",
+        "command:sudo *",
+        "egress_host:pypi.org",
+        "path_read:**/private-keys/**",
+        "tool:web_fetch"
+      ]
+    },
+    {
+      "content": "---\nname: example-other-skill\ndescription: Does a thing. Use when asked.\n---\n\n# example-other-skill\n\nSteps.\n",
+      "kind": "skill",
+      "managed_keys": [],
+      "merge": "own",
+      "path": "skills/example-other-skill/SKILL.md",
+      "root": "stage",
+      "source_ids": [
+        "example-other-skill"
+      ]
+    },
+    {
+      "content": "---\nname: example-skill\ndescription: Does a thing. Use when asked.\n---\n\n# example-skill\n\nSteps.\n",
+      "kind": "skill",
+      "managed_keys": [],
+      "merge": "own",
+      "path": "skills/example-skill/SKILL.md",
+      "root": "stage",
+      "source_ids": [
+        "example-skill"
+      ]
+    },
+    {
+      "content": "#!/bin/sh\necho hi\n",
+      "kind": "skill",
+      "managed_keys": [],
+      "merge": "own",
+      "path": "skills/example-skill/scripts/run.sh",
+      "root": "stage",
+      "source_ids": [
+        "example-skill"
+      ]
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "unsupported_capability",
+      "item": null,
+      "message": "Hermes has no per-agent definitions; agents are not rendered",
+      "severity": "error"
+    },
+    {
+      "code": "unsupported_capability",
+      "item": null,
+      "message": "memory is not rendered for Hermes",
+      "severity": "error"
+    },
+    {
+      "code": "env_names_omitted",
+      "item": "serena",
+      "message": "env var names not rendered: the Hermes agent never holds real keys (credential broker)",
+      "severity": "info"
+    },
+    {
+      "code": "mcp_not_clean",
+      "item": "docs",
+      "message": "scan_status=unscanned; the core blocks enabling unscanned servers",
+      "severity": "info"
+    },
+    {
+      "code": "sandbox_profile_ignored",
+      "item": "serena",
+      "message": "the container is the sandbox; sandbox wrapping is not applied",
+      "severity": "info"
+    }
+  ]
+}

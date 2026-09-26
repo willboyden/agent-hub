@@ -1,0 +1,27 @@
+# Example spec: adjust to your client's current config format. Covers the GEMINI.md context file and .gemini/settings.json
+# with `mcpServers` (`httpUrl` for streamable HTTP, `url` for SSE).
+id: gemini-cli
+adapter: generic
+display_name: Gemini CLI (example spec)
+description: GEMINI.md (whole file hub-owned) and MCP servers in .gemini/settings.json.
+strict: false
+roots:
+  project: ~/path/to/project
+manage: {skills: false, agents: false, instructions: true, mcp: false, permissions: false, memory: false}
+spec:
+  version: 1
+  notes: Example spec.
+  instructions:
+    root: project
+    file: GEMINI.md
+    mode: own
+  mcp:
+    root: project
+    file: .gemini/settings.json
+    format: json
+    key_path: mcpServers
+    env_style: dollar_brace
+    entry:
+      stdio: {command: "{command}", args: "{args}", env: "{env}"}
+      http: {httpUrl: "{url}"}
+      sse: {url: "{url}"}

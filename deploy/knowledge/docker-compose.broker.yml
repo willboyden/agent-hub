@@ -1,0 +1,87 @@
+# TEMPLATE (opt-in; not applied by the Agent Hub or agent-knowledge). Read-only knowledge broker for a client that
+# lives on an INTERNAL-ONLY container network (a sandboxed agent with no route except through this broker).
+#
+# Why a container for the service too: with rootless Docker/Podman a container usually cannot reach host loopback
+# (127.0.0.1:8795), so an internal-network client cannot see a host process. The knowledge service therefore runs here
+# as a container on a second internal network shared only with the broker (and Qdrant, if used); the client sees the
+# broker and nothing else.
+#
+#   client (client network, internal) --> knowledge-broker --> agent-knowledge (service network, internal) --> qdrant
+#
+# Neither network has internet access: both are --internal. Create them once, by hand (names are parameters):
+#   docker network create --internal agent-client-net       # or set AGENT_CLIENT_NETWORK to your own name
+#   docker network create --internal agent-knowledge-net    # or set AGENT_KNOWLEDGE_NETWORK
+# The embeddings endpoint (router) is reached by attaching the service to a network that can see it, ideally through
+# its own credential broker; that wiring is intentionally NOT done here (set router_url in container-config.yaml).
+#
+# Steps: (1) admin creates a READ-ONLY token:  POST /namespaces ... then POST /tokens {client, scopes:[{ns}]}  (default mode
+# is read); (2) put it in a 0600 env file OUTSIDE the repo as AGENT_KNOWLEDGE_TOKEN=..., pass it via env_file below;
+# (3) attach the client to the client network and point it at http://knowledge-broker:8795 with a dummy key.
+#
+# Template: adapt networks, image build and paths to your environment.
+name: knowledge-broker
+
+services:
+  knowledge-broker:
+    image: mitmproxy/mitmproxy:12.2.3    # any pinned reverse-proxy image works; mitmproxy is the example addon host
+    user: "0:0"                          # rootless: in-container root maps to an unprivileged host user
+    entrypoint: ["mitmdump"]
+    command:
+      - --mode
+      - reverse:http://agent-knowledge:8795
+      - --listen-host=0.0.0.0
+      - --listen-port=8795
+      - --set=block_global=false
+      - -s
+      - /addons/addon_knowledge_broker.py
+    environment:
+      KNOWLEDGE_ALLOWED_NS: "docs"       # comma list: the ONLY namespaces the client may query (defence in depth; the token is scoped too)
+    # env_file: /home/USER/.config/agent-knowledge/broker.env   # AGENT_KNOWLEDGE_TOKEN=akn_...  (0600, outside the repo)
+    volumes:
+      - ./broker/addon_knowledge_broker.py:/addons/addon_knowledge_broker.py:ro
+    networks: [client-net, knowledge-net]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    restart: unless-stopped
+
+  agent-knowledge:
+    # Build context is the hub/knowledge package; see the Dockerfile next to this file.
+    build:
+      context: ../../knowledge
+      dockerfile: ../deploy/knowledge/Dockerfile
+    command: ["agent-knowledge", "--config", "/etc/agent-knowledge/config.yaml", "--allow-bind-any"]
+    # No published ports at all: reachable only from the broker over the internal network.
+    volumes:
+      - ./container-config.yaml:/etc/agent-knowledge/config.yaml:ro     # host: 0.0.0.0, allowed_hosts: ["agent-knowledge:8795"]
+      - knowledge-data:/data                                            # sqlite registry, admin.key (0600), lancedb dir
+    networks: [knowledge-net]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp"]
+    pids_limit: 256
+    mem_limit: 4g
+    restart: unless-stopped
+
+  # Optional Qdrant on the same internal network (instead of the loopback-published one). Requires an API key, exactly
+  # like docker-compose.qdrant.yml (QDRANT__SERVICE__API_KEY via a 0600 env_file):
+  # qdrant:
+  #   image: qdrant/qdrant:v1.16.3
+  #   env_file: [${AGENT_KNOWLEDGE_QDRANT_ENV:?0600 env file with QDRANT__SERVICE__API_KEY}]
+  #   volumes: [qdrant-storage:/qdrant/storage]
+  #   networks: [knowledge-net]
+  #   cap_drop: [ALL]
+  #   security_opt: ["no-new-privileges:true"]
+
+networks:
+  client-net:
+    external: true
+    name: ${AGENT_CLIENT_NETWORK:-agent-client-net}          # client <-> broker; --internal
+  knowledge-net:
+    external: true
+    name: ${AGENT_KNOWLEDGE_NETWORK:-agent-knowledge-net}    # broker <-> service <-> qdrant; --internal
+
+volumes:
+  knowledge-data:
+  # qdrant-storage:

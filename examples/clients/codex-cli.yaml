@@ -1,0 +1,33 @@
+# Example spec: adjust to your client's current config format. Covers project AGENTS.md, and MCP servers
+# as [mcp_servers.<name>] tables in a config.toml. The TOML table is delivered as a hub marker block (no TOML key-merge exists).
+# `roots.codex_home` must be the directory that holds config.toml on your machine.
+id: codex-cli
+adapter: generic
+display_name: Codex CLI (example spec)
+description: AGENTS.md block, skills as dir-per-skill, MCP tables in config.toml (marker block).
+strict: false
+roots:
+  project: ~/path/to/project
+  codex_home: ~/.codex
+manage: {skills: false, agents: false, instructions: true, mcp: false, permissions: false, memory: false}
+spec:
+  version: 1
+  notes: Example spec. Drop the skills section if your Codex does not read that location.
+  skills:
+    root: codex_home
+    path: skills
+    layout: dir_per_skill
+    filename: SKILL.md
+  instructions:
+    root: project
+    file: AGENTS.md
+    mode: block
+  mcp:
+    root: codex_home
+    file: config.toml
+    format: toml
+    key_path: mcp_servers
+    env_style: names_only
+    entry:
+      stdio: {command: "{command}", args: "{args}"}
+      http: {url: "{url}"}

@@ -1,0 +1,100 @@
+# OPT-IN TEMPLATE: nothing installs or enables this automatically (host-level changes need a human decision).
+# Template: review every CHANGEME before enabling.
+#
+# Install by hand, after reading it:
+#   1. Edit every line marked CHANGEME (checkout location and the delivery paths).
+#   2. mkdir -p ~/.local/share/agent-hub ~/.config/agent-hub <checkout>/out
+#      Every ReadWritePaths entry must EXIST or the unit fails to start (systemd 'namespace' error, status=226).
+#   3. cd <checkout> && make setup && (cd backend && .venv/bin/hubctl init)   # content repo (default ~/.local/share/agent-hub/content), first commit, admin key
+#   4. Put HUB_API_KEY (and HUB_KNOWLEDGE_ADMIN_KEY if you use the knowledge view) in ~/.config/agent-hub/env, mode 0600,
+#      then delete ~/.local/share/agent-hub/bootstrap-admin.key (see docs/SECURITY.md, M5).
+#   5. cp deploy/agent-hub.service ~/.config/systemd/user/
+#      systemctl --user daemon-reload && systemctl --user enable --now agent-hub
+#   6. systemd-analyze --user security agent-hub     # review the exposure score; do not assume it is low
+#
+# WHAT THE SANDBOX ALLOWS TO BE WRITTEN, and why it is narrow on purpose:
+#   * the hub state dir (DB, keys, locks, plans, backups) and the content repo: required, they are the app's own data;
+#   * ONLY the delivery directories you list below (skills, agents, the Hermes stage): NOT your whole project, NOT policy/,
+#     NOT backend/src, NOT any .git directory. The floor file and the code therefore cannot be rewritten by this process.
+# CONSEQUENCE, stated honestly: the applier writes a temp file in the target's directory and renames it, so a root-level
+# file such as AGENTS.md or CLAUDE.md needs its DIRECTORY writable, which here would be the whole project root. Under this
+# unit, applying a client that manages those files fails (and rolls back, `status: failed`). Apply those from a shell with
+# `hubctl apply` instead (not sandboxed, run by you), or accept a wider ReadWritePaths knowingly.
+[Unit]
+Description=Agent Hub (control plane for agent-client content, 127.0.0.1:8792)
+Documentation=file:%h/CHANGEME/agent-hub/docs/OPERATIONS.md
+After=network.target
+
+[Service]
+Type=simple
+# CHANGEME: <checkout>/backend (%h = your home directory)
+WorkingDirectory=%h/CHANGEME/agent-hub/backend
+# The venv's own entry point: no `uv run`, so no uv cache or venv write access is needed. Requires `make setup` first.
+# `agent-hub` (not `hubctl serve`) so the listen port and the Host allowlist both come from HUB_PORT.
+# CHANGEME: path to the venv entry point
+ExecStart=%h/CHANGEME/agent-hub/backend/.venv/bin/agent-hub
+Environment=HUB_HOST=127.0.0.1
+Environment=HUB_PORT=8792
+# The content repo lives OUTSIDE your project tree, under the state dir (re-audit N1: agents can write inside the project tree, and a planted
+# .git/config would run commands as the hub user). Only set HUB_CONTENT_DIR to move it, and never back into the project tree.
+# An existing repo at <checkout>/content: `hubctl migrate-content --to <path>` (run by you, not by this unit).
+Environment=HUB_DATA_DIR=%h/.local/share/agent-hub
+Environment=HUB_CONTENT_DIR=%h/.local/share/agent-hub/content
+# Never set HUB_TRUST_LOOPBACK=true here: it makes every local process admin without a key (docs/SECURITY.md).
+# Secrets go in the 0600 file below, NEVER in this unit (`systemctl show` prints unit files). Optional (leading dash);
+# the app also reads this same file itself and the real environment wins. systemd syntax is KEY=value, no `export`.
+EnvironmentFile=-%h/.config/agent-hub/env
+Restart=on-failure
+RestartSec=3
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+# CHANGEME every entry, and DELETE the ones you do not apply to (each is a directory this process can rewrite):
+#   1 state dir (also holds the content repo)   2 Hermes stage trees (out/)
+#   3 .claude/skills   4 .claude/agents   5 .opencode/agent (drop if you do not manage opencode)
+# ReadWritePaths must NEVER include your project tree wholesale, policy/, backend/, or any project .git: an agent that can write
+# there could plant a git config or edit the floor. The content repo's own .git is inside entry 1 (the hub commits there).
+ReadWritePaths=%h/.local/share/agent-hub %h/CHANGEME/agent-hub/out %h/CHANGEME/my-project/.claude/skills %h/CHANGEME/my-project/.claude/agents %h/CHANGEME/my-project/.opencode/agent
+# Defence in depth: these stay read-only even if someone later widens ReadWritePaths. CHANGEME paths. The leading dash
+# ignores a path that does not exist.
+ReadOnlyPaths=-%h/CHANGEME/agent-hub/policy -%h/CHANGEME/agent-hub/backend/src -%h/CHANGEME/agent-hub/deploy -%h/CHANGEME/agent-hub/frontend -%h/CHANGEME/agent-hub/knowledge
+# The process has no business seeing credential dirs at all (the floor also denies them, but only at plan time).
+InaccessiblePaths=-%h/.ssh -%h/.aws -%h/.gnupg -%h/.config/gcloud
+# Home is read-only except the entries above. TRADE-OFF: ProtectHome= also covers /run/user, where the rootless docker
+# socket lives (the Hermes `verify` step runs `docker --context rootless exec`). `read-only` keeps /run/user visible;
+# connecting to a socket on a read-only mount is expected to work. If Hermes verify then fails
+# with "docker not available", either add the socket's directory to BindPaths= (widens access to your user runtime dir)
+# or drop ProtectHome= to the default and accept a writable-in-principle home (still limited by ProtectSystem=strict).
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+# AF_UNIX is what gives the process the rootless docker socket (and resolver helpers); AF_INET/6 is loopback only, enforced
+# below. If you never verify Hermes clients you can drop AF_UNIX, but git is spawned as a child and does not need it.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# The hub's only network peers are the browser and 127.0.0.1:8795 (knowledge). If the first start misbehaves, comment
+# these two lines out and re-test.
+IPAddressDeny=any
+IPAddressAllow=localhost
+RestrictNamespaces=yes
+RestrictRealtime=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+UMask=0077
+CapabilityBoundingSet=
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+SystemCallArchitectures=native
+# The hub is small; tune if the content repo grows large (plan snapshots are held in memory while rendering).
+MemoryMax=1G
+# MemoryDenyWriteExecute is intentionally NOT set: native wheels in the venv may need W+X mappings (a wrong guess would stop
+# the service from starting).
+
+[Install]
+WantedBy=default.target

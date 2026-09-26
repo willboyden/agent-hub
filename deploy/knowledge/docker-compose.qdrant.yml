@@ -1,0 +1,45 @@
+# TEMPLATE (opt-in; not applied by the Agent Hub or agent-knowledge). Qdrant vector store for the knowledge plane.
+#
+#   docker compose -f hub/deploy/knowledge/docker-compose.qdrant.yml up -d
+#
+# Then in the agent-knowledge config:  qdrant_url: http://127.0.0.1:6333  (key env NAME defaults to KNOWLEDGE_QDRANT_API_KEY)
+#   AGENT_KNOWLEDGE_QDRANT_ENV=~/.config/agent-knowledge/qdrant.env docker compose ... up -d
+#
+# Image qdrant/qdrant:v1.16.3.
+# Pinned, not frozen: bump only after re-running `AK_LIVE=1 AK_LIVE_QDRANT_URL=... uv run pytest -m live`.
+#
+# To keep host RAM use low, collections are created with vectors and the HNSW graph ON DISK (the app does this) and
+# payloads on disk; put the storage volume on an SSD path (uncomment the bind below), never on tmpfs.
+name: knowledge-qdrant
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.16.3
+    ports:
+      - "127.0.0.1:6333:6333"          # loopback only: agent-knowledge on the host talks to it here
+    # gRPC (6334) intentionally not published: the app uses REST only.
+    volumes:
+      - qdrant-storage:/qdrant/storage
+    environment:
+      QDRANT__TELEMETRY_DISABLED: "true"
+    # Qdrant's API key is REQUIRED here: on loopback any local process could otherwise read/write every collection and
+    # bypass agent-knowledge's token scopes. The value lives only in a 0600 env file OUTSIDE the repo containing
+    #   QDRANT__SERVICE__API_KEY=<key>
+    # Generate:  umask 077; K=$(openssl rand -hex 32)
+    #            printf 'QDRANT__SERVICE__API_KEY=%s\n' "$K" > ~/.config/agent-knowledge/qdrant.env
+    #            printf 'KNOWLEDGE_QDRANT_API_KEY=%s\n' "$K" >> ~/.config/agent-knowledge/env   # the service's env NAME
+    # (compose fails if the file is missing: deliberate, so Qdrant can never start keyless by accident.)
+    env_file:
+      - ${AGENT_KNOWLEDGE_QDRANT_ENV:?set to the 0600 env file holding QDRANT__SERVICE__API_KEY}
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 512
+    mem_limit: 8g                       # ceiling for the page cache + index; tune to the corpus (see KNOWLEDGE-PLANE.md)
+    restart: unless-stopped
+
+volumes:
+  qdrant-storage:
+    # Default: a docker-managed named volume (Docker's data root). To pin it to an SSD directory instead:
+    # driver: local
+    # driver_opts: {type: none, o: bind, device: /mnt/nvme/agent-knowledge/qdrant}
+    name: agent-knowledge-qdrant-storage

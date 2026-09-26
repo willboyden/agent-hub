@@ -1,0 +1,59 @@
+# Agent Hub policy floor. Lives in the APP repo: it is not content and not editable through the API/UI.
+# Content (rules, MCP items, profiles) may only be STRICTER than this file; the planner turns any violation into a
+# structured finding and blocks apply for that client. Change it in git, with review, like any security control.
+version: 1
+
+# Egress is deny-by-default. Content can only add explicit `egress_host allow` rules for named hosts.
+network_default: deny
+egress:
+  forbid_allow_patterns: ["*", "*.*", "**"]     # a catch-all host allow is an egress hole
+  forbid_allow_probes: ["a", "a.b", "example.com", "example.io", "example.org", "example.dev", "example.net", "a.b.c.d"]   # an allow pattern that matches any probe is a catch-all in disguise
+  loopback_hosts: ["127.0.0.1", "localhost", "::1"]
+
+# Hard denies: content can never allow a read/write that overlaps these (paths are globs; ~ is the home dir).
+deny_path_read:
+  - "~/.ssh/**"
+  - "~/.aws/**"
+  - "~/.config/gcloud/**"
+  - "~/.gnupg/**"
+  - "~/.netrc"
+  - "~/.config/google-chrome/**"
+  - "~/.config/chromium/**"
+  - "~/.config/BraveSoftware/**"
+  - "~/.mozilla/**"
+  - "~/snap/firefox/**"
+  - "~/snap/chromium/**"
+  - "~/.local/share/keyrings/**"
+  - "~/.config/agent-hub/**"
+  - "~/.local/share/agent-hub/**"       # hub state: keys, DB, backups, locks, plans (data_dir is added at runtime too)
+  - "~/.config/agent-knowledge/**"
+  - "~/.local/share/agent-knowledge/**"
+  - "**/bootstrap-admin.key"
+  - "**/admin.key"
+  - "**/.env"
+deny_path_write:
+  - "~/.ssh/**"
+  - "~/.aws/**"
+  - "~/.config/gcloud/**"
+  - "~/.gnupg/**"
+  - "~/.netrc"
+
+# Per-tool posture. `default` applies when no content rule names the tool; `max` is the most permissive decision
+# content may grant (deny < ask < allow). web tools are off by default and can at most be "ask".
+tools:
+  web_fetch: {default: deny, max: ask}
+  web_search: {default: deny, max: ask}
+  shell: {default: ask, max: ask}       # a bare `allow` for shell is never valid; use a `command` rule with a pattern
+default_tool_decision: ask
+
+# `allow` on a command rule needs a real pattern (never a catch-all).
+command_allow_forbid_patterns: ["*", "**", "*.*", "?*", ".*"]
+command_allow_probes: ["a", "a b", "a b c", "a.b.c", "sh -c x", "bash -c x", "docker compose up", "docker run x", "python x.py",
+                       "python3 x", "sudo x", "rm -rf /"]   # matching any of these = a catch-all
+# general-purpose launchers: an allow that matches one is a WARNING (a bare wildcard is already an error above)
+command_allow_warn_probes: ["git x", "node x", "npx x", "uv run x", "uvx x", "find x", "xargs x", "perl x", "awk x", "env x", "nohup x",
+                            "timeout x", "ssh x", "curl x", "wget x"]
+
+mcp:
+  require_scan_clean: true              # scan_status must be `clean` before an MCP server may be enabled
+  require_explicit_egress: true         # every egress host must be covered by an explicit egress_host allow rule

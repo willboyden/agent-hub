@@ -1,0 +1,30 @@
+# virtualenvs, caches, coverage
+.venv/
+backend/.venv/
+knowledge/.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+backend/.coverage
+node_modules/
+
+# state, secrets and data that must never be committed
+*.db
+*.db-shm
+*.db-wal
+*.key
+*.env
+.env
+# the content repo is its own git repository (HUB_CONTENT_DIR); an in-tree copy must never be committed here
+content/
+# generated delivery stage trees (rebuilt by hubctl apply)
+out/
+# knowledge service local data
+knowledge/data/
+*.lance/
+
+# private maintainer notes (not published)
+TODO-CIRCLE-BACK.md
