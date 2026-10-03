@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Desktop launcher (Linux, opt-in): `agent-hub open` starts the hub in the background if needed and opens the UI;
+  `agent-hub stop` stops the hub it started. `make install-desktop` adds the app-menu entry and `make install-desktop-icon`
+  also places it on the desktop. See `docs/OPERATIONS.md` section 2.
+
 ## 0.1.0
 
 First public build. Review your first apply in the UI plan view.

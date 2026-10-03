@@ -34,6 +34,43 @@ authenticating reverse proxy in front and add its Host to `HUB_ALLOWED_HOSTS`).
 UI: paste the admin key into the auth dialog on first load; it lives in the tab's `sessionStorage` and is gone when the
 tab closes. Use the keyboard palette with Ctrl-K.
 
+### From the desktop (opt-in, Linux)
+
+Run these from the checkout root, after `make setup`:
+
+```bash
+make install-desktop         # menu entry: ~/.local/share/applications/agent-hub.desktop
+make install-desktop-icon    # the same, plus a copy on your desktop folder (GNOME: marked trusted with `gio`)
+make uninstall-desktop       # removes both
+```
+
+The launcher runs `agent-hub open`. Its right-click action **Stop Agent Hub** runs `agent-hub stop`.
+
+- `open` only uses a loopback address: it refuses a `HUB_HOST` that is not loopback. A wildcard `HUB_HOST` (`0.0.0.0`,
+  `::`) is probed and opened on `127.0.0.1` / `::1` if a hub already runs, but the launcher never starts a hub with it.
+  If the hub already answers, it opens the UI with `xdg-open`. If nothing answers, it starts the hub in the background
+  (`python -I -m agent_hub.main`, so the launch directory is not on its import path), waits up to 30 s for
+  `/api/v1/health`, then opens the UI. Concurrent launches (a double click) wait on `<data dir>/hub.lock`, so only one
+  hub is started.
+- The hub's output goes to `<data dir>/hub.log` (mode 0600). It holds the server log, including one access line per
+  request (method, path, status; never a key). The size is checked at each launch: past 10 MiB the file is moved to
+  `hub.log.1`, replacing the previous one. A hub that runs for a long time is not rotated while it runs. The pid goes to
+  `<data dir>/hub.pid`.
+- It opens the page only if, at that moment, **every socket listening on the port belongs to your user** (read from
+  `/proc/net/tcp` and `tcp6`) **and** the answer has the hub's health shape. That stops another user's process holding
+  the port from collecting the key you paste. A process running as your own user can still impersonate the hub
+  (SECURITY.md section 13, "Inherent").
+- It never reads or passes a key: each new tab asks for one, as above.
+- `stop` signals only the process recorded in `hub.pid`, and only if it is yours and its command line is the launcher's
+  (same interpreter, same arguments). A hub started with `make run`, `hubctl serve` or systemd is not touched.
+- The launcher runs the code in this checkout's `backend/.venv`, and `install-desktop-icon` marks the desktop copy as
+  trusted, so a double click runs it without a prompt. Keep the checkout out of reach of the agents the hub governs
+  (SECURITY.md section 13).
+- The launcher starts only the hub, not the knowledge service (section 9). The Knowledge page reports it as unavailable
+  until you start that service.
+- A hub started this way keeps running after you log out if lingering is enabled (`loginctl show-user $USER -p Linger`).
+- Failures also show as a desktop notification when `notify-send` exists.
+
 ## 3. Environment and the env file
 
 Settings are `HUB_*` environment variables. An optional file `~/.config/agent-hub/env` is read at start (override the

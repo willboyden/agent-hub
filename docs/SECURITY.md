@@ -288,4 +288,11 @@ forge an attestation.
 * A same-user process can also ptrace or read the memory of other same-user processes. `kernel.yama.ptrace_scope=1` only
   limits ptrace to descendants; it does not stop reading files or other same-user access paths.
 * The audit trail and git history are not tamper-evident against a same-user attacker, and commits share one identity.
+* The desktop launcher (`agent-hub open`) refuses a port held by another user, but a same-user process that binds the
+  hub's port first and copies its health answer gets the key you paste into that tab.
+* The hub runs from its checkout: `make run`, `hubctl` and the desktop launcher all execute the code and virtualenv in that
+  directory as your user. A client whose sandbox may write there (for example, one whose writable area is a parent
+  project directory that contains the checkout) can change the hub's code, and the next start runs that change with
+  access to everything the hub protects. The trusted desktop icon makes such starts routine. Keep the checkout outside
+  every governed client's writable paths, or deny writes to it in each client's sandbox.
 * The section 12 limits (TOML/block artifacts uninspected, app-containing roots allowed, CAS-to-rename window).

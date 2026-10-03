@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Name=Agent Hub
+GenericName=Agent Content Hub
+Comment=Organise and control what your agent clients know and may do
+TryExec=@BIN@
+Exec=@BIN@ open
+Icon=@ICON@
+Terminal=false
+StartupNotify=false
+Categories=Development;
+Keywords=agents;skills;MCP;rules;
+Actions=stop;
+
+[Desktop Action stop]
+Name=Stop Agent Hub
+Exec=@BIN@ stop

@@ -1,8 +1,9 @@
-"""FastAPI application factory + `agent-hub` entry point (127.0.0.1:8792 by default)."""
+"""FastAPI application factory + `agent-hub` entry point (127.0.0.1:8792 by default; `agent-hub open|stop` for the launcher)."""
 from __future__ import annotations
 
 import contextlib
 import logging
+import sys
 from collections.abc import AsyncIterator
 from pathlib import Path
 
@@ -85,6 +86,9 @@ def _mount_frontend(app: FastAPI, root: Path) -> None:
 
 
 def run() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] in ("open", "stop"):     # the desktop launcher (agent_hub.desktop)
+        from agent_hub.desktop import open_hub, stop_hub
+        raise SystemExit((open_hub if sys.argv[1] == "open" else stop_hub)(sys.argv[2:]))
     cfg = load_settings()
     try:
         check_bind(cfg.host)

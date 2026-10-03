@@ -137,6 +137,7 @@ optionally `~/.config/agent-hub/env`. Ports: hub 8792, knowledge service 8795. D
 ## Developer commands
 
 `make help` lists them: `setup`, `test`, `lint`, `typecheck`, `frontend-test`, `knowledge-test`, `mock`, `all`.
+`make install-desktop` adds an app-menu launcher (Linux); see `docs/OPERATIONS.md` section 2.
 CI (`.github/workflows/ci.yml`) runs lint, `mypy --strict`, tests and a dependency audit per project.
 
 ## License

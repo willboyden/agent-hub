@@ -1,4 +1,4 @@
-# Agent Hub developer tasks. Nothing here applies anything to a client, touches Docker or systemd, or uses the network
+# Agent Hub developer tasks. Nothing here (except the opt-in *-desktop targets, which write launcher files) applies anything to a client, touches Docker or systemd, or uses the network
 # beyond what `uv sync` needs. `make run` starts the server against your real state dir and content repo: read
 # docs/OPERATIONS.md first. Backend and knowledge use uv + Python 3.13 (3.14 lacks wheels for some dependencies).
 SHELL := /bin/bash
@@ -7,7 +7,8 @@ BACKEND   := backend
 KNOWLEDGE := knowledge
 FRONTEND  := frontend
 
-.PHONY: help setup setup-knowledge run run-knowledge mock test knowledge-test knowledge-live lint typecheck frontend-test all
+.PHONY: help setup setup-knowledge run run-knowledge mock test knowledge-test knowledge-live lint typecheck frontend-test all \
+        install-desktop install-desktop-icon uninstall-desktop
 
 help:  ## list targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | sed 's/:.*## /\t/'
@@ -48,3 +49,31 @@ frontend-test:  ## node --test on the pure-logic modules (no npm install needed)
 	cd $(FRONTEND) && node --test tests/*.test.mjs
 
 all: lint typecheck test knowledge-test frontend-test  ## everything the quality bar requires
+
+# Desktop launcher (opt-in, Linux). Paths go into a .desktop Exec line and a sed replacement, so the checkout path is
+# limited to a safe character set. Fixed ~/.local/share, like the app's own config (XDG vars are unreliable under snaps);
+# for the same reason gio runs without GIO_MODULE_DIR, which a snap terminal points at modules that cannot set metadata.
+APPS_DIR := $(HOME)/.local/share/applications
+LAUNCHER := agent-hub.desktop
+
+install-desktop:  ## add "Agent Hub" to your app menu (starts the hub if needed, then opens the UI)
+	test -x $(BACKEND)/.venv/bin/agent-hub || { echo "run 'make setup' first" >&2; exit 1; }
+	dir=$$(pwd -P); \
+	case "$$dir" in *[!A-Za-z0-9._/+-]*) echo "install-desktop: move the checkout to a path of [A-Za-z0-9._/+-] only" >&2; exit 1;; esac; \
+	mkdir -p "$(APPS_DIR)"; \
+	sed -e "s|@BIN@|$$dir/$(BACKEND)/.venv/bin/agent-hub|g" -e "s|@ICON@|$$dir/deploy/agent-hub.svg|g" \
+	    deploy/$(LAUNCHER) > "$(APPS_DIR)/$(LAUNCHER)"; \
+	chmod 644 "$(APPS_DIR)/$(LAUNCHER)"; \
+	echo "installed $(APPS_DIR)/$(LAUNCHER)"
+
+install-desktop-icon: install-desktop  ## also put the launcher on your desktop (GNOME: marked trusted so it runs on double-click)
+	desk=$$(xdg-user-dir DESKTOP 2>/dev/null || true); [ -n "$$desk" ] && [ "$$desk" != "$(HOME)" ] || desk="$(HOME)/Desktop"; \
+	[ -d "$$desk" ] || { echo "install-desktop-icon: no desktop folder at $$desk" >&2; exit 1; }; \
+	install -m 755 "$(APPS_DIR)/$(LAUNCHER)" "$$desk/$(LAUNCHER)"; \
+	if command -v gio >/dev/null; then env -u GIO_MODULE_DIR gio set "$$desk/$(LAUNCHER)" metadata::trusted true || echo "note: could not mark it trusted; right-click it > Allow Launching" >&2; fi; \
+	echo "installed $$desk/$(LAUNCHER)"
+
+uninstall-desktop:  ## remove the menu entry and the desktop icon
+	rm -f "$(APPS_DIR)/$(LAUNCHER)"
+	desk=$$(xdg-user-dir DESKTOP 2>/dev/null || true); [ -n "$$desk" ] && [ "$$desk" != "$(HOME)" ] || desk="$(HOME)/Desktop"; \
+	rm -f "$$desk/$(LAUNCHER)"
