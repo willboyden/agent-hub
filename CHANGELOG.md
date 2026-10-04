@@ -6,6 +6,8 @@
 - Desktop launcher (Linux, opt-in): `agent-hub open` starts the hub in the background if needed and opens the UI;
   `agent-hub stop` stops the hub it started. `make install-desktop` adds the app-menu entry and `make install-desktop-icon`
   also places it on the desktop. See `docs/OPERATIONS.md` section 2.
+- Sign-in dialog is a standard username + password form, so the browser's password manager can save the key and fill
+  it in. The username is only a label; the hub still authenticates the key alone. Caveats in `docs/SECURITY.md` section 13.
 
 ## 0.1.0
 

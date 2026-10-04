@@ -53,15 +53,19 @@ function syncThemeBtn() {
 function toggleTheme() { applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'); syncThemeBtn(); }
 
 let authDialog = null;
+// A standard username + password form, so the browser's password manager can offer to save the key and fill it in
+// next time. The username is only a label for that saved login: the hub authenticates the key alone.
 function promptKey() {
   if (authDialog) return;
-  const input = h('input', { type: 'password', autocomplete: 'off', spellcheck: 'false', 'aria-label': t('auth.key_label'), placeholder: 'hc_…', value: store.get().apiKey || '' });
-  const form = h('form', { onSubmit: (e) => { e.preventDefault(); setApiKey(input.value.trim()); authDialog?.close(); toast(t('auth.saved'), { kind: 'ok' }); router.refresh(); refreshBadges(); } },
-    h('p', t('auth.explain')), h('div', { class: 'field' }, h('label', { for: 'key-in' }, t('auth.key_label')), input),
-    h('div', { class: 'row gap end' }, h('button', { type: 'button', class: 'btn', onClick: () => { setApiKey(''); authDialog?.close(); } }, t('auth.clear')), h('button', { type: 'submit', class: 'btn primary' }, t('common.save'))));
-  input.id = 'key-in';
+  const user = h('input', { type: 'text', id: 'user-in', name: 'username', autocomplete: 'username', spellcheck: 'false', value: 'admin', 'aria-describedby': 'user-hint' });
+  const input = h('input', { type: 'password', id: 'key-in', name: 'password', autocomplete: 'current-password', spellcheck: 'false', placeholder: 'hc_…', value: store.get().apiKey || '' });
+  const form = h('form', { method: 'post', class: 'stack-v', onSubmit: (e) => { e.preventDefault(); setApiKey(input.value.trim()); authDialog?.close(); toast(t('auth.saved'), { kind: 'ok' }); router.refresh(); refreshBadges(); } },
+    h('p', t('auth.explain')),
+    h('div', { class: 'field' }, h('label', { for: 'user-in' }, t('auth.user_label')), user, h('div', { id: 'user-hint', class: 'hint' }, t('auth.user_hint'))),
+    h('div', { class: 'field' }, h('label', { for: 'key-in' }, t('auth.key_label')), input),
+    h('div', { class: 'row gap end' }, h('button', { type: 'button', class: 'btn', onClick: () => { setApiKey(''); authDialog?.close(); } }, t('auth.clear')), h('button', { type: 'submit', class: 'btn primary' }, t('auth.sign_in'))));
   authDialog = openModal(t('auth.title'), form, { onClose: () => { authDialog = null; } });
-  input.focus();
+  (input.value ? user : input).focus();
 }
 
 function setBadge(nav, n, label) {

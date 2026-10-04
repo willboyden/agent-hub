@@ -276,6 +276,12 @@ forge an attestation.
   Until you do, `hubctl doctor` reports the bootstrap file as present.
 * The floor's state-dir deny in each client's own config: add the paths yourself (section 4); the hub does not deliver them
   unless you manage that client's `permissions` concern.
+* A key saved by the browser's password manager lives in the browser profile. Without a primary password, any same-user
+  process can decrypt it, which is the same exposure as the bootstrap key file; set one. Browsers also fill a saved login
+  into any page on the same origin (scheme, host and port), and Firefox does so on page load by default. A process that
+  serves the hub's address while the hub is down, including another user's, then receives the key without you pasting
+  it. The desktop launcher's port-owner check does not cover a tab you open yourself. To require a click, turn automatic
+  fill off (Firefox: `signon.autofillForms` = false in `about:config`), or keep the key in a separate password manager.
 * Content is prompts; the hub cannot detect a malicious skill. Human diff review in Changes is the control.
 * Delivered files are not read-only to clients (section 10); drift is detected, not prevented.
 * Redaction and path-glob overlap are heuristics.

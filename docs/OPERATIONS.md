@@ -103,7 +103,9 @@ Flow: **create -> store in a password manager -> retire.**
 
 1. `hubctl init` writes `~/.local/share/agent-hub/bootstrap-admin.key` (0600). Any same-user host process can read it, and
    opencode runs unsandboxed (`SECURITY.md`, M5).
-2. Copy the key into a password manager.
+2. Copy the key into a password manager. The browser's own password manager works too: the UI's sign-in dialog is a
+   standard login form (the username is only a label for the saved login; the key is the password), so the browser offers
+   to save it after you sign in and fills it in next time. Read the browser caveats in `SECURITY.md` section 13 first.
 3. `hubctl retire-bootstrap-key` (needs a terminal): it asks for the key with a hidden prompt, verifies it, zero-fills and
    deletes the bootstrap file.
 4. From then on `hubctl` finds no key file or `HUB_API_KEY` and prompts with a hidden prompt; the UI asks for the key per
