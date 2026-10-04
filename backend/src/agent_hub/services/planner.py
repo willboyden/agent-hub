@@ -6,6 +6,7 @@ from __future__ import annotations
 import difflib
 import hashlib
 import json
+import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -23,7 +24,7 @@ from agent_hub.services.resolver import Resolved, Resolver
 
 # Diagnostics that make the plan meaningless: they block apply even for a non-strict client.
 HARD_CODES = {"bad_root", "adapter_missing", "unsafe_path", "unknown_root", "duplicate_artifact", "merge_mode_mismatch",
-              "render_failed", "invalid_content", "bad_artifact"}
+              "render_failed", "invalid_content", "bad_artifact", "root_missing"}
 MAX_DIFF = 100_000
 
 
@@ -177,6 +178,7 @@ class Planner:
         out: list[Desired] = []
         diags: list[Diag] = []
         live = LiveFiles(res.cfg.roots)
+        missing_roots: set[str] = set()
         for a in artifacts:
             concern = CONCERN_OF_KIND.get(a.kind)
             if concern is None or a.merge not in ("own", "json_keys", "yaml_keys", "block"):
@@ -184,6 +186,15 @@ class Planner:
                 continue
             if a.root not in res.cfg.roots:
                 diags.append(Diag(severity="error", code="unknown_root", message=f"artifact targets unconfigured root {a.root!r}"))
+                continue
+            # The hub never creates a client root (it only writes inside directories that exist), so a missing one would
+            # fail at apply time. Say so in the plan instead. Advisory artifacts are never written, so they never need it.
+            if res.manage.get(concern or "", False) and not os.path.isdir(res.cfg.roots[a.root]):
+                if a.root not in missing_roots:
+                    missing_roots.add(a.root)
+                    diags.append(Diag(severity="error", code="root_missing",
+                                      message=f"root {a.root!r} does not exist ({res.cfg.roots[a.root]}): create it first; "
+                                              "the hub never creates a client root"))
                 continue
             try:
                 tgt = live.target(a.root, a.path)

@@ -16,6 +16,8 @@
   a token file under `~/.config/agent-hub/` only). The script refuses non-loopback plain http, unnamed remote hosts,
   redirects, proxies, a token file that is not one private token, and `--prune` on an empty stage. See
   `docs/OPERATIONS.md` section 8b.
+- A plan is blocked with `root_missing` when a managed artifact's client root does not exist (the hub never creates a
+  client root), instead of the apply failing with a file-not-found error.
 
 ### Fixed
 - Turning a concern off for a client (it becomes advisory) now releases the lock entries of its files and leaves the

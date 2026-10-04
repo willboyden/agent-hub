@@ -456,6 +456,35 @@ def test_a_file_with_one_concern_still_managed_keeps_its_lock_entry(hub: Hub, ho
     assert "home:tool.json" in hub.locks.load("mix1").files  # type: ignore[union-attr]
 
 
+def test_a_missing_root_blocks_the_plan_with_a_clear_reason(hub: Hub, home: Path, tmp_path: Path) -> None:
+    gone = tmp_path / "not-created"
+    add_client(hub, gone, strict=False)                                # not strict: root_missing must block anyway
+    seed_content(hub)
+    commit(hub)
+    plan = hub.plan(["fake1"])
+    cp = plan.clients[0]
+    assert cp.blocked and sum(d["code"] == "root_missing" for d in cp.diagnostics) == 1      # once per root
+    assert any("does not exist" in r and "never creates a client root" in r for r in cp.blocked_reasons)
+    assert result(hub.apply(plan.id, True, [], "t"))["status"] == "blocked" and not gone.exists()
+    gone.mkdir()
+    assert not hub.plan(["fake1"]).clients[0].blocked
+
+
+def test_a_root_removed_between_plan_and_apply_is_caught(hub: Hub, tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    add_client(hub, root)
+    seed_content(hub)
+    commit(hub)
+    plan = hub.plan(["fake1"])
+    assert not plan.clients[0].blocked
+    root.rmdir()
+    with pytest.raises(Conflict, match="plan again"):                  # the plan-digest re-check catches it
+        hub.apply(plan.id, True, [], "t")
+    assert not root.exists()
+    assert any(d["code"] == "root_missing" for d in hub.plan(["fake1"]).clients[0].diagnostics)
+
+
 # ---- path safety in the pipeline ---------------------------------------------------------------------------------
 class EvilAdapter(FakeAdapter):
     id = "evil"
