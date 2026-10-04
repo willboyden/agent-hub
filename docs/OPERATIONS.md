@@ -204,6 +204,10 @@ backup of the overwritten file goes to `~/.local/share/agent-hub/backups/<client
 
 ### Restoring after an apply
 
+A lock entry released because its concern was switched off (see the plan's "released from the lock") is not
+restored by a rollback; if you switch the concern back on, the file shows as a conflict to adopt.
+
+
 See "Reverting" in the first-apply checklist above. Apply itself also rolls back automatically if any write fails partway.
 
 ## 4b. Adding a client

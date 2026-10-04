@@ -39,6 +39,7 @@ class PlannedFile:
     final: bytes | None = None                         # whole file after apply (None: file deleted / not written)
     delete_file: bool = False
     adoptable: bool = True
+    released: bool = False                             # concern no longer managed: drop the old lock entry, keep the file
 
     @property
     def key(self) -> str:
@@ -236,9 +237,13 @@ class Planner:
             pf.action, pf.reason = "conflict", m.unparseable
             return pf
         if not managed:
-            # advisory: show what would change, never write, never lock
+            # advisory: show what would change, never write, never lock. A lock entry from when the concern WAS managed is
+            # released (otherwise verify keeps checking a file the hub no longer owns); the file itself is left in place.
             pf.action = "advisory" if m.slice_live != m.slice_new or (pf.live is None and m.new is not None) else "unchanged"
-            pf.reason = "concern is not managed by the hub" if pf.action == "advisory" else ""
+            pf.released = entry is not None and not any(d.managed for d in ds)   # a slice still managed keeps the entry
+            reasons = (["concern is not managed by the hub"] if pf.action == "advisory" else []) + \
+                      (["released from the lock, left in place"] if pf.released else [])
+            pf.reason = "; ".join(reasons)
             return pf
         if removal:
             self._plan_removal(pf, m, entry)

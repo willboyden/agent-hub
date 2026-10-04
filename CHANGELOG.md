@@ -10,6 +10,12 @@
   it in. The username is only a label; the hub still authenticates the key alone. Caveats in `docs/SECURITY.md` section 13.
 - docs: recovering from a lost admin key (`docs/OPERATIONS.md`, "Lost admin key").
 
+### Fixed
+- Turning a concern off for a client (it becomes advisory) now releases the lock entries of its files and leaves the
+  files in place. Before, the old entry stayed, so `hubctl verify` kept comparing a file the hub no longer manages with
+  the content it last delivered, and failed once that file was edited. A file that still holds a managed concern's slice
+  keeps its entry. A released entry is not restored by rollback.
+
 ## 0.1.0
 
 First public build. Review your first apply in the UI plan view.

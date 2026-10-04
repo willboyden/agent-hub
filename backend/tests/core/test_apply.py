@@ -407,6 +407,55 @@ def test_going_advisory_never_deletes(full: Hub, home: Path) -> None:
     assert acts(plan)["home:.mcp.json"] in ("advisory", "unchanged") and (home / ".mcp.json").exists()
 
 
+@pytest.mark.parametrize("hub_created", [True, False])
+def test_going_advisory_releases_the_lock_entry(full: Hub, home: Path, hub_created: bool) -> None:
+    if not hub_created:
+        (home / "CLAUDE.md").write_text("mine\n")                         # pre-existing: adopted, not created by us
+    run(full)
+    assert "home:CLAUDE.md" in full.locks.load("fake1").files  # type: ignore[union-attr]
+    full.work.put_client("fake1", {"adapter": "fake", "display_name": "F", "roots": {"home": str(home)},
+                                   "manage": {"mcp": True, "permissions": True, "instructions": False}})
+    commit(full)
+    (home / "CLAUDE.md").write_text("edited by hand after the concern went advisory\n")
+    plan = full.plan(None)
+    cp = next(c for c in plan.clients if c.client == "fake1")
+    f = next(f for f in cp.files if f.path == "CLAUDE.md")
+    assert f.action == "advisory" and "released from the lock" in f.reason
+    full.apply(plan.id, True, [], "t")
+    assert "home:CLAUDE.md" not in full.locks.load("fake1").files  # type: ignore[union-attr]
+    assert (home / "CLAUDE.md").read_text() == "edited by hand after the concern went advisory\n"   # never touched
+    assert full.verify("fake1")["ok"] is True                           # no longer checked against the old content
+
+
+class MixedAdapter(FakeAdapter):
+    """One json file holding two concerns' slices (like opencode.json: mcp + permissions)."""
+    id = "mixed"
+
+    def render(self, ctx: RenderContext) -> RenderResult:
+        return RenderResult(artifacts=[
+            # no server names: the floor refuses rendered MCP servers that were never approved
+            Artifact(root="home", path="tool.json", content=json.dumps({"mcpServers": {}}).encode(),
+                     kind="mcp", merge="json_keys", managed_keys=["mcpServers"], source_ids=["none"]),
+            Artifact(root="home", path="tool.json", content=json.dumps({"permissions": {"deny": ["x"]}}).encode(),
+                     kind="rule", merge="json_keys", managed_keys=["permissions"], source_ids=["floor"]),
+        ])
+
+
+def test_a_file_with_one_concern_still_managed_keeps_its_lock_entry(hub: Hub, home: Path) -> None:
+    hub.registry.register(MixedAdapter())
+    spec = {"adapter": "mixed", "display_name": "M", "roots": {"home": str(home)}}
+    hub.put_client("mix1", {**spec, "manage": {"mcp": True, "permissions": True}}, create=True)
+    commit(hub)
+    run(hub, ["mix1"])
+    assert "home:tool.json" in hub.locks.load("mix1").files  # type: ignore[union-attr]
+    hub.put_client("mix1", {**spec, "manage": {"mcp": False, "permissions": True}}, create=False)
+    commit(hub)
+    plan, _ = run(hub, ["mix1"])
+    f = next(f for f in plan.clients[0].files if f.path == "tool.json")
+    assert "released" not in f.reason
+    assert "home:tool.json" in hub.locks.load("mix1").files  # type: ignore[union-attr]
+
+
 # ---- path safety in the pipeline ---------------------------------------------------------------------------------
 class EvilAdapter(FakeAdapter):
     id = "evil"

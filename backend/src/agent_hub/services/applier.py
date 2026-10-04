@@ -238,6 +238,9 @@ class Applier:
         for pf in ip.files:
             d = pf.desired
             key = pf.key
+            if pf.released:                              # concern no longer managed: forget the entry, never touch the file
+                files.pop(key, None)
+                continue
             if key in skipped_keys or (pf.action in ("advisory", "conflict") and key not in written):
                 continue
             if d.content is None:                        # removal (or released) -> drop the entry
