@@ -1,0 +1,105 @@
+{
+  "artifacts": [
+    {
+      "content": "## First\n\nOne.\n\n## Second\n\nTwo.\n",
+      "kind": "instruction",
+      "managed_keys": [],
+      "merge": "own",
+      "path": "instructions.md",
+      "root": "stage",
+      "source_ids": [
+        "a-first",
+        "b-second"
+      ]
+    },
+    {
+      "content": "{\n  \"mcpServers\": {\n    \"docs\": {\n      \"type\": \"streamable-http\",\n      \"url\": \"http://mcpo:8000/docs\"\n    },\n    \"serena\": {\n      \"args\": [\n        \"start-mcp-server\"\n      ],\n      \"command\": \"serena\"\n    }\n  }\n}\n",
+      "kind": "mcp",
+      "managed_keys": [],
+      "merge": "own",
+      "path": "mcp.json",
+      "root": "stage",
+      "source_ids": [
+        "docs",
+        "serena"
+      ]
+    },
+    {
+      "content": "---\nname: example-other-skill\ndescription: Does a thing. Use when asked.\n---\n\n# example-other-skill\n\nSteps.\n",
+      "kind": "skill",
+      "managed_keys": [],
+      "merge": "own",
+      "path": "skills/example-other-skill/SKILL.md",
+      "root": "stage",
+      "source_ids": [
+        "example-other-skill"
+      ]
+    },
+    {
+      "content": "---\nname: example-skill\ndescription: Does a thing. Use when asked.\n---\n\n# example-skill\n\nSteps.\n",
+      "kind": "skill",
+      "managed_keys": [],
+      "merge": "own",
+      "path": "skills/example-skill/SKILL.md",
+      "root": "stage",
+      "source_ids": [
+        "example-skill"
+      ]
+    },
+    {
+      "content": "#!/bin/sh\necho hi\n",
+      "kind": "skill",
+      "managed_keys": [],
+      "merge": "own",
+      "path": "skills/example-skill/scripts/run.sh",
+      "root": "stage",
+      "source_ids": [
+        "example-skill"
+      ]
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "unsupported_capability",
+      "item": null,
+      "message": "Turnstone has no per-agent definitions the hub can map (personas stay in Turnstone); agents are not rendered",
+      "severity": "error"
+    },
+    {
+      "code": "unsupported_capability",
+      "item": null,
+      "message": "memory is not rendered for Turnstone",
+      "severity": "error"
+    },
+    {
+      "code": "env_names_omitted",
+      "item": "serena",
+      "message": "env var names not rendered: set credentials in Turnstone, never in the hub",
+      "severity": "info"
+    },
+    {
+      "code": "mcp_not_clean",
+      "item": "docs",
+      "message": "scan_status=unscanned; the core blocks enabling unscanned servers",
+      "severity": "info"
+    },
+    {
+      "code": "permissions_not_rendered",
+      "item": null,
+      "message": "Turnstone's own approval gates and governance policies apply; hub rules are not rendered",
+      "severity": "info"
+    },
+    {
+      "code": "sandbox_profile_ignored",
+      "item": "serena",
+      "message": "Turnstone runs MCP servers itself; sandbox wrapping is not applied",
+      "severity": "info"
+    },
+    {
+      "code": "mcp_stdio_in_node",
+      "item": "serena",
+      "message": "a stdio server runs inside the Turnstone node; anything it fetches at start (npx, uvx) needs network the node may not have. Prefer an http server run in its own sandbox",
+      "severity": "warn"
+    }
+  ]
+}

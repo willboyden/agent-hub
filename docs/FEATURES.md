@@ -65,6 +65,8 @@ work).
 | `opencode` adapter: agents, `AGENTS.md` (own or block), `opencode.json` advisory | Implemented |  |
 | `hermes-agent` (and variants that reuse it): stage tree with skills, `AGENTS.md`, config fragments | Implemented |  |
 | Hermes delivery `deploy/hermes-deliver.sh` (+ `hermes skills list` check) | Implemented |  |
+| `turnstone` adapter: stage tree with skills, `instructions.md`, `mcp.json` | Implemented |  |
+| Turnstone delivery `deploy/turnstone-deliver.py` (admin API; hub-owned, never auto-approved skills; console check in verify) | Implemented |  |
 | `generic` spec adapter (skills, agents, instructions, MCP, permissions, memory; json/yaml/toml) and live spec validation + dry render | Implemented |  |
 | Cursor / Codex CLI / Gemini CLI example specs | Partial | Example specs; adjust to your client's current config format. |
 | Capability vocabulary (`read write edit shell web_fetch web_search mcp subagent browser notebook todo image`), model tiers `fast/standard/deep` | Implemented |  |

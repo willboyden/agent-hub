@@ -10,6 +10,13 @@
   it in. The username is only a label; the hub still authenticates the key alone. Caveats in `docs/SECURITY.md` section 13.
 - docs: recovering from a lost admin key (`docs/OPERATIONS.md`, "Lost admin key").
 
+- `turnstone` adapter for Turnstone (github.com/turnstonelabs/turnstone): renders a stage tree (skills,
+  `instructions.md`, `mcp.json`); `deploy/turnstone-deliver.py` pushes it through Turnstone's admin API as hub-owned
+  skills with `auto_approve`/`is_default` off and no `allowed_tools`, and `verify` asks the console (loopback console and
+  a token file under `~/.config/agent-hub/` only). The script refuses non-loopback plain http, unnamed remote hosts,
+  redirects, proxies, a token file that is not one private token, and `--prune` on an empty stage. See
+  `docs/OPERATIONS.md` section 8b.
+
 ### Fixed
 - Turning a concern off for a client (it becomes advisory) now releases the lock entries of its files and leaves the
   files in place. Before, the old entry stayed, so `hubctl verify` kept comparing a file the hub no longer manages with

@@ -4,7 +4,7 @@ One place to organise and control what your agent clients know and may do: share
 rules, memories, MCP servers, permissions and egress**, rendered into each client's native format, plus a separate
 **knowledge plane** (vector stores, shared indexes) reached through scoped tokens and broker sidecars.
 
-Supported clients out of the box: **Claude Code**, **opencode**, **Hermes Agent**, and anything file-based through a
+Supported clients out of the box: **Claude Code**, **opencode**, **Hermes Agent**, **Turnstone**, and anything file-based through a
 declarative `generic` adapter (a YAML spec; no code). License: MIT (`LICENSE`). Architecture contract:
 `docs/ARCHITECTURE.md`. Per-feature status: `docs/FEATURES.md`. Reporting a vulnerability: `SECURITY.md`.
 
@@ -47,9 +47,12 @@ wizard) or write the file. Example ids and roots:
 | `claude-code` | `claude-code` | `project: ~/work/my-project` |
 | `opencode` | `opencode` | `project: ~/work/my-project` |
 | `hermes` | `hermes-agent` | `stage: <checkout>/hub/out/hermes` |
+| `turnstone` | `turnstone` | `stage: <checkout>/out/turnstone` |
 
 The Hermes root is a hub-owned **stage** directory (gitignored), not the container volume: applying writes the stage, and a
-delivery script you run by hand copies it into your container.
+delivery script you run by hand copies it into your container. Turnstone works the same way, except that its delivery
+script pushes the stage through Turnstone's admin API (`docs/OPERATIONS.md` section 8b). Create a stage directory before
+the first apply: the hub never creates a client root.
 
 ```bash
 uv run hubctl import --client claude-code --all     # into the content WORKING TREE; nothing touches the client

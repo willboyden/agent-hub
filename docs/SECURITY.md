@@ -283,6 +283,9 @@ forge an attestation.
   it. The desktop launcher's port-owner check does not cover a tab you open yourself. To require a click, turn automatic
   fill off (Firefox: `signon.autofillForms` = false in `about:config`), or keep the key in a separate password manager.
 * Content is prompts; the hub cannot detect a malicious skill. Human diff review in Changes is the control.
+* Turnstone delivery (`deploy/turnstone-deliver.py`) holds an admin-scoped Turnstone token in a 0600 file. The
+  "hub-owned" marker on delivered skills is a label anyone with Turnstone skill-admin rights can copy; such a skill is
+  then updated or pruned like the hub's own. Keep Turnstone's admin role to the operator.
 * Delivered files are not read-only to clients (section 10); drift is detected, not prevented.
 * Redaction and path-glob overlap are heuristics.
 

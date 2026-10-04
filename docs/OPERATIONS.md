@@ -293,6 +293,45 @@ Whether Hermes indexes a `hub` skills category and whether `docker exec --user h
 delivered; the `AGENTS.md` and config fragments in the stage are for you to review and merge by hand.
 Hermes volumes are model-writable and nothing re-renders at launch: re-run the script after each apply.
 
+## 8b. Delivering to Turnstone (`deploy/turnstone-deliver.py`)
+
+Turnstone keeps skills, MCP servers and settings in its database, so the hub never writes into it. Applying a Turnstone
+client writes a **stage tree** under its `stage` root (`skills/`, and `instructions.md` / `mcp.json` when those concerns
+are managed). Delivery is a separate manual step, standard library only:
+
+```bash
+python3 deploy/turnstone-deliver.py push --stage <stage dir> --dry-run    # what would change
+python3 deploy/turnstone-deliver.py push --stage <stage dir>              # skills only
+python3 deploy/turnstone-deliver.py push --stage <stage dir> --instructions --mcp --prune
+python3 deploy/turnstone-deliver.py list                                  # what Turnstone has
+```
+
+- **Token.** It needs a Turnstone API token with `read,write,approve` scopes for an admin user (Turnstone's admin API
+  requires the `approve` scope), in a regular file you own, mode 0600, holding only the token (default
+  `~/.config/agent-hub/turnstone.token`). The script refuses anything else, never follows a symlink, and never prints the
+  token or passes it on a command line.
+- **Where the token may go.** The console must be a bare base URL. A loopback address may use plain `http`; any other host
+  needs `https` **and** `--allow-remote-host <host>`. No proxy is used and redirects are refused, so the token only reaches
+  the host you named. The adapter's `verify` is stricter: `params.console_url` must be loopback and `params.token_file`
+  must be a `*.token` file inside `~/.config/agent-hub/` (not a symlink), or the check fails without running anything; the script always
+  runs under the hub's own interpreter.
+- **Ownership.** Delivered skills carry author `agent-hub` and the tag `agent-hub`. A skill of the same name that does not
+  is a **conflict**: it is left alone and the script exits 2. `--prune` deletes only hub-owned skills that left the stage,
+  and refuses an empty stage unless you add `--force-empty` (a wrong `--stage` must not wipe every hub skill). The marker
+  is a label, not a signature: anyone with skill-admin rights in Turnstone can make a skill look hub-owned.
+- **Never auto-approved.** Every delivered skill has `auto_approve` and `is_default` off and no `allowed_tools` (with
+  `auto_approve` that list would let tools run unasked), whatever its `SKILL.md` says; the plan warns about
+  `allowed-tools`. A hub-owned skill someone flipped in the console is reported by `list` and `verify` and reset on the
+  next push. A skill's `model` is not copied.
+- **Instructions and MCP need their flags.** `--instructions` sets `session.instructions` (new workstreams only);
+  `--mcp` imports `mcp.json` (servers whose names exist are skipped). They are flags because a concern switched off
+  leaves its last stage file in place.
+- **Limits.** Turnstone 1.8 accepts a `SKILL.md` of at most 32 KiB (the plan flags larger ones); binary resource files
+  and resource files over 256 KiB are skipped with a notice. Each change is printed as it happens; there is no rollback,
+  and a re-run converges.
+- **Verify.** `hubctl verify` checks the stage files, then runs the script's `list` and fails until every staged skill
+  is present as a hub-owned skill with `auto_approve` and `is_default` off. Re-run `push` after each apply.
+
 ## 9. Knowledge service and Qdrant
 
 Two deployments exist.
