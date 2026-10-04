@@ -113,6 +113,27 @@ Flow: **create -> store in a password manager -> retire.**
 5. The floor's state-dir read-deny is not delivered by the hub unless you manage a client's `permissions`. Add those paths to
    each client's own sandbox or permission config (`SECURITY.md` section 4), then run `hubctl doctor`.
 
+### Lost admin key
+
+There is no reset link: keep a way back before you retire the bootstrap file.
+
+- Keep two copies of the admin key in different places (for example the browser's password manager and a separate
+  password manager or your desktop keyring), or create a spare admin key in **Settings > Keys > Create key** (role
+  admin) and store it separately. Either key signs in; delete the other one if it leaks.
+- A forgotten browser primary password can only be reset by deleting the browser's saved logins.
+- Last resort, when no admin key is left: the hub writes a new bootstrap key only when its key table is empty. Stop the
+  hub, back up and empty the table, then start it again:
+
+  ```bash
+  agent-hub stop                       # or stop it however you started it
+  cp ~/.local/share/agent-hub/hub.db ~/.local/share/agent-hub/hub.db.bak
+  python3 -c "import sqlite3, os; c = sqlite3.connect(os.path.expanduser('~/.local/share/agent-hub/hub.db')); c.execute('DELETE FROM api_keys'); c.commit()"
+  agent-hub open                       # or `uv run agent-hub`; writes <data dir>/bootstrap-admin.key (0600)
+  ```
+
+  Use your `HUB_DATA_DIR` if you changed it. This deletes **every** key, including viewer keys and client tokens:
+  create them again afterwards, then follow the key-handling flow above (store, retire).
+
 ### `hubctl doctor`
 
 `hubctl doctor [--json]` is a read-only report of how exposed the hub's secrets and policy are to other processes of the

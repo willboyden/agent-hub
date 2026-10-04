@@ -8,6 +8,7 @@
   also places it on the desktop. See `docs/OPERATIONS.md` section 2.
 - Sign-in dialog is a standard username + password form, so the browser's password manager can save the key and fill
   it in. The username is only a label; the hub still authenticates the key alone. Caveats in `docs/SECURITY.md` section 13.
+- docs: recovering from a lost admin key (`docs/OPERATIONS.md`, "Lost admin key").
 
 ## 0.1.0
 
