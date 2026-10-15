@@ -10,6 +10,7 @@ import { isRedacted, listOf } from '../data.js';
 import { floorRows, isFloorKey, groupFindings } from '../adapt.js';
 import { timeAgo } from '../util.js';
 
+const ENUMS = { eval_gate: ['off', 'advisory', 'require'], eval_gate_observed: ['off', 'advisory', 'require'], eval_gate_min_tiers: ['static', 'tier1', 'tier1+2'] };
 const EDITABLE = { plan_retention: [1, 200], inbox_max_per_client: [1, 5000], inbox_rate_per_min: [1, 600] };
 
 class AhSettings extends AhView {
@@ -24,7 +25,7 @@ class AhSettings extends AhView {
   async generalTab() {
     const s = await this.api.settings();
     const info = s.info || {};
-    const inputs = Object.fromEntries(Object.entries(s.editable).map(([k, v]) => [k, h('input', { type: 'number', id: `s-${k}`, value: v, min: EDITABLE[k]?.[0] ?? 1, max: EDITABLE[k]?.[1] ?? 100000, 'aria-describedby': `s-${k}-h` })]));
+    const inputs = Object.fromEntries(Object.entries(s.editable).filter(([k]) => !(k in ENUMS)).map(([k, v]) => [k, h('input', { type: 'number', id: `s-${k}`, value: v, min: EDITABLE[k]?.[0] ?? 1, max: EDITABLE[k]?.[1] ?? 100000, 'aria-describedby': `s-${k}-h` })]));
     const err = h('div', { class: 'perr', role: 'alert' });
     const facts = [['set.content_dir', info.content_dir], ['set.data_dir', info.data_dir ?? info.state_dir], ['set.policy_file', info.policy_file ?? info.floor_path], ['set.host', info.host != null ? `${info.host}:${info.port ?? ''}` : null],
       ['set.adapters', (info.adapters || []).join(', ')], ['set.trust_loopback', info.trust_loopback == null ? null : t(info.trust_loopback ? 'set.on' : 'set.off')]].filter(([, v]) => v);
@@ -40,7 +41,19 @@ class AhSettings extends AhView {
         try { await this.api.saveSettings(body); toast(t('set.saved'), { kind: 'ok' }); notifyChanged(); this.paint(); } catch (x) { err.textContent = x.message; toastError(x); } } },
       h('header', { class: 'card-head' }, h('h2', t('set.limits'))), h('div', { class: 'card-body' }, h('p', { class: 'hint' }, t('set.limits_hint')),
         ...Object.entries(inputs).map(([k, el]) => field(t(`set.f_${k}`), el, t(`set.f_${k}_hint`))), err, h('div', btn(t('common.save'), { icon: 'check', kind: 'primary', type: 'submit' })))) : null,
+      this.gateCard(s),
       h('p', { class: 'note info' }, t('set.endpoints_where')));
+  }
+  // Import gate (F10): off = no check, advisory = show the gate, require = refuse unevaluated or blocked skills unless an override reason is given.
+  gateCard(s) {
+    if (!s.editable.eval_gate && !s.editable.eval_gate_min_tiers) return null;
+    const mk = (k) => h('select', { id: `s-${k}`, 'aria-describedby': `s-${k}-h` }, ENUMS[k].map((v) => h('option', { value: v, selected: v === s.editable[k] }, t(`set.${k}_${v.replace('+', '_')}`))));
+    const sel = { eval_gate: mk('eval_gate'), eval_gate_observed: mk('eval_gate_observed'), eval_gate_min_tiers: mk('eval_gate_min_tiers') };
+    const err = h('div', { class: 'perr', role: 'alert' });
+    return h('form', { class: 'card', onSubmit: async (e) => { e.preventDefault(); err.textContent = '';
+      try { await this.api.saveSettings({ eval_gate: sel.eval_gate.value, ...(sel.eval_gate_observed.value && s.editable.eval_gate_observed ? { eval_gate_observed: sel.eval_gate_observed.value } : {}), eval_gate_min_tiers: sel.eval_gate_min_tiers.value }); toast(t('set.saved'), { kind: 'ok' }); notifyChanged(); this.paint(); } catch (x) { err.textContent = x.message; toastError(x); } } },
+      h('header', { class: 'card-head' }, h('h2', t('set.gate_title'))), h('div', { class: 'card-body' }, h('p', { class: 'hint' }, t('set.gate_hint')),
+        ...Object.entries(sel).map(([k, el]) => field(t(`set.f_${k}`), el, t(`set.f_${k}_hint`))), err, h('div', btn(t('common.save'), { icon: 'check', kind: 'primary', type: 'submit' }))));
   }
 
   // Host hardening: what the hub's doctor found on this machine. Fixes are commands or JSON lines: shown as plain text with a copy button.

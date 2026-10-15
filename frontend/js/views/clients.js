@@ -12,6 +12,8 @@ import { mapSpecResult, parseSpec, specErrorResult } from '../spec.js';
 import { editHref } from '../data.js';
 import { validName, slug, debounce, timeAgo } from '../util.js';
 import { driftProblems, clientDoc } from '../adapt.js';
+import { observedModel, evalLink } from '../evalview.js';
+import { hubStatusBadge } from '../components/eval-parts.js';
 
 const CONCERNS = ['skills', 'agents', 'instructions', 'mcp', 'permissions', 'memory'];
 
@@ -50,6 +52,7 @@ class AhClients extends AhView {
         h('p', { class: 'muted small' }, c.description || c.adapter),
         h('div', { class: 'row gap wrap small' }, badge(c.adapter, 'muted', t('cl.adapter')), c.strict ? badge(t('cl.strict'), 'info', t('cl.strict_tip')) : badge(t('cl.lenient'), 'muted', t('cl.lenient_tip')), c.unusable ? badge(t('cl.no_adapter'), 'bad', t('cl.no_adapter_tip')) : null, c.pending_files ? badge(t('cl.pending_files', { count: c.pending_files }), 'warn') : null, c.blocked ? badge(t('cl.blocked'), 'bad', t('cl.blocked_tip')) : null),
         countsEl,
+        this.observedCard(c),
         h('p', { class: 'muted small' }, c.last_applied_at ? t('cl.last_applied', { when: timeText(timeAgo(c.last_applied_at)) }) : c.adopted_at ? t('cl.adopted_at', { when: timeText(timeAgo(c.adopted_at)) }) : (c.status === 'never_applied' ? t('cl.never_applied') : '')),
         h('div', { class: 'row gap wrap' }, btn(t('cl.details'), { icon: 'eye', size: 'sm', onClick: () => { location.hash = `#/clients/${encodeURIComponent(c.id)}`; } }),
           btn(t('cl.verify'), { size: 'sm', onClick: () => run('verify', async () => this.checksView(await this.api.verify(c.id))) }),
@@ -57,6 +60,25 @@ class AhClients extends AhView {
           btn(t('cl.audit'), { size: 'sm', onClick: () => run('audit', async () => this.auditView(await this.api.audit(c.id))) })), out));
     if (c.color) card.querySelector('.client-bar').style.background = c.color;
     return card;
+  }
+  // Observed: what the client actually holds (shipped, agent-written, archived, hub-delivered), which the hub cannot see until it looks.
+  observedCard(c) {
+    const host = h('section', { class: 'ev-observed', 'aria-label': t('cl.observed_title') });
+    const paint = (model, extra) => {
+      const btnObserve = btn(model ? t('cl.observe_again') : t('cl.observe_now'), { icon: 'restart', size: 'sm', onClick: async (e) => {
+        const b = e.currentTarget; b.disabled = true;
+        try { const r = await this.api.observe(c.id); toast(t('ev.observed_toast', { count: r.total }), { kind: r.complete ? 'ok' : 'warn' }); paint(observedModel(r)); }
+        catch (err) { b.disabled = false; toastError(err); }
+      } });
+      append(clear(host), [h('div', { class: 'row between wrap gap' }, h('h3', t('cl.observed_title')), btnObserve),
+        model ? [h('p', { class: 'muted small' }, t('cl.observed_at', { when: model.observedAt ? timeText(timeAgo(model.observedAt)) : t('common.never'), count: model.total })),
+          model.byOrigin.length ? h('div', { class: 'row gap wrap', role: 'group', 'aria-label': t('cl.observed_by_origin') }, model.byOrigin.map((o) => h('span', { class: 'badge muted' }, `${t(`ev.origin_${o.origin}`)} ${o.count}`))) : null,
+          model.byHub.length ? h('div', { class: 'row gap wrap', role: 'group', 'aria-label': t('cl.observed_by_hub') }, model.byHub.map((x) => h('span', { class: 'row gap' }, hubStatusBadge(x.status), h('span', { class: 'small' }, String(x.count))))) : null,
+          !model.complete || model.notes.length ? h('p', { class: 'note warn' }, [!model.complete ? t('cl.observed_incomplete') : '', ...model.notes].filter(Boolean).join(' ')) : null,
+          h('a', { class: 'small', href: evalLink(c.id) }, t('cl.observed_open'))] : h('p', { class: 'muted small' }, t('cl.observed_never')), extra || null]);
+    };
+    paint(observedModel(c.observed_summary));
+    return host;
   }
   checksView(r) { return h('div', { class: 'stack-v tight' }, h('strong', t(r.ok ? 'cl.verify_ok' : 'cl.verify_bad')), h('ul', { class: 'checks' }, r.checks.map((k) => h('li', { class: k.ok ? 'ok' : 'bad' }, icon(k.ok ? 'check' : 'warn', 14), h('span', h('strong', k.name), k.detail ? ` - ${k.detail}` : ''))))); }
   driftView(r) {
@@ -85,7 +107,7 @@ class AhClients extends AhView {
     try { e = await this.api.effective(c.id); }
     catch (err) { if (err.code !== 'client_not_committed') throw err; e = await this.api.effective(c.id, 'working'); working = true; }
     const lists = [['skills', 'skill'], ['agents', 'agent'], ['instructions', 'instruction'], ['mcp', 'mcp'], ['memory', 'memory']].filter(([k]) => c.caps?.[k]);
-    return h('div', { class: 'stack-v' },
+    return h('div', { class: 'stack-v' }, h('section', { class: 'card' }, h('div', { class: 'card-body' }, this.observedCard(c))),
       h('p', { class: 'muted' }, t('cl.effective_intro', { name: c.display_name })), working ? h('p', { class: 'note info' }, t('cl.effective_working')) : null,
       e.warnings?.length ? h('ul', { class: 'issue-list' }, e.warnings.map((w) => h('li', { class: `note ${w.severity === 'error' ? 'bad' : 'warn'}` }, h('strong', t(`common.sev_${w.severity}`)), ' ', w.message))) : h('p', { class: 'note ok' }, t('cl.no_warnings')),
       h('div', { class: 'grid two' }, lists.map(([k, kind]) => h('section', { class: 'card' }, h('header', { class: 'card-head' }, h('h2', t(`kind.${kind === 'mcp' ? 'mcps' : kind + 's'}`)), h('span', { class: 'muted' }, String(e.items[k]?.length ?? 0))),

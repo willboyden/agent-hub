@@ -50,3 +50,11 @@
   .tablewrap table:not(.matrix) { min-width: 560px; }
   .lib-table { min-width: 720px !important; }
 }
+/* Evaluations: tiers added after the component rules they override (views.css is loaded earlier). */
+@media (max-width: 1400px) { .ev-filters { grid-template-columns: repeat(4, minmax(120px, 1fr)); } }
+@media (max-width: 1100px) { .ev-filters { grid-template-columns: repeat(3, minmax(120px, 1fr)); } }
+@media (max-width: 720px) {
+  .ev-filters { grid-template-columns: 1fr; }
+  .ev-queue { flex-wrap: wrap; } .ev-actions-bar { align-items: stretch; } .ev-actions-bar > .btn { flex: 1 1 100%; justify-content: center; }
+  .ev-table { min-width: 860px !important; }
+}

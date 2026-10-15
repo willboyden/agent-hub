@@ -114,6 +114,26 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
     skillEval: (name) => get(`/skills/${enc(name)}/evaluations`),
     skillEvalReport: (name, runId) => get(`/skills/${enc(name)}/evaluations/${enc(runId)}/report`),
     evaluateSkill: (name, tiers) => post(`/skills/${enc(name)}/evaluate`, { tiers }),
+    // Evaluations as a main feature (F9): subjects are `hub:<skill>` or `<client>:<key>`. The list follows next_cursor and keeps the server's summary.
+    skillEvaluations: async (query, { maxPages = 30 } = {}) => {
+      const out = { items: [], summary: null, running: null };
+      let cursor;
+      for (let i = 0; i < maxPages; i++) {
+        const page = await get('/skill-evaluations', { limit: 200, ...query, cursor });
+        out.items.push(...arr(page.items)); out.summary = page.summary ?? out.summary; out.running = page.running ?? out.running;
+        if (!page.next_cursor) break;
+        cursor = page.next_cursor;
+      }
+      return out;
+    },
+    runEvaluations: (body) => post('/skill-evaluations/run', body),
+    evalQueue: (o) => get('/skill-evaluations/queue', undefined, o),
+    cancelEvalQueue: () => post('/skill-evaluations/queue/cancel'),
+    evalDetail: (subject) => get(`/skill-evaluations/${enc(subject)}`),
+    evalRunReport: (subject, runId) => get(`/skill-evaluations/${enc(subject)}/runs/${enc(runId)}/report`),
+    observe: (client) => post(`/clients/${enc(client)}/observe`),
+    observed: (client, query) => get(`/clients/${enc(client)}/observed`, query),
+    importObserved: (client, body) => post(`/clients/${enc(client)}/observed/import`, body),
     collections: () => listAll('/collections'),
     suggestions: async () => arr((await get('/collections/suggestions')).items).map(normalizeSuggestion),
     acceptSuggestions: (ids, overrides) => post('/collections/suggestions/accept', { ids, ...(overrides && Object.keys(overrides).length ? { overrides } : {}) }),

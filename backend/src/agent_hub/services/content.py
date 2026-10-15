@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import base64
 import contextlib
+import os
+import secrets
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -457,6 +459,38 @@ class ContentStore:
             sub, ext = (_MD[kind][0], ".md") if kind in _MD else (_YAML[kind][0], ".yaml")
             self._p(f"{sub}/{name}{ext}").unlink()
         self._drop_refs(kind, name)
+
+    def validate_skill_files(self, files: dict[str, bytes]) -> None:
+        """Everything write_skill_files would refuse, checked BEFORE anything is changed: SKILL.md present, the file-count and
+        size caps, every extra path (relative, safe, not reserved), and no path that is both a file and a directory."""
+        if "SKILL.md" not in files:
+            raise Unprocessable("skill has no SKILL.md", code="skill_invalid")
+        if len(files) > MAX_SKILL_FILES:
+            raise Unprocessable(f"skill has more than {MAX_SKILL_FILES} files", code="skill_too_large")
+        if sum(len(v) for v in files.values()) > self.max_skill or any(len(v) > self.max_skill for v in files.values()):
+            raise Unprocessable(f"skill is larger than {self.max_skill} bytes", code="skill_too_large")
+        for rel in files:
+            if rel != "SKILL.md":
+                self._extra_path(rel)
+        names = set(files)
+        for rel in names:
+            parts = rel.split("/")
+            if any("/".join(parts[:i]) in names for i in range(1, len(parts))):
+                raise Unprocessable(f"{rel} is below a path that is also a file", code="skill_invalid")
+
+    def swap_skill_files(self, name: str, files: dict[str, bytes], sidecar: Sidecar) -> None:
+        """Replace an existing skill: the old directory is moved aside and restored if writing the new one fails."""
+        self.validate_skill_files(files)
+        d = self._p(f"skills/{name}")
+        aside = d.with_name(f".replace-{name}-{secrets.token_hex(4)}")
+        os.rename(d, aside)
+        try:
+            self.write_skill_files(name, files, sidecar)
+        except BaseException:
+            shutil.rmtree(d, ignore_errors=True)
+            os.rename(aside, d)
+            raise
+        shutil.rmtree(aside, ignore_errors=True)
 
     def remove_skill_dir(self, name: str) -> None:
         """Delete a skill's files WITHOUT touching collection/profile references (used when replacing on import)."""

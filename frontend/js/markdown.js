@@ -5,7 +5,8 @@ export function escapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-const SAFE_URL = /^(https?:\/\/|mailto:|#|\/(?!\/))[^\s\u0000-\u001f]*$/i;
+// Relative links may not start with `//` or `/\` (browsers read both as protocol-relative) and no URL may contain a backslash.
+const SAFE_URL = /^(https?:\/\/|mailto:|#|\/(?![\/\\]))[^\s\\\u0000-\u001f]*$/i;
 
 function inline(src) {
   const codes = [];

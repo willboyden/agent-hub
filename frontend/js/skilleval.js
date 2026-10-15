@@ -12,7 +12,8 @@ export const verdictTone = (v) => TONE[v] || 'muted';
 export const tierKey = (tier) => String(tier || '').replace('+', '_');
 // One decimal at most, never "NaN": 83 -> "83", 83.64 -> "83.6"; null when the report had no number.
 export function fmtScore(n) { return typeof n === 'number' && Number.isFinite(n) ? String(Math.round(n * 10) / 10) : null; }
-export const evalIndex = (items) => Object.fromEntries((Array.isArray(items) ? items : []).filter((e) => e && e.skill).map((e) => [e.skill, e]));
+// Library index by skill name. Old items carry `skill`; the F9 shape has `subject` (`hub:<name>`) and `name`: both work, observed rows are ignored.
+export const evalIndex = (items) => Object.fromEntries((Array.isArray(items) ? items : []).map((e) => [e?.skill ?? (e && (e.source === 'hub' || String(e.subject || '').startsWith('hub:')) ? e.name : null), e]).filter(([k]) => k));
 
 // The library badge for one skill. `entry` is one item of GET /skill-evaluations ({skill, state, latest, running}).
 // state: running | none | current | stale. Colour is only a hint: the text always names the verdict and the state.

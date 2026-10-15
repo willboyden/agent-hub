@@ -2,10 +2,14 @@
 (CommandRunner port) never uses a shell, always has a timeout, and passes a minimal environment."""
 from __future__ import annotations
 
+import contextlib
 import fnmatch
 import os
+import signal
 import subprocess
+import threading
 from pathlib import Path
+from typing import Any
 
 from agent_hub.domain.pathsafe import PathError, resolve_under
 
@@ -66,8 +70,9 @@ class RealFS:
 
 
 class RealRunner:
-    def __init__(self, max_timeout: float = 60.0) -> None:
+    def __init__(self, max_timeout: float = 60.0, max_stdout: int = 100_000) -> None:
         self.max_timeout = max_timeout
+        self.max_stdout = max_stdout                 # characters of stdout kept (an observation of a container is large)
 
     def run(self, argv: list[str], *, timeout: float) -> tuple[int, str, str]:
         if not argv or not all(isinstance(a, str) and "\x00" not in a for a in argv):
@@ -79,7 +84,80 @@ class RealRunner:
             return 127, "", "command not found"
         except subprocess.TimeoutExpired:
             return 124, "", "timed out"
-        return p.returncode, p.stdout.decode("utf-8", "replace")[:100_000], p.stderr.decode("utf-8", "replace")[:20_000]
+        return p.returncode, p.stdout.decode("utf-8", "replace")[:self.max_stdout], p.stderr.decode("utf-8", "replace")[:20_000]
+
+
+def _minimal_env() -> dict[str, str]:
+    return {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": os.environ.get("HOME", "/"), "LC_ALL": "C"}
+
+
+class StreamingRunner:
+    """CommandRunner for output that must be treated as hostile (`observe` execs a program inside an agent's container): the
+    child gets its own process group, stdout and stderr are read in chunks into buffers that can never exceed their caps, and
+    the first byte over a cap kills the whole group and returns (125, "", "output exceeded cap"). Memory use is bounded by
+    max_stdout + max_stderr whatever the child prints. No shell, minimal environment, a hard timeout."""
+
+    def __init__(self, max_timeout: float = 60.0, max_stdout: int = 100_000, max_stderr: int = 1024 * 1024) -> None:
+        self.max_timeout, self.max_stdout, self.max_stderr = max_timeout, max_stdout, max_stderr
+
+    def run(self, argv: list[str], *, timeout: float) -> tuple[int, str, str]:
+        if not argv or not all(isinstance(a, str) and "\x00" not in a for a in argv):
+            return 127, "", "invalid argv"
+        try:
+            proc = subprocess.Popen(argv, env=_minimal_env(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, start_new_session=True, close_fds=True)
+        except FileNotFoundError:
+            return 127, "", "command not found"
+        except OSError as exc:
+            return 126, "", f"cannot start: {type(exc).__name__}"
+        out, err = bytearray(), bytearray()
+        over = threading.Event()
+
+        def kill() -> None:
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.killpg(proc.pid, signal.SIGKILL)
+
+        def pump(stream: Any, buf: bytearray, cap: int) -> None:
+            fd = stream.fileno()
+            try:
+                while True:
+                    chunk = os.read(fd, 65536)
+                    if not chunk:
+                        return
+                    if len(buf) + len(chunk) > cap:
+                        over.set()
+                        kill()
+                        return
+                    buf += chunk
+            except (OSError, ValueError):
+                return
+
+        readers = [threading.Thread(target=pump, args=(proc.stdout, out, self.max_stdout), daemon=True),
+                   threading.Thread(target=pump, args=(proc.stderr, err, self.max_stderr), daemon=True)]
+        for t in readers:
+            t.start()
+        timed_out = False
+        try:
+            proc.wait(timeout=min(timeout, self.max_timeout))
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            kill()
+            with contextlib.suppress(subprocess.TimeoutExpired):
+                proc.wait(timeout=10)
+        finally:
+            kill()                                          # also reaps grandchildren that kept the group alive
+        for t in readers:
+            t.join(timeout=5)
+        for st in (proc.stdout, proc.stderr):
+            with contextlib.suppress(OSError):
+                if st is not None:
+                    st.close()
+        if over.is_set():
+            return 125, "", "output exceeded cap"
+        if timed_out:
+            return 124, "", "timed out"
+        rc = proc.returncode if proc.returncode is not None else -9
+        return rc, out.decode("utf-8", "replace"), err.decode("utf-8", "replace")
 
 
 class LiveFiles:

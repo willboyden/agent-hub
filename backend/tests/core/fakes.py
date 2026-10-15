@@ -187,9 +187,10 @@ class FakeEvalRunner:
     the canned reports into the `-o` directory. `block` holds a run open (concurrency tests)."""
 
     def __init__(self, tier1: Canned | None = None, tier2: Canned | None = None, block: threading.Event | None = None,
-                 version_out: str = "skillevaluator, version 0.5.0") -> None:
+                 version_out: str = "skillevaluator, version 0.5.0", llm: Canned | None = None) -> None:
         self.script = {"tier1": tier1 or Canned(rc=1, report=report("tier1_incomplete.json")),
                        "tier2": tier2 or Canned(rc=0, report=report("tier2_passed.json"), markdown=None)}
+        self.llm = llm                                          # what the second (LLM) tier1 pass writes; default: same as `tier1`
         self.block = block
         self.started = threading.Event()
         self.version_out = version_out
@@ -225,6 +226,8 @@ class FakeEvalRunner:
             (Path(cwd) / "stray.txt").write_text("written by the evaluator")
             (copy / "SKILL.md").write_text("tampered by the evaluator")
         c = self.script[tier]
+        if tier == "tier1" and "--no-llm" not in argv and self.llm is not None:
+            c = self.llm
         if c.timed_out:
             return EvalResult(-9, "", "", True)
         if c.report is not None:

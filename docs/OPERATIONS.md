@@ -232,6 +232,101 @@ If your content repo is still inside your project tree (older builds defaulted t
 the old copy. The hub refuses to run (`content_dir_unsafe`, with the fix) on a content repo whose `.git/config`, attributes,
 hooks, ownership or location look unsafe; if it refuses yours, inspect those files rather than overriding.
 
+## 4d. Observing clients and evaluating skills
+
+Optional. Without SkillEvaluator the hub works as before; only evaluation and the gate need it.
+
+**Install SkillEvaluator** (NVIDIA, a CLI, not a service) so the hub's user can run it. The hub looks, in order, for
+`skillevaluator-local` (a wrapper you provide that supplies the model provider settings itself; the hub passes it no key) and
+`skillevaluator`, on `PATH` or in `~/.local/bin`. Bare names only; nothing configurable names another program. With the
+plain CLI, the LLM tiers read `SKILL_EVAL_*` variables from the hub's environment (the hub forwards only `SKILL_EVAL_*` and
+`SKILLEVAL_*` to this one program; names are shown, values never). Install hint the hub prints:
+
+```bash
+uv tool install --python 3.13 "skillevaluator[all] @ git+https://github.com/NVIDIA/SkillEvaluator.git"
+```
+
+Check with `GET /api/v1/skill-evaluator` or the Evaluations view status line (installed, launcher, version, tiers), and
+`hubctl doctor` (an `info` finding). The static tier needs no model settings; `tier1` and `tier1+2` need a configured provider
+(`tier1+2` also an embeddings model).
+
+**Observe a client** (reads only; admin key; the client must be running):
+
+```bash
+uv run hubctl observe --client NAME        # or: Clients, Observed card, Observe now
+```
+
+Reading goes through a streaming runner that kills the command once its output passes the cap. It prints counts by origin (`client` for generic discovery; for Hermes `shipped / agent / lab_sync / hub / archived`) and by
+`hub_status` (`not_in_hub`, `in_hub_differs`, `in_hub_same`), plus notes. `INCOMPLETE` means a cap was hit or part could not be read;
+read the notes. If nothing at all was found and the read was incomplete, the call fails with `503 observe_failed` and the previous observation is kept. Paths that are not valid text, contain control characters, or collide as file and directory are skipped with a note. Hermes finds a running container of `compose_project` whose service is `compose_service` or one of
+`observe_services`, and never starts one. Optional client params: `observe_services`, `observe_python` (default `python3`),
+`observe_root` (default `/opt/data/skills`), plus the existing `docker_context` and `exec_user`. A new observation replaces
+the previous one. The list: `GET /api/v1/clients/NAME/observed?origin=&hub_status=&q=`.
+
+**Evaluate.** In the UI: Evaluations (`#/evaluations`), filter, select rows or "Evaluate everything not yet evaluated", pick a
+tier. Through the API: `POST /api/v1/skill-evaluations/run` with `subjects` (`hub:<skill>`, `<client>:<key>`) or `select`
+(`none_or_stale | all`) with `source` (`hub | <client> | all`), `tiers` and `force`. Jobs run one at a time, in order; progress:
+`GET /api/v1/skill-evaluations/queue`; `POST /api/v1/skill-evaluations/queue/cancel` clears the queue and kills the running job.
+Tiers: `static` (default, no model calls), `tier1` (adds the LLM judge), `tier1+2` (adds duplication inside one skill).
+An identical content hash that already has a finished run of the same or a higher tier, and the same evaluator version, is
+not run again (`reused_from`); `force` re-runs.
+
+**`hubctl evaluate` only runs with `--wait`.** The queue lives in the memory of the running hub, which the CLI process cannot
+reach. Without `--wait` it lists the subjects and runs nothing:
+
+```bash
+uv run hubctl evaluate --source NAME --select none_or_stale --tiers static --wait
+uv run hubctl evaluate --subject hub:my-skill --subject NAME:some-key-1a2b3c4d --wait
+```
+
+`--wait` runs here, under the same lock as the server. Exit 0 all passed, 2 any `failed` or `incomplete`, 1 any `error`.
+`evaluate-skill NAME` and `evaluate-skills` (hub skills only) still exist.
+
+**Read results.** Per row: verdict (`passed / failed / incomplete / error`), gate (`ok / warn / blocked / missing`), quality and
+judge scores, high/critical counts. Open a row for the per-validator table, top findings and the Markdown report (scrubbed).
+The verdict covers SkillEvaluator's publication checks too, so a private skill commonly shows `failed` (for example for a
+missing `metadata.author`). The gate ignores those validators. Judge scores and quality are advice.
+
+**Set the gate** (Settings, or `PUT /api/v1/settings`; defaults from `HUB_EVAL_GATE` and `HUB_EVAL_GATE_MIN_TIERS`):
+
+| `eval_gate` | Effect on import |
+|---|---|
+| `off` | No evaluation lookup, no `gate` field. |
+| `advisory` | Every row carries its gate; nothing is refused. |
+| `require` | `missing` is refused (`eval_required`), `blocked` is refused (`eval_blocked`) unless an override reason is given; `warn` and `ok` pass. |
+
+Two settings: `eval_gate` (default `advisory`, env `HUB_EVAL_GATE`) governs `hubctl import` / `POST /import`;
+`eval_gate_observed` (default `require`, env `HUB_EVAL_GATE_OBSERVED`) governs observed imports, because observed skills
+may be agent-written.
+
+The gate fails closed. Gate states: `ok`; `warn` (medium security findings only); `blocked` (a critical or high security
+finding, any of the six expected security validators missing from the report, or any security validator whose status is not
+`passed` or `failed`); `missing` (no usable run at the required tier). **In practice SkillSpector often reports `incomplete`
+because it could not fully analyse files a skill references. That blocks the skill until you override it. This is deliberate**:
+a scan that did not finish proves nothing, and skill text can be written to defeat a scanner.
+
+`eval_gate_min_tiers` (`static` default, `tier1`, `tier1+2`) is the least a stored run must have covered to count; a weaker run
+reads as `missing`. The gate checks the exact content hash, so editing a skill makes it `missing` again.
+
+**Import observed skills.**
+
+```bash
+uv run hubctl import-observed --client NAME --key some-key-1a2b3c4d [--key ...] \
+    [--name NEW] [--on-conflict skip|rename|replace|link] [--enable] [--override-reason "why this is safe"]
+```
+
+(or Evaluations, "Import into hub...", or `POST /api/v1/clients/NAME/observed/import`). Skills are validated (file names, caps) before anything is replaced, and written into the content
+working tree with a `hub.yaml` sidecar (`source: observed:NAME`, provenance with client, path, origin, content hash and the
+evaluation run); then commit, plan and apply as usual. **Enable is off by default**: enabling an observed skill for the
+client it came from would deliver a second copy next to the original. `hubctl import` (discover) uses the same gate and also
+takes `--override-reason`. Exit 1 if any row is `error` or `refused`.
+
+**Override.** Needed when the gate is `blocked` (mode `require`) and, for observed imports, when the text contains
+secret-shaped values (`secret_detected`): give a reason of 10 to 500 characters. The row shows gate `overridden`; the audit log
+gets `skill.import.override` (client, skill, key, content hash prefix, run, `overrides`, `outcome`, reasons, redacted reason),
+written even if the write then fails; the sidecar keeps the reason. Read the findings first; an override is your statement that
+you reviewed them. Client ids `hub` and ids containing `:` are reserved (`422 reserved_client_id`).
+
 ## 5. Backup
 
 | What | Where | How |
@@ -460,4 +555,21 @@ Find the string you see. The API returns RFC 7807 JSON with a `code`; the UI sho
 | knowledge `403 csrf_header_required` | Send `X-Agent-Knowledge: 1` on non-GET without a bearer. |
 | `hubctl import`: "pass --all or --item kind:name" | Import needs a selection. |
 | `hermes-deliver.sh`: `stage dir missing` / `refusing: no SKILL.md` / `refusing: symlink inside` / `hermes does not list skill <n>` / `FAILED for <client>` | Apply the Hermes client first; check the stage for symlinks; the last two mean the copy worked but the agent did not index it (wrong path or container not running). |
+| `503 evaluator_missing` "SkillEvaluator is not installed (neither skillevaluator-local nor skillevaluator is on the hub's PATH or in ~/.local/bin)" | Install it (section 4d) as the user the hub runs as; a launcher outside `PATH` and `~/.local/bin` is not found. |
+| `409 evaluation_running` "another skill evaluation is running; wait for it to finish, then try again" | `hubctl evaluate --wait` or `evaluate-skill` while the server (or another CLI) holds the evaluation lock. Wait, or use the queue route. |
+| `422 bad_tiers` / `400 invalid_subject` "invalid subject: expected hub:<skill> or <client>:<key>" / `422 subjects_or_select` / `422 too_many_subjects` | Tiers are `static`, `tier1`, `tier1+2`. Send exactly one of `subjects` or `select`; at most 5000 subjects. |
+| `422 skill_too_large` / `skill_invalid` ("has no SKILL.md") | The skill exceeds the file-count or byte cap, or has no top-level `SKILL.md`; it is not evaluated. |
+| Evaluation verdict `error` | No report was produced; the record carries the error tail. Run `hubctl doctor`, check the launcher and (for LLM tiers) `SKILL_EVAL_*` or the wrapper. `interrupted` means the hub restarted mid-run; re-queue. |
+| Gate `blocked` with reasons like "<validator>: status incomplete (the scan did not finish)" or "validator missing from the report" | A security validator did not finish or was absent. Deliberate fail-closed behaviour; SkillSpector often reports `incomplete` for files it could not fully analyse, and offline it also cannot query `api.osv.dev` for skills that declare dependencies. Review the skill, then import with an override reason. |
+| Gate `missing` though you evaluated | A different content hash (edited since), a run below `eval_gate_min_tiers`, or an `error` run. Evaluate again at the required tier. |
+| `404 not_observed` "this client has not been observed yet; POST /clients/{id}/observe first" | Run `hubctl observe --client NAME` first. |
+| `503 observe_failed` "adapter observe failed (...)" or "the client could not be observed completely and nothing was found; the previous observation is kept: <notes>" / `503 observe_store_failed` | The adapter raised (see server logs), or nothing could be read; read the notes. / The state dir is not writable. The previous observation is kept either way. |
+| `observe` notes such as "no running container for the configured compose project/service: nothing observed (none is started)" | Start the client yourself; check `compose_project`, `compose_service`, `observe_services`, `docker_context`. Other notes: "docker is not available", "in-container read exited N", "... is not a plain name/path". |
+| Import row `refused` `eval_required` "no evaluation of this exact content exists; evaluate it first (eval_gate is `require`)" | Evaluate the skill (section 4d), then import again. |
+| Import row `refused` `eval_blocked` "the evaluation did not clear this skill (security finding, or a security scan that did not finish); fix it or give an override reason: <reasons>" | Read the reasons. Fix the skill, or import with `--override-reason` (10 to 500 characters). |
+| Import row `refused` `secret_detected` "the text contains secret-looking values; remove them or give an override reason (<files>)" | Observed import only. Remove the values from the skill, or import with `--override-reason` if they are not secrets. |
+| `422 validation_error` / `422 skill_too_large` / `422 skill_invalid` on an observed import row or evaluation | The skill failed content validation (file names, no `SKILL.md`, more files or bytes than the caps). Nothing was removed or written. |
+| `422 reserved_client_id` "the client id `hub` is reserved ... an id cannot contain `:`" | Choose another client id (`hub:` names the hub's own skills in evaluation subjects). |
+| Evaluation run result `skipped` with reason `request_cap` | A `select` queues at most 2000 subjects per request; send the request again for the rest. |
+| `422 bad_override_reason` "override_reason must be 10 to 500 characters" | Lengthen or shorten the reason. |
 | systemd `status=226/NAMESPACE` | A `ReadWritePaths=` path does not exist. |

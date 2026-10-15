@@ -4,7 +4,7 @@ import { t } from './i18n.js';
 // Backend `code`s that deserve their own explanation (read from the backend's domain errors), checked before the generic status mapping.
 const CODE_KEYS = { knowledge_unavailable: 'err.knowledge_unavailable', knowledge_upstream_unauthorized: 'err.knowledge_unauthorized', cell_blocked: 'err.cell', cell_unsupported: 'err.cell', never_applied: 'err.never_applied', client_not_committed: 'err.client_not_committed',
   content_not_initialised: 'err.content_not_initialised', content_invalid: 'err.content_invalid', dirty_tree: 'err.dirty_tree', already_exists: 'err.exists',
-  confirm_required: 'err.confirm', floor_locked: 'err.floor_locked', unknown_adapter: 'err.adapter', adapter_missing: 'err.adapter' };
+  confirm_required: 'err.confirm', floor_locked: 'err.floor_locked', unknown_adapter: 'err.adapter', adapter_missing: 'err.adapter', not_observed: 'err.not_observed', unknown_source: 'err.unknown_source' };
 
 export function errorKey(e) {
   if (!e) return 'common.error';

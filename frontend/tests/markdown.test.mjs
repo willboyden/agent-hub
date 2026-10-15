@@ -94,3 +94,11 @@ test('empty / non-string input', () => {
 test('copy label is escaped', () => {
   assert.ok(!renderMarkdown('```\nx\n```', { copyLabel: '<b>' }).includes('<b>'));
 });
+
+test('link URLs: protocol-relative, backslash and script schemes are never turned into links', () => {
+  const link = (u) => renderMarkdown(`[x](${u})`);
+  for (const bad of ['/\\evil.example', '//evil.example', '\\\\evil.example', '/a\\b', 'javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'javascript&#58;alert(1)', '&#106;avascript:alert(1)', 'data:text/html,x', 'vbscript:x']) {
+    assert.ok(!/<a /.test(link(bad)), `linked: ${bad} -> ${link(bad)}`);
+  }
+  for (const good of ['/docs/page', 'https://example.com/x', '#anchor', 'mailto:a@b.example']) assert.match(link(good), /<a href=/, good);
+});

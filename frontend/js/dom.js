@@ -58,6 +58,7 @@ const ICONS = {
   menu: 'M4 6h16M4 12h16M4 18h16',
   // Agent Hub additions (24x24 stroke paths)
   home: 'M3 11l9-8 9 8M5 10v10h14V10M10 20v-6h4v6',
+  evaluations: 'M4 19a8 8 0 1116 0M12 19l4-6M6 12l1 1M12 7v2M18 12l-1 1',
   library: 'M4 4h4v16H4zM10 4h4v16h-4zM16 6l4-1 3 15-4 1z',
   collections: 'M3 6a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z',
   matrix: 'M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18',

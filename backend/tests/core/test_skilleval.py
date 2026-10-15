@@ -28,6 +28,7 @@ from agent_hub.services.hub import Hub
 from agent_hub.services.skilleval import (
     INSTALL_HINT,
     RUN_ID_RE,
+    SAFE_CHECKS,
     RealEvalRunner,
     SkillEvalService,
     combine_verdicts,
@@ -66,6 +67,11 @@ def tier1_call(r: FakeEvalRunner) -> dict[str, Any]:
     return next(c for c in r.calls if c["argv"][1] == "tier1")
 
 
+def tool_calls(r: FakeEvalRunner) -> list[dict[str, Any]]:
+    """Calls that evaluated something (the cached `--version` probe is not one)."""
+    return [c for c in r.calls if c["argv"][1:] != ["--version"]]
+
+
 def admin_h(hub: Hub) -> dict[str, str]:
     return bearer(str(hub.auth.create_key("ev-admin", "admin")["secret"]))
 
@@ -99,28 +105,46 @@ def test_static_argv_no_llm_output_into_run_dir_cwd_is_the_private_copy(hub: Hub
     call = tier1_call(r)
     argv, cwd = call["argv"], call["cwd"]
     run_dir = hub.cfg.data_dir / "skilleval" / "alpha" / rec["run_id"]
-    assert argv == [f"{FAKE_BIN}/skillevaluator-local", "tier1", str(cwd / "alpha"), "--no-llm", "-r", "json,markdown",
-                    "-o", str(run_dir)]
+    assert argv == [f"{FAKE_BIN}/skillevaluator-local", "tier1", str(cwd / "alpha"), "--no-llm", "--checks", SAFE_CHECKS,
+                    "-r", "json,markdown", "-o", str(run_dir / "static")]
     assert cwd.parent == hub.cfg.data_dir / "skilleval" / ".work"                     # private temp dir under the state dir
     assert src.resolve() not in [cwd, *cwd.parents] and hub.cfg.content_dir.resolve() not in cwd.resolve().parents
     assert not cwd.exists()                                                           # the copy is deleted after the run
-    assert len(r.calls) == 1 and call["timeout"] == 540.0
+    assert len(tool_calls(r)) == 1 and call["timeout"] == 540.0
     assert rec["launcher"] == "skillevaluator-local" and rec["model_calls"] is False and RUN_ID_RE.fullmatch(rec["run_id"])
 
 
 def test_tier1_has_no_no_llm_and_tier1_plus_2_runs_tier2_json_only(hub: Hub) -> None:
     r = use(hub)
     skill(hub)
-    hub.skilleval.evaluate("alpha", "tier1", "t")
-    assert "--no-llm" not in r.calls[0]["argv"] and len(r.calls) == 1
+    rec1 = hub.skilleval.evaluate("alpha", "tier1", "t")
+    calls = tool_calls(r)                                   # F14: a static pass first, then the LLM pass
+    assert [("--no-llm" in c["argv"]) for c in calls] == [True, False] and all(c["argv"][1] == "tier1" for c in calls)
+    assert calls[0]["argv"][-1].endswith("/static") and calls[1]["argv"][-1].endswith(rec1["run_id"])
     r2 = use(hub, FakeEvalRunner())
     rec = hub.skilleval.evaluate("alpha", "tier1+2", "t")
-    assert [c["argv"][1] for c in r2.calls] == ["tier1", "tier2"]
-    t2 = r2.calls[1]["argv"]
-    assert t2[2] == r2.calls[0]["argv"][2] and t2[3:5] == ["-r", "json"] and t2[5] == "-o" and t2[6].endswith(rec["run_id"])
-    assert r2.calls[1]["cwd"] == r2.calls[0]["cwd"]
-    assert rec["tier2"]["status"] == "passed" and set(rec["reports"]) == {"skillevaluator-tier1.json", "skillevaluator-tier1.md",
-                                                                          "skillevaluator-tier2.json"}
+    c2 = tool_calls(r2)
+    assert [c["argv"][1] for c in c2] == ["tier1", "tier1", "tier2"]
+    t2 = c2[2]["argv"]
+    assert t2[2] == c2[0]["argv"][2] and t2[3:5] == ["-r", "json"] and t2[5] == "-o" and t2[6].endswith(rec["run_id"])
+    assert c2[2]["cwd"] == c2[0]["cwd"] and "--checks" not in t2                       # tier2 is catalog-less and intra-skill
+    assert rec["tier2"]["status"] == "passed" and set(rec["reports"]) == {
+        "skillevaluator-tier1.json", "skillevaluator-tier1.md", "skillevaluator-tier2.json", "static/skillevaluator-tier1.json",
+        "static/skillevaluator-tier1.md"}
+
+
+@pytest.mark.parametrize("tiers", ["static", "tier1", "tier1+2"])
+def test_every_tier1_argv_passes_exactly_the_safe_checks_and_never_dependency(hub: Hub, tiers: str) -> None:
+    """F14: the tool's default check set includes `dependency` (pip-audit installs packages a skill chose)."""
+    r = use(hub)
+    skill(hub)
+    hub.skilleval.evaluate("alpha", tiers, "t")
+    t1 = [c["argv"] for c in tool_calls(r) if c["argv"][1] == "tier1"]
+    assert len(t1) == (1 if tiers == "static" else 2)
+    for argv in t1:
+        assert argv.count("--checks") == 1 and argv[argv.index("--checks") + 1] == SAFE_CHECKS
+        assert not any("dependency" in a for a in argv)
+    assert SAFE_CHECKS == "schema,version,security,pii,license,code-integrity,unicode,quality,lint"
 
 
 def test_copy_excludes_hub_yaml_symlinks_and_git_and_hash_covers_exactly_the_copied_files(hub: Hub, tmp_path: Path) -> None:
@@ -317,16 +341,16 @@ def test_second_evaluation_is_refused_while_one_runs(hub: Hub) -> None:
     skill(hub, "beta")
     started = hub.skilleval.start("alpha", "static", "t")
     assert started["status"] == "running" and r.started.wait(5)
-    with pytest.raises(Conflict) as e:
-        hub.skilleval.start("beta", "static", "t")
-    assert e.value.code == "evaluation_running" and e.value.status == 409
-    with pytest.raises(Conflict):
+    second = hub.skilleval.start("beta", "static", "t")                  # F6: queued, no longer a 409
+    assert second["status"] == "queued" and hub.skilleval.start("alpha", "static", "t")["status"] == "running"
+    with pytest.raises(Conflict) as e:                                   # a synchronous (CLI) evaluation still excludes
         hub.skilleval.evaluate("beta", "static", "t")
+    assert e.value.code == "evaluation_running" and e.value.status == 409
     assert hub.skilleval.running()["skill"] == "alpha"                                   # type: ignore[index]
     assert next(e for e in hub.skilleval.list_latest() if e["skill"] == "alpha")["running"] is True
     gate.set()
     hub.skilleval.join(5)
-    assert hub.skilleval.running() is None and hub.skilleval.evaluate("beta", "static", "t")["skill"] == "beta"
+    assert hub.skilleval.running() is None and [x["skill"] for x in map(lambda s: hub.skilleval.records(s)[0], ("alpha", "beta"))] == ["alpha", "beta"]
 
 
 def test_another_process_holding_the_lock_blocks_and_is_reported(hub: Hub) -> None:
@@ -338,22 +362,27 @@ def test_another_process_holding_the_lock_blocks_and_is_reported(hub: Hub) -> No
     try:
         with pytest.raises(Conflict):
             hub.skilleval.evaluate("alpha", "static", "t")
-        assert hub.skilleval.running() == {"skill": None, "run_id": None, "tiers": None, "started_at": None, "elsewhere": True}
+        assert hub.skilleval.running() == {"subject": None, "skill": None, "run_id": None, "tiers": None, "started_at": None,
+                                          "elsewhere": True}
     finally:
         os.close(fd)
     assert hub.skilleval.running() is None and hub.skilleval.evaluate("alpha", "static", "t")["verdict"] == "incomplete"
 
 
-def test_concurrent_post_is_409_over_http(api: TestClient, hub: Hub) -> None:
+def test_concurrent_post_is_queued_not_409_over_http(api: TestClient, hub: Hub) -> None:
     gate = threading.Event()
     r = use(hub, FakeEvalRunner(block=gate))
     skill(hub)
     h = admin_h(hub)
     assert api.post(f"{API}/skills/alpha/evaluate", json={"tiers": "static"}, headers=h).status_code == 202
     assert r.started.wait(5)
+    skill(hub, "beta")
     busy = api.post(f"{API}/skills/alpha/evaluate", json={"tiers": "static"}, headers=h)
-    assert busy.status_code == 409 and busy.json()["code"] == "evaluation_running"
-    assert busy.headers["content-type"].startswith("application/problem+json")
+    assert busy.status_code == 202 and busy.json()["status"] == "running"                  # already running: no second job
+    queued = api.post(f"{API}/skills/beta/evaluate", json={"tiers": "static"}, headers=h)
+    assert queued.status_code == 202 and queued.json()["status"] == "queued"
+    q = api.get(f"{API}/skill-evaluations/queue", headers=h).json()
+    assert q["running"]["subject"] == "hub:alpha" and q["queued"] == [{"subject": "hub:beta", "tiers": "static"}]
     assert api.get(f"{API}/skills/alpha/evaluations", headers=h).json()["running"]["skill"] == "alpha"
     gate.set()
     hub.skilleval.join(5)
@@ -407,6 +436,7 @@ def test_post_evaluate_needs_admin_and_the_csrf_header(api: TestClient, hub: Hub
     assert r.calls == []                                              # nothing started
     ok = api.post(f"{API}/skills/alpha/evaluate", json={}, headers=admin_h(hub))
     assert ok.status_code == 202 and ok.json()["tiers"] == "static" and ok.json()["status"] == "running"
+    assert ok.json()["subject"] == "hub:alpha"
     hub.skilleval.join(5)
     assert api.post(f"{API}/skills/alpha/evaluate", json={"tiers": "tier9"}, headers=admin_h(hub)).status_code == 422
     assert api.post(f"{API}/skills/alpha/evaluate", json={"tiers": "static", "x": 1}, headers=admin_h(hub)).status_code == 422
@@ -477,9 +507,9 @@ def test_report_is_redacted_and_paths_are_scrubbed(api: TestClient, hub: Hub) ->
     assert out["truncated"] is False and leak not in out["markdown"] and "[redacted]" in out["markdown"]
     assert "`<skill-copy>/SKILL.md`" in out["markdown"]                # the deleted copy's path is not shown
     run_dir = hub.cfg.data_dir / "skilleval" / "alpha" / rec["run_id"]
-    for name in ("skillevaluator-tier1.md", "skillevaluator-tier1.json"):
+    for name in ("static/skillevaluator-tier1.md", "static/skillevaluator-tier1.json"):
         assert ".work" not in (run_dir / name).read_text()                              # also scrubbed on disk
-    assert json.loads((run_dir / "skillevaluator-tier1.json").read_text())["note"] == "<skill-copy>"   # JSON stays valid
+    assert json.loads((run_dir / "static" / "skillevaluator-tier1.json").read_text())["note"] == "<skill-copy>"   # JSON stays valid
     missing = api.get(f"{API}/skills/alpha/evaluations/20000101T000000000Z-00000000/report", headers=h)
     assert missing.status_code == 404
 
@@ -524,10 +554,11 @@ def test_state_is_private(hub: Hub) -> None:
     rec = hub.skilleval.evaluate("alpha", "tier1+2", "t")
     root = hub.cfg.data_dir / "skilleval"
     run_dir = root / "alpha" / rec["run_id"]
-    for d in (root, root / "alpha", run_dir):
+    for d in (root, root / "alpha", run_dir, run_dir / "static"):
         assert stat.S_IMODE(d.stat().st_mode) == 0o700, d
-    for f in run_dir.iterdir():
-        assert stat.S_IMODE(f.stat().st_mode) == 0o600, f
+    for f in [*run_dir.iterdir(), *(run_dir / "static").iterdir()]:
+        if not f.is_dir():
+            assert stat.S_IMODE(f.stat().st_mode) == 0o600, f
     assert stat.S_IMODE((root / ".lock").stat().st_mode) == 0o600
     assert not any((root / ".work").iterdir())
 
@@ -621,7 +652,7 @@ def test_cli_evaluate_skills_prints_a_table(hub: Hub, monkeypatch: pytest.Monkey
     out = capsys.readouterr().out.splitlines()
     assert out[0].split() == ["skill", "verdict", "quality", "grade", "judge", "errors", "high"]
     assert [ln.split()[:2] for ln in out[1:]] == [["alpha", "incomplete"], ["beta", "incomplete"]]
-    assert all("--no-llm" in c["argv"] for c in r.calls)
+    assert all("--no-llm" in c["argv"] for c in tool_calls(r))
     assert cli_run(["--json", "evaluate-skills"], hub=hub) == 2
     assert [x["skill"] for x in json.loads(capsys.readouterr().out)["items"]] == ["alpha", "beta"]
     use(hub, launchers=())

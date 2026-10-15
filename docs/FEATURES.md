@@ -91,11 +91,26 @@ work).
 | LanceDB ANN index (IVF-PQ) | Not planned | Add if a table passes a few hundred thousand rows. |
 | Router-side semantic cache, engine KV sharing | Not planned | Out of scope for the hub. |
 
+## Observed inventory and skill evaluation
+
+| Feature | Status | Notes |
+|---|---|---|
+| Observed inventory: `ClientAdapter.observe()` (optional; the default wraps `discover()`), stored per client as an untrusted snapshot and compared with hub content (`in_hub_same / in_hub_differs / not_in_hub`) | Implemented | `POST /clients/{id}/observe`, `hubctl observe`. |
+| Hermes `observe`: reads a running container's skills directory read-only, origins `shipped / agent / lab_sync / hub / archived` | Implemented | Never starts a container; `claude-code`, `opencode`, `turnstone` and `generic` use the default. |
+| Skill evaluation with NVIDIA SkillEvaluator for hub (`hub:<skill>`) and observed (`<client>:<key>`) skills: Evaluations view, FIFO queue, reuse by content hash | Implemented | Needs SkillEvaluator installed (`OPERATIONS.md` section 4d). Not installed: the rest of the hub is unaffected. |
+| Static pass always first (`--no-llm`, explicit check list, never `dependency`); optional LLM pass (`tier1`, `tier1+2`) | Implemented | Tier 2 runs without a catalog (duplication inside one skill only). |
+| Import gate, fail closed: `eval_gate` (discover import, default `advisory`) and `eval_gate_observed` (observed import, default `require`), each `off / advisory / require`; `eval_gate_min_tiers`; LLM can only make it stricter; override with a recorded reason | Implemented | A security validator that did not finish (for example `incomplete`) or is absent from the report blocks until overridden. |
+| Observed import (`import-observed`): copies stored files into the content working tree with provenance; validates before replacing; refuses secret-shaped text unless overridden; enable defaults to off | Implemented | Still needs commit, plan and apply. Client ids `hub` and ids containing `:` are reserved. |
+| Cross-skill overlap detection (Tier 2 with a catalog) | Not planned | Needs leave-one-out catalogs. |
+| Tier 3 live agent evaluation | Not planned | Its stock sandboxes need public network. |
+| Queue survives a hub restart | Not planned | The queue is in memory; the running job is recorded as `error` (`interrupted`). |
+| Verified against a real SkillEvaluator install | Partial | The test suite uses fake runners and fake adapters only; check your install with `GET /skill-evaluator` and `hubctl doctor`. |
+
 ## Operations
 
 | Feature | Status | Notes |
 |---|---|---|
-| `hubctl` (init, validate, plan, apply, verify, drift, audit, import, status, commit, rollback, applies, migrate-content, attest-mcp, retire-bootstrap-key, doctor, adapters, serve), exit codes 0/1/2, `--json` | Implemented |  |
+| `hubctl` (init, validate, plan, apply, verify, drift, audit, import, status, commit, rollback, applies, migrate-content, attest-mcp, retire-bootstrap-key, doctor, adapters, serve, observe, evaluate, evaluate-skill(s), import-observed), exit codes 0/1/2, `--json` | Implemented |  |
 | Opt-in systemd `--user` units for the hub and knowledge service (narrow `ReadWritePaths`, venv entry points) | Implemented |  |
 | Zero-build UI served by the backend; contract mock (`frontend/dev/mock-server.mjs`) | Implemented |  |
 | Windows or cgroup-only hosts | Not planned | Developed and used on Linux; other platforms are not supported. |

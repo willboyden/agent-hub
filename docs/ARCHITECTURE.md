@@ -279,3 +279,155 @@ Viewer-permitted POSTs (read-only dry runs): `/policy/check`, `/clients/validate
   `{id, severity: ok|info|warn|crit, title, detail, fix}` and `status: ok|attention|action_needed`. Checks: bootstrap key at rest, state modes, content dir location/ownership,
   loopback trust and bind, the Claude Code sandbox template and rendered config deny entries (four state paths and `**/hub/policy/**`), sandbox `allowedDomains`, opencode's unsandboxed
   exposure, `ptrace_scope`, installed systemd user units' `ReadWritePaths`, knowledge reachability/auth, and advisory-permission gaps. It never prints secrets; filesystem and env are injectable.
+
+## Addendum F (observed inventory, skill evaluation as a main feature, import gate)
+
+Why: a client really has more skills than the hub manages (a self-improving agent writes its own, a release ships its own, another
+sync process drops some in), and the hub could not see them. Nothing new may enter the hub's content unexamined, so every skill can be
+evaluated with NVIDIA SkillEvaluator first, results are a main view, and import can require an evaluation. Builds on the advisory
+per-skill evaluation (`services/skilleval.py`, routes `/skill-evaluator`, `/skill-evaluations`, `/skills/{name}/evaluate`), which keeps working.
+
+**F1. Port (additive, `adapters/base.py`).** `ObservedSkill{path, name, description, origin, files}`, `Observation{skills, source, notes,
+complete}`, origins `client|shipped|agent|lab_sync|hub|archived`, and `ClientAdapter.observe(cfg, fs, run) -> Observation`, NOT abstract:
+the default wraps `discover()` (origin `client`, path = name). Adapters override it when the client keeps skills elsewhere.
+
+**F2. Hermes `observe` (`adapters/hermes.py`).** Finds a RUNNING container of `compose_project` whose service is `compose_service` or one of
+`params.observe_services` (list, default `[]`), in that order; never starts one (none running -> `Observation(complete=False)` with a note).
+One `docker [--context C] exec [--user U] <container> <python> -c <FIXED program text>` (`params.observe_python`, default `python3`;
+`params.observe_root`, default `/opt/data/skills`): the program walks the root without following symlinks, skips `.curator_backups/`, dot
+entries except the `.archive/` dir and the `.bundled_manifest` file, keeps regular files only, caps (1 MiB per file, 32 MiB total, 5000 files),
+and prints ONE JSON object `{"manifest": [names], "files": {relpath: base64}, "truncated": bool}`. The adapter treats every byte as untrusted:
+output cap, JSON size cap, `check_relpath` on every path, base64 strictness. A skill = a directory holding `SKILL.md`; a file belongs to its
+nearest skill-dir ancestor; files outside any skill dir are ignored. Origin: under `.archive/` -> `archived`; first segment `lab` -> `lab_sync`;
+first segment equal to the last segment of `params.skills_dest` (the hub's delivery category, e.g. `hub`) -> `hub`; leaf name in the manifest
+(first field before `:` per line) -> `shipped`; else `agent`. The runner passed to `observe` has a larger stdout cap (F4).
+
+**F3. Observation store (`services/observe.py`, `ObserveService`).** `observe(client)` -> runs the adapter, then REPLACES
+`<state>/observed/<client>/` atomically (build in a sibling temp dir, rename): `index.json` `{client, observed_at, source, complete, notes,
+skills: [{key, path, name, description, origin, content_hash, files, bytes}]}` and `skills/<key>/<relpath>` (dirs 0700, files 0600).
+`key` = `<slug(last path segment)>-<first 8 hex of sha256(path)>` (fullmatch `^[a-z0-9][a-z0-9._-]{0,80}$`). `content_hash` is
+`skilleval.content_hash(files)` (the same function, so a hub skill and an identical observed skill share one hash). Hub comparison per
+observed skill, computed on read: `hub_status` = `in_hub_same` (some content skill has the same content_hash; `hub_name` given) |
+`in_hub_differs` (a content skill with the same name, different hash) | `not_in_hub`; `enabled_for_client` when the matched content skill is
+enabled in this client's profile. Caps: 5000 skills, 64 MiB per observation.
+
+**F4. Runner.** `RealRunner(max_timeout=..., max_stdout=100_000)` gains the `max_stdout` keyword (default unchanged). The hub builds a
+separate `observe_runner = RealRunner(max_timeout=120, max_stdout=48 MiB)` and passes it to `observe` only.
+
+**F5. Evaluation subjects (extends `services/skilleval.py`).** A subject is `hub:<skill>` (content working tree, today's behaviour) or
+`<client>:<key>` (an observed skill, snapshot read from `<state>/observed/<client>/skills/<key>/`, same caps, same copy-then-evaluate). Runs:
+hub subjects keep `<state>/skilleval/<skill>/<run-id>/`; observed subjects use `<state>/skilleval/@observed/<client>/<key>/<run-id>/`.
+Records gain `subject`, `source` (`hub` | client id), `path`, `origin`, `evaluator_version`, `reused_from` (null or `{subject, run_id}`).
+**Reuse:** `<state>/skilleval/@by-hash/<content_hash>.json` points at the newest finished run per hash
+(`{subject, run_id, tiers, verdict, evaluator_version, finished_at}`). A job whose snapshot hash already has a finished, non-`error` run with
+tiers >= the requested tiers (`static` < `tier1` < `tier1+2`) and the same evaluator version completes WITHOUT a process: it writes a record
+copying that run's summary with `reused_from` set. `force: true` re-runs.
+
+**F6. Queue.** One FIFO worker thread; still one evaluation at a time (the existing flock, held per job). `enqueue(subjects, tiers, force,
+actor)` drops subjects already queued or running, caps the queue at 5000, returns `{queued, skipped: [{subject, reason}]}`. The queue lives in
+memory (a hub restart drops queued jobs; the running one is recorded as `error` "interrupted"). `start()` (single skill, old route) becomes
+enqueue-one and answers 202 `{status: queued|running}` instead of 409 while busy. `queue()` -> `{running: {subject, run_id, tiers, started_at} |
+null, queued: [{subject, tiers}] (first 200), queued_total, finished_since_start, errors_since_start}`. `cancel()` clears the queue and kills
+the running process group.
+
+**F7. Gate (`services/skilleval.py` `gate(content_hash) -> {status, verdict, run_id, tiers, reasons[]}`).** Settings (F10): `eval_gate`
+`off|advisory|require` (default `advisory`), `eval_gate_min_tiers` `static|tier1|tier1+2` (default `static`, see F14). The newest finished run with this
+`content_hash`, tiers >= min, verdict != `error`:
+* none -> `missing`;
+* any finding with severity `critical`/`high` from a SECURITY validator -> `blocked` (reasons = up to 5 `validator: message`);
+* a security validator with status `incomplete`, or medium security findings -> `warn`;
+* else `ok`.
+Security validator = every Tier 1 `results[].validator` EXCEPT this publication/quality list: `Schema & Repository Governance`,
+`Semantic Version Validation`, `License Compliance`, `QUALITY`, `SCRIPT_LINT`, `RUBRIC_EVAL`. Unknown validators count as security (fail
+closed). The overall verdict (`passed|failed|incomplete`) is shown but does not decide the gate: NVIDIA's publication schema (for example
+`metadata.author`) fails most private skills and says nothing about safety. The gate reads the stored reports only; the LLM judge
+(`RUBRIC_EVAL`) never gates, because skill text can steer a judge. Run records store per-validator `{validator, status, severity counts}` so
+the gate never re-reads big reports.
+
+**F8. Import with the gate.**
+* NEW `POST /clients/{id}/observed/import {items: [{key, name?}], on_conflict: skip|rename|replace|link (default skip), enable: false,
+  override_reason?: str}` (admin): creates content skills from the stored observation files (working tree, like every edit). Sidecar
+  `hub.yaml`: `source: observed:<client>`, `provenance: {client, path, origin, content_hash, observed_at, evaluation: {run_id, verdict,
+  gate, override_reason?}}`. `enable` defaults to FALSE: enabling an observed skill for the SAME client would deliver a second copy next to
+  the original. Per item result `{key, final_name, status: created|replaced|renamed|linked|skipped|refused|error, gate, detail}`.
+* The existing `POST /import` (discover path) applies the same gate to skill items, hashing the discovered files with `content_hash`.
+* `eval_gate=require`: `missing` -> `refused` (`eval_required`); `blocked` -> `refused` (`eval_blocked`) unless `override_reason`
+  (10..500 chars) is given, then `status` as normal with `gate: overridden` (audit event `skill.import.override`). `warn`/`ok` pass.
+  `advisory`: never refuses; rows carry `gate`. `off`: no gate field.
+* `hubctl import` gains `--override-reason`; `hubctl import-observed --client X --key K... [--name] [--on-conflict] [--enable] [--override-reason]`.
+
+**F9. API (prefix `/api/v1`, roles as usual: GET any authenticated role, POST admin).**
+```
+POST /clients/{id}/observe                                -> {client, observed_at, complete, total, by_origin, by_hub_status, notes}
+GET  /clients/{id}/observed?origin=&hub_status=&q=        -> {client, observed_at, source, complete, notes, summary, items:[{key,path,name,
+                                                              description,origin,content_hash,files,bytes,hub_status,hub_name,
+                                                              enabled_for_client,evaluation:{state,verdict,gate,run_id}|null}], next_cursor}
+                                                              404 not_observed before the first observe
+POST /clients/{id}/observed/import                        F8
+GET  /skill-evaluations?source=all|hub|<client>&state=none|current|stale&verdict=&origin=&gate=&q=   (source default `hub`: old behaviour)
+     -> {items:[{subject, source, name, path, origin, content_hash, state, latest, queued, running, gate, hub_status?}],
+         summary:{total, by_state, by_verdict, by_gate}, running, next_cursor}
+POST /skill-evaluations/run {subjects?: [..], select?: none_or_stale|all, source?: all|hub|<client>, tiers, force?: false}
+     -> {queued, skipped}          (exactly one of subjects / select)
+GET  /skill-evaluations/queue      POST /skill-evaluations/queue/cancel
+GET  /skill-evaluations/{subject}                         -> detail + history (subject `hub:x` or `<client>:<key>`, fullmatch-checked)
+GET  /skill-evaluations/{subject}/runs/{run_id}/report    -> {markdown (scrubbed), truncated}
+GET  /clients/{id}/drift                                  adds `observed: null | {observed_at, total, not_in_hub, in_hub_differs, by_origin}`
+GET  /clients, /clients/{id}                              add `observed_summary` (same shape, null before the first observe)
+GET|PUT /settings                                         add eval_gate, eval_gate_min_tiers (enum values; 422 otherwise)
+```
+The old per-skill routes stay and map to `hub:<name>`.
+
+**F10. Settings.** `PUT /settings` accepts enum settings next to the integer ones: `eval_gate` in `off|advisory|require`,
+`eval_gate_min_tiers` in `static|tier1|tier1+2`; stored like the others; `HUB_EVAL_GATE` / `HUB_EVAL_GATE_MIN_TIERS` give the defaults.
+
+**F11. UI.** A primary nav view **Evaluations** (`#/evaluations`, after Library): evaluator status line (installed, launcher, version, tiers),
+summary chips (by gate and verdict), filters (source: Hub + each client; origin; state; verdict; gate; text), a dense table (name, where:
+source + path, origin badge, gate badge, verdict badge, quality score, judge score, high/critical counts, evaluated at), multi-select with
+"Evaluate selected", "Evaluate everything not yet evaluated" (select none_or_stale), tier picker, a queue bar (running subject, n queued,
+Cancel; polls `/skill-evaluations/queue` every 2 s while non-empty), a detail drawer (tier summaries, per-validator table, top findings,
+Markdown report rendered with the existing sanitising renderer, history), and for observed rows "Import into hub..." (bulk dialog: name
+per item, on_conflict, enable checkbox off by default, override reason box shown only when some item is `blocked`; results table).
+Clients: an **Observed** card per client ("Observe now", observed_at, counts by origin and hub_status, link to Evaluations filtered to that
+client). Settings: the two gate settings. Library badges (existing) unchanged. All strings in i18n (fix the missing `ev.*` keys).
+`dev/mock-server.mjs` implements every route above faithfully.
+
+**F12. CLI.** `hubctl observe --client X`, `hubctl evaluate --source hub|<client>|all [--select none_or_stale|all | --subject S...]
+[--tiers T] [--force] [--wait]` (enqueue via the same service; `--wait` runs synchronously in the CLI process under the flock),
+`hubctl import-observed ...` (F8). Existing `evaluate-skill`/`evaluate-skills` stay.
+
+**F13. Security notes.** Observed skills are untrusted text from the client: never executed by the hub, stored 0600, rendered only through
+the sanitising Markdown renderer. The `docker exec` program text is a constant in the adapter (no interpolation of content or params into it;
+params only choose argv elements validated by fullmatch: container name, user, python path `^[A-Za-z0-9_./-]{1,200}$`, root path absolute).
+SkillEvaluator runs as before (launcher by bare name, copy of the skill, private dirs, scrubbed output). The gate is a filter, not a proof:
+static scanners can miss things, and agent-written text may target the LLM-assisted scans.
+
+**F14 (amendment, security; supersedes the F7 default and the tier1 argv).** Read in SkillEvaluator v0.5.0's source (`tier_workflows.py`
+`run_tier1_workflow`, `tier1/commands.py` `DEFAULT_CHECKS`/`OPTIONAL_CHECKS`):
+* Direct `tier1` without `--checks` also runs the opt-in `dependency` check, which runs pip-audit on the skill's `requirements*.txt` and
+  thereby installs packages the skill's author chose, on the host. The hub ALWAYS passes `--checks schema,version,security,pii,license,
+  code-integrity,unicode,quality,lint` (`SAFE_CHECKS`) and never `dependency`.
+* With the LLM on, direct `tier1` forces the LLM finding verifier, which can downgrade security findings to `info`; skill text can steer it.
+  Every evaluation therefore runs a STATIC pass first (`--no-llm`); `tier1`/`tier1+2` add an LLM pass for quality and the judge. The gate
+  uses the static pass's security findings plus any high/critical security findings of the LLM pass: the LLM may make the gate stricter,
+  never clear a static finding. `eval_gate_min_tiers` defaults to `static`.
+* `tier2` stays catalog-less (intra-skill duplication only): with `--catalog`, a skill that is in the catalog matches itself as an exact
+  duplicate. Cross-skill overlap needs leave-one-out catalogs: a later addendum.
+* Network: SkillSpector's static pass queries api.osv.dev for skills that declare dependencies (no switch); without network those skills
+  come out `incomplete`, which the gate reports as `warn`. Tier 3 (live agent runs) is out of scope: its stock sandboxes need public
+  network and install agent CLIs at run time.
+
+**F15 (amendment after the security review; supersedes F7's status rules and F10's single gate setting).**
+* Gate, fail closed: the static pass must contain the security validators `Security Scan`, `PII Scan`, `Code Risk Analysis`,
+  `Secrets Detection`, `Code Integrity & Hygiene`, `Unicode Smuggling Detection`. An absent one, or any security validator (unknown ones
+  included) whose status is not `passed`/`failed`, gives `blocked` (overridable with a reason, like high/critical findings); an empty
+  validator list gives `missing`. Medium findings alone stay `warn`.
+* Two settings: `eval_gate` (default `advisory`) governs `POST /import` from a client's own sources; `eval_gate_observed`
+  (default `require`, env `HUB_EVAL_GATE_OBSERVED`) governs `POST /clients/{id}/observed/import`. Observed skills may be agent-written, so
+  their default is the strict one.
+* Observe: output is read through a streaming runner that kills the command once stdout passes the cap (the interpreter inside the
+  container is agent-controlled, so only hub-side limits count). A failed observation (complete=false, no skills) keeps the previous one.
+  Paths that are not UTF-8 encodable, contain control/format characters, or collide as file/dir prefixes are skipped with a note.
+* Observed import validates every file name and the content caps before any destructive step, refuses text with secret-shaped values
+  (`secret_detected`) unless overridden, and audits overrides with the content hash and observation key. `hub` and ids containing `:` are
+  reserved client ids. Deleting a client removes its observation and its observed evaluation runs; runs of keys that vanished are pruned.

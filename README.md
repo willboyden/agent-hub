@@ -114,6 +114,9 @@ Follow the first-apply checklist in `docs/OPERATIONS.md`. In short: a project-ro
   tool or script already owns a file (a config sync script, a dotfiles manager), leave that concern advisory.
 * **Nothing is overwritten silently.** A file whose live content differs from what the hub last applied is a `conflict` and
   is skipped unless you adopt it explicitly.
+* **See what a client really has, and evaluate it before import.** `hubctl observe` reads a client's actual skills (Hermes:
+  from the running container, read-only); NVIDIA SkillEvaluator (optional install) can evaluate them, and an import gate
+  (`eval_gate`, default advisory) can require a clean static security scan first. See `docs/OPERATIONS.md` section 4d.
 * **The hub does not replace your other tools.** It writes native files; it does not call or wrap them.
 
 ## Adding a client

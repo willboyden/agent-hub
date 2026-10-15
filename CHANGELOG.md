@@ -18,6 +18,18 @@
   `docs/OPERATIONS.md` section 8b.
 - A plan is blocked with `root_missing` when a managed artifact's client root does not exist (the hub never creates a
   client root), instead of the apply failing with a file-not-found error.
+- Observed inventory: `ClientAdapter.observe()` and a Hermes implementation (reads a running container's skills directory
+  read-only), stored per client and compared with hub content. `hubctl observe`, `POST /api/v1/clients/{id}/observe`.
+- Skill evaluation with NVIDIA SkillEvaluator as a main view (Evaluations) for hub and observed skills: FIFO queue, reuse by
+  content hash, static pass first, optional LLM pass; never runs the `dependency` check. `hubctl evaluate` (needs `--wait`
+  to run), `/api/v1/skill-evaluations*`.
+- Import gate, fail closed: settings `eval_gate` (discover import, default `advisory`), `eval_gate_observed` (observed import,
+  default `require`) and `eval_gate_min_tiers`, decided by the static security result only. A missing or unfinished security
+  validator (SkillSpector's frequent `incomplete`) blocks until overridden with a recorded reason (`--override-reason`, audit
+  `skill.import.override`). Observed import refuses secret-shaped text (`secret_detected`) unless overridden, and client ids
+  `hub` and ids containing `:` are reserved.
+  `hubctl import-observed` and `POST /api/v1/clients/{id}/observed/import` (enable defaults to off). See ADR-0011,
+  `docs/OPERATIONS.md` section 4d, `docs/SECURITY.md` section 14.
 
 ### Fixed
 - Turning a concern off for a client (it becomes advisory) now releases the lock entries of its files and leaves the

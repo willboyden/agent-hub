@@ -200,3 +200,21 @@ dialog.modal:has(.spec-grid) { width: min(1000px, 94vw); }
 .drift-list { font-size: var(--fs-sm); } .drift-list ul { margin: var(--s1) 0 0; padding-left: var(--s4); }
 .finding.sev-crit { border-color: var(--bad); } .finding.sev-warn { border-color: var(--warn); } pre.cmd.fix { white-space: pre-wrap; word-break: break-word; max-height: none; user-select: all; }
 details.doc-ok > summary { cursor: pointer; margin-bottom: var(--s3); }
+
+/* Evaluations (F11). Colour is a hint only: every badge has an icon and a word. */
+.ev-status { margin: 0 0 var(--s3); display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.ev-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin-bottom: var(--s3); } .ev-total { color: var(--text-2); font-size: var(--fs-sm); margin-right: var(--s2); }
+.ev-filters { grid-template-columns: minmax(150px, 1.2fr) minmax(180px, 1.6fr) repeat(5, minmax(110px, 1fr)); }
+.ev-actions-bar { align-items: flex-end; margin-bottom: var(--s3); } .ev-actions-bar .ev-tier { min-width: 150px; } .ev-tier select { width: auto; min-width: 150px; } .ev-force { align-self: center; }
+.ev-queue { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--s3); margin-bottom: var(--s3); border: 1px solid var(--info); border-radius: var(--r2); background: var(--info-soft); color: var(--text); }
+.ev-queue[hidden] { display: none; } .ev-queue-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; } .ev-queue svg { flex: none; color: var(--info); }
+.ev-table { min-width: 980px; } .ev-table td { vertical-align: middle; } .ev-name { min-width: 170px; } .ev-where { max-width: 260px; overflow-wrap: anywhere; }
+.ev-num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; } .ev-table th.ev-c6, .ev-table th.ev-c7, .ev-table th.ev-c8 { text-align: right; }
+.hot { color: var(--bad); font-weight: 700; }
+.link-btn { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: var(--accent); cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 2px; } .link-btn:hover { filter: brightness(1.15); }
+.badge svg { margin-right: 4px; flex: none; } .ev-stale-tag { white-space: pre; }
+.ev-detail h3, .ev-detail h4 { margin: 0; } .ev-subject { overflow-wrap: anywhere; } .ev-reasons { margin: 0; padding-left: var(--s5); } .ev-findings { list-style: none; padding: 0; display: flex; flex-direction: column; gap: var(--s2); }
+.ev-report { min-height: 0; } .ev-vtable td.ev-num, .ev-vtable th:nth-child(n+3) { text-align: right; }
+.ev-override { padding: var(--s3); border: 1px solid var(--warn); border-radius: var(--r2); background: var(--warn-soft); } .ev-override[hidden] { display: none; }
+.ev-imp-table input[type=text] { min-width: 180px; } .ev-observed { margin: var(--s3) 0; padding: var(--s3); border: 1px solid var(--border); border-radius: var(--r2); background: var(--surface-2); display: flex; flex-direction: column; gap: var(--s2); } .ev-observed h3 { margin: 0; font-size: var(--fs); }
+dialog.modal:has(.ev-imp-table), dialog.modal:has(.ev-imp-results) { width: min(820px, 96vw); }

@@ -53,7 +53,8 @@ def _fmt(v: Any, spec: str = "") -> str:
 def _eval_text(rec: dict[str, Any]) -> str:
     t1 = rec.get("tier1") or {}
     sev = t1.get("severity") or {}
-    lines = [f"{rec['skill']}: {rec['verdict']}  (tiers {rec['tiers']}, run {rec['run_id']}, {rec.get('duration_ms', 0) / 1000:.1f} s)"]
+    lines = [f"{rec['skill']}: {rec['verdict']}  (tiers {rec['tiers']}, run {rec['run_id']}, {rec.get('duration_ms', 0) / 1000:.1f} s)"
+             + (f"  [reused {rec['reused_from']['run_id']}]" if rec.get("reused_from") else "")]
     if t1:
         lines.append(f"  quality {_fmt(t1.get('quality_score'), '.1f')} grade {_fmt(t1.get('grade'))}  judge {_fmt(t1.get('judge_score'), '.1f')}"
                      f"  errors {_fmt(t1.get('errors'))} warnings {_fmt(t1.get('warnings'))}  critical {_fmt(sev.get('critical'))}"
@@ -75,7 +76,7 @@ def _eval_table(recs: list[dict[str, Any]]) -> str:
     for r in recs:
         t1 = r.get("tier1") or {}
         sev = t1.get("severity") or {}
-        rows.append(f"{str(r.get('skill'))[:40]:<40} {str(r.get('verdict')):<10} {_fmt(t1.get('quality_score'), '.1f'):>7} "
+        rows.append(f"{str(r.get('subject') if r.get('source') not in (None, 'hub') else r.get('skill'))[:40]:<40} {str(r.get('verdict')):<10} {_fmt(t1.get('quality_score'), '.1f'):>7} "
                     f"{_fmt(t1.get('grade')):>5} {_fmt(t1.get('judge_score'), '.1f'):>6} {_fmt(t1.get('errors')):>6} "
                     f"{_fmt(sev.get('high')):>4}" + (f"  {r['error'][:80]}" if r.get("verdict") == "error" and r.get("error") else ""))
     return "\n".join(rows)
@@ -100,6 +101,25 @@ def build_parser() -> argparse.ArgumentParser:
     imp.add_argument("--item", action="append", default=[], help="kind:name (repeatable)")
     imp.add_argument("--on-conflict", default=None, choices=["skip", "rename", "replace", "link"],
                      help="default: link identical items, skip differing ones")
+    imp.add_argument("--override-reason", default=None, metavar="TEXT",
+                     help="let a skill the evaluation gate BLOCKED through (10..500 characters; audited)")
+    ob = sub.add_parser("observe", help="read what a client really has (read-only) and store the inventory")
+    ob.add_argument("--client", required=True)
+    io = sub.add_parser("import-observed", help="import skills from a client's stored observation (through the evaluation gate)")
+    io.add_argument("--client", required=True)
+    io.add_argument("--key", action="append", required=True, default=[], help="observed skill key (repeatable)")
+    io.add_argument("--name", default=None, help="final skill name (only with exactly one --key)")
+    io.add_argument("--on-conflict", default="skip", choices=["skip", "rename", "replace", "link"])
+    io.add_argument("--enable", action="store_true", help="also enable the imported skills for this client (default: off)")
+    io.add_argument("--override-reason", default=None, metavar="TEXT")
+    evn = sub.add_parser("evaluate", help="evaluate hub and/or observed skills with SkillEvaluator (advisory; feeds the import gate)")
+    evn.add_argument("--source", default="hub", help="hub | <client> | all (default hub)")
+    pick = evn.add_mutually_exclusive_group()
+    pick.add_argument("--select", choices=["none_or_stale", "all"], help="which skills of --source (default none_or_stale)")
+    pick.add_argument("--subject", action="append", default=None, metavar="S", help="hub:<skill> or <client>:<key> (repeatable)")
+    evn.add_argument("--tiers", default="static", choices=list(EVAL_TIERS))
+    evn.add_argument("--force", action="store_true", help="re-run even when this exact content was evaluated before")
+    evn.add_argument("--wait", action="store_true", help="run now, in this process, under the evaluation lock")
     sub.add_parser("status", help="show pending (uncommitted) content changes")
     cm = sub.add_parser("commit", help="approve pending content changes (git commit with the hub's fixed identity)")
     cm.add_argument("-m", "--message", required=True)
@@ -333,9 +353,44 @@ def _dispatch(args: argparse.Namespace, hub: Hub) -> int:
         if not args.all and not selection:
             print("error: pass --all or --item kind:name", file=sys.stderr)
             return 1
-        r = hub.import_items(args.client, selection, args.on_conflict)
-        _emit(args, r, "\n".join(f"{x['status']:10} {x['kind']}:{x['final_name']} {x['detail']}" for x in r["results"]))
-        return 1 if any(x["status"] == "error" for x in r["results"]) else 0
+        r = hub.import_items(args.client, selection, args.on_conflict, override_reason=args.override_reason, actor=ACTOR)
+        _emit(args, r, "\n".join(f"{x['status']:10} {x['kind']}:{x['final_name']} {x['detail']}"
+                                 + (f"  [gate {x['gate']}]" if x.get("gate") else "") for x in r["results"]))
+        return 1 if any(x["status"] in ("error", "refused") for x in r["results"]) else 0
+    if cmd == "observe":
+        r = hub.observe(args.client, ACTOR)
+        bs = r["by_hub_status"]
+        _emit(args, r, f"{args.client}: {r['total']} skill(s) observed" + ("" if r["complete"] else " (INCOMPLETE)")
+              + f"; not in hub {bs['not_in_hub']}, differs {bs['in_hub_differs']}, same {bs['in_hub_same']}; origins "
+              + ", ".join(f"{k} {v}" for k, v in sorted(r["by_origin"].items())) + "".join(f"\n  note: {n}" for n in r["notes"]))
+        return 0
+    if cmd == "import-observed":
+        if args.name and len(args.key) != 1:
+            print("error: --name needs exactly one --key", file=sys.stderr)
+            return 1
+        r = hub.import_observed(args.client, [{"key": k, "name": args.name} for k in args.key], args.on_conflict, args.enable,
+                                args.override_reason, ACTOR)
+        _emit(args, r, "\n".join(f"{x['status']:10} {x['key']} -> {x['final_name']} {x['detail']}"
+                                 + (f"  [gate {x['gate']}]" if x.get("gate") else "") for x in r["results"]))
+        return 1 if any(x["status"] in ("error", "refused") for x in r["results"]) else 0
+    if cmd == "evaluate":
+        subjects = list(args.subject) if args.subject else hub.eval_select(args.source, args.select or "none_or_stale")
+        if not subjects:
+            _emit(args, {"items": []}, "nothing to evaluate")
+            return 0
+        if not args.wait:
+            # A queue lives in the memory of the hub SERVER; this process exits when done. Say so instead of dropping the jobs.
+            _emit(args, {"subjects": subjects, "queued": False},
+                  f"{len(subjects)} subject(s) selected; nothing was run. Add --wait to evaluate them here, or queue them in the "
+                  "running hub (POST /api/v1/skill-evaluations/run).\n" + "\n".join(f"  {x}" for x in subjects[:50]))
+            return 0
+        if hub.skilleval.find_launcher() is None:
+            from agent_hub.services.skilleval import INSTALL_HINT
+            raise Unavailable(f"SkillEvaluator is not installed; install it with: {INSTALL_HINT}", code="evaluator_missing")
+        recs = hub.skilleval.evaluate_subjects(subjects, args.tiers, ACTOR, args.force)
+        _emit(args, {"items": recs}, _eval_table(recs))
+        verdicts = {str(r.get("verdict")) for r in recs}
+        return 1 if "error" in verdicts else 2 if verdicts & {"failed", "incomplete"} else 0
     if cmd == "serve":
         import uvicorn
 

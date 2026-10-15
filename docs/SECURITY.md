@@ -305,3 +305,64 @@ forge an attestation.
   access to everything the hub protects. The trusted desktop icon makes such starts routine. Keep the checkout outside
   every governed client's writable paths, or deny writes to it in each client's sandbox.
 * The section 12 limits (TOML/block artifacts uninspected, app-containing roots allowed, CAS-to-rename window).
+
+## 14. Observed skills and skill evaluation
+
+Boundary B8: a client's skills directory and the skill text in it are untrusted input to the hub; SkillEvaluator is third-party
+code the hub runs.
+
+**What the hub runs.**
+
+* For observation: one `docker exec` into a RUNNING container of the configured compose project, running a program whose text
+  is a constant in the adapter. No content or parameter is interpolated into it; params only select validated argv elements
+  (container, user, interpreter path, skills root). The constant text is NOT a defence: the interpreter and the filesystem inside
+  an agent's container are controlled by that agent, so it can print anything. The defences are on the hub side: the command runs
+  through a streaming runner (own process group, memory bounded by the output caps, killed at the first byte over the cap, hard
+  timeout), and the parse step treats every byte as untrusted (JSON object only, strict base64, size and count caps, path checks
+  that skip non-text, control-character or colliding paths with a note). A failed observation keeps the previous one. It never
+  starts a container.
+* For evaluation: the `skillevaluator-local` wrapper or `skillevaluator`, by bare name, as an argv list (no shell), in its own
+  process group with a timeout per tier, on a private COPY of the skill (regular files only, never through a symlink, no
+  content repo or `.git`), with a minimal environment plus `SKILL_EVAL_*` / `SKILLEVAL_*`. Output is capped and scrubbed of
+  absolute paths; reports are kept 0600 in 0700 directories.
+
+**What the hub never runs.** It never executes an observed or hub skill's own files. It never starts or restarts a client. It
+never passes SkillEvaluator's `dependency` check: that check runs pip-audit on a skill's `requirements*.txt` and thereby installs
+packages the skill's author chose, on the host. Every run passes an explicit check list (`schema, version, security, pii,
+license, code-integrity, unicode, quality, lint`). It never runs Tier 3 (live agents). Tier 2 runs without a catalog.
+
+**Untrusted observed text.** Names, descriptions, file contents and reports derived from them are stored 0600, shown only through
+the sanitising Markdown renderer; names, descriptions and notes stored in the index are length-capped and have secret-looking tokens masked (heuristic, as elsewhere). Skills reach the content tree only
+through an explicit import, then commit review, plan and apply like any other edit.
+
+**The gate rule.** Every evaluation runs a static pass first (`--no-llm`). The import gate reads the stored reports, never a
+model, and fails closed: a critical or high finding from a security validator blocks; so does any of the six expected security
+validators (Security Scan, PII Scan, Code Risk Analysis, Secrets Detection, Code Integrity & Hygiene, Unicode Smuggling
+Detection) missing from the report, and any security validator whose status is not `passed` or `failed`. SkillSpector often
+reports `incomplete` when it could not fully analyse files a skill references, so such skills are blocked until an operator
+overrides, by design; an unfinished scan is not evidence of safety. An empty report is `missing`; medium findings alone warn.
+The LLM pass can add blocks (its critical/high security findings) and can never clear a static finding,
+because its finding verifier can downgrade findings and skill text can steer it. The judge score (`RUBRIC_EVAL`) never gates.
+Publication and quality validators (schema, version, license, quality, lint, rubric) are excluded because they say nothing
+about safety; any validator the hub does not know counts as security (fail closed). Two settings: `eval_gate` (discover import, default `advisory`) and `eval_gate_observed` (observed import, default `require`).
+An override needs a reason of 10 to 500 characters, recorded in the audit log (`skill.import.override`: client, skill, key,
+content hash prefix, run, what was overridden, outcome) and the skill's provenance. Observed import also refuses text in which
+the hub's secret scrubber would mask something (`secret_detected`) unless overridden, validates the skill fully before
+replacing anything, and reserves client ids `hub` and any id containing `:`.
+
+**Residual risks.**
+
+* The gate is a filter, not a proof. Static scanners miss things (obfuscation, prompt-level attacks, anything outside their
+  rules). Agent-written text may target the LLM-assisted scans. Review the diff in Changes before commit.
+* Evaluating runs third-party code (SkillEvaluator and the scanners it drives) as the hub's own user, with the hub's file
+  access and network. It sees only the private copy, but a bug or a malicious dependency of that tool is not contained by the
+  hub. Run the hub under a user you are willing to expose to it.
+* SkillEvaluator's static scan queries `api.osv.dev` for skills that declare dependencies (no switch). That discloses the
+  declared dependency names to that service; without network those skills come out `incomplete`, which the gate blocks until overridden.
+* `tier1` and `tier1+2` send skill text to whatever model provider SkillEvaluator is configured with (`SKILL_EVAL_*` or the
+  wrapper). The hub does not control or inspect that provider.
+* The gate keys on the exact content hash. A skill edited after evaluation reads as `missing`; the gate does not follow a
+  skill that changes later on the client, so observe and evaluate again before importing an update.
+* Observation reads what the container shows. A process inside the client can serve any content to that read.
+* The discover import (`eval_gate`) defaults to `advisory`, which refuses nothing; set `require` if unreviewed imports of a client's own skills are a concern. Observed import defaults to `require`.
+* Overrides are the escape hatch and the main place a human can be wrong; the reason is recorded, not verified.

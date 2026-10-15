@@ -14,6 +14,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as D from './mock-data.mjs';
 import * as C from './mock-core.mjs';
+import { installEval } from './mock-eval.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -47,7 +48,9 @@ const auditRows = [];
 let auditSeq = 0;
 const audit = (method, p, status, params = {}, ts = now()) => { auditRows.unshift({ id: ++auditSeq, ts, actor: 'admin', role: 'admin', method, path: p, status, params }); if (auditRows.length > 500) auditRows.pop(); };
 const inbox = EMPTY ? [] : D.INBOX.map((i) => ({ id: i.id, client: i.client, type: i.type, title: i.title, body: i.body, created: i.created_at, valid: true }));
-const limits = { plan_retention: 20, inbox_max_per_client: 200, inbox_rate_per_min: 30 };
+const limits = { plan_retention: 20, inbox_max_per_client: 200, inbox_rate_per_min: 30, eval_gate: 'advisory', eval_gate_observed: 'require', eval_gate_min_tiers: 'static' };
+const ENUM_LIMITS = { eval_gate: ['off', 'advisory', 'require'], eval_gate_observed: ['off', 'advisory', 'require'], eval_gate_min_tiers: ['static', 'tier1', 'tier1+2'] };
+let EV = null;                                   // evaluation + observed-inventory routes (dev/mock-eval.mjs), installed below
 const keys = [{ id: 'key_1', name: 'bootstrap', role: 'admin', prefix: 'hc_3fa9Xq', client: null, scopes: [], created_at: now() - 86400 * 6, last_used_at: now() - 300 }, { id: 'key_2', name: 'hermes-token', role: 'client', prefix: 'hc_71c2Lm', client: 'hermes', scopes: ['inbox:write', 'knowledge:read:team-docs'], created_at: now() - 86400 * 2, last_used_at: null }];
 const K = structuredClone(D.KNOWLEDGE);
 if (EMPTY) { K.namespaces = []; K.tokens = []; K.indexes = []; K.docs = []; }
@@ -211,7 +214,7 @@ function clientStatus(id) {
 }
 function clientView(id) {
   const cfg = content.clients[id]; const committed = !!base.clients[id];
-  return { id, adapter: cfg.adapter, display_name: cfg.display_name, description: cfg.description || '', roots: cfg.roots, params: cfg.params || {}, strict: cfg.strict, icon: cfg.icon, color: cfg.color, ...(cfg.spec ? { spec: cfg.spec } : {}),
+  return { observed_summary: EV?.obsSummary(id) ?? null, id, adapter: cfg.adapter, display_name: cfg.display_name, description: cfg.description || '', roots: cfg.roots, params: cfg.params || {}, strict: cfg.strict, icon: cfg.icon, color: cfg.color, ...(cfg.spec ? { spec: cfg.spec } : {}),
     manage: cfg.manage || {}, manage_effective: { ...DEFAULT_MANAGE, ...(cfg.manage || {}) }, adapter_installed: true, caps: capsOf(id), ...(committed ? clientStatus(id) : { status: 'never_applied', drift: { edited_outside: [], pending_changes: 0 } }), adopted_at: adoptedAt[id] ?? null, last_applied_at: appliedAt[id] ?? null, committed };
 }
 const notCommitted = (r, id) => (!base.clients[id] ? r.problem(409, 'Conflict', 'client is not in committed content yet; commit it first', 'client_not_committed') : null);
@@ -345,7 +348,7 @@ route('POST', '/clients/:id/verify', (r) => {
   const checks = [{ name: 'files present', ok: ks.every((k) => live[id][k] != null), detail: `${ks.length} delivered file(s) checked` }, { name: 'hashes match lock', ok: ks.every((k) => live[id][k] === ap[k]), detail: ks.filter((k) => live[id][k] !== ap[k]).slice(0, 3).join(', ') || 'all match' }, { name: 'client lists the skills', ok: true, detail: `${id} skills list reports ${ks.filter((k) => k.includes('SKILL.md')).length} skill(s)` }];
   r.json(200, { client: id, ok: checks.every((c) => c.ok), checks });
 });
-route('GET', '/clients/:id/drift', (r) => { const id = r.p.id; if (!content.clients[id]) return nf(r, `no such client: ${id}`); const nc = notCommitted(r, id); if (nc) return nc; r.json(200, driftOf(id)); });
+route('GET', '/clients/:id/drift', (r) => { const id = r.p.id; if (!content.clients[id]) return nf(r, `no such client: ${id}`); const nc = notCommitted(r, id); if (nc) return nc; r.json(200, { ...driftOf(id), observed: EV?.obsSummary(id) ?? null }); });
 route('GET', '/clients/:id/audit', (r) => {
   const id = r.p.id; if (!content.clients[id]) return nf(r, `no such client: ${id}`); const nc = notCommitted(r, id); if (nc) return nc;
   const findings = [{ code: 'permissions_readable', severity: 'info', message: 'The live permissions were read and match the floor for protected paths.', item: null, concern: 'permissions', rule: null }];
@@ -593,7 +596,7 @@ route('GET', '/settings', (r) => r.json(200, { editable: limits, info: { content
 route('PUT', '/settings', (r) => {
   const b = r.body || {}; const unknown = Object.keys(b).filter((k) => !(k in limits)); if (unknown.length) return r.problem(422, 'Unprocessable', `unknown or read-only settings: ${JSON.stringify(unknown)}`, 'validation_error');
   const RANGE = { plan_retention: [1, 200], inbox_max_per_client: [1, 5000], inbox_rate_per_min: [1, 600] };
-  for (const [k, v] of Object.entries(b)) { const [lo, hi] = RANGE[k]; if (!Number.isInteger(v) || v < lo || v > hi) return r.problem(422, 'Unprocessable', `${k} must be an integer in ${lo}..${hi}`, 'validation_error'); }
+  for (const [k, v] of Object.entries(b)) { if (ENUM_LIMITS[k]) { if (!ENUM_LIMITS[k].includes(v)) return r.problem(422, 'Unprocessable', `${k} must be one of ${ENUM_LIMITS[k].join(', ')}`, 'validation_error'); continue; } const [lo, hi] = RANGE[k]; if (!Number.isInteger(v) || v < lo || v > hi) return r.problem(422, 'Unprocessable', `${k} must be an integer in ${lo}..${hi}`, 'validation_error'); }
   Object.assign(limits, b); r.json(200, { editable: limits, info: {} });
 });
 const DOCTOR = [
@@ -671,6 +674,8 @@ route('POST', `${kv}/indexes`, (r) => {
   if (errs.length) return invalid(r.res, errs); const ix = { id: uid('ix_'), name: b.name, kind: b.kind, path: b.path, project: b.project || '' }; K.indexes.push(ix); r.json(201, ix);
 });
 
+EV = installEval({ route, content: () => content, clientIds, paginate, HttpErr, limits, now: () => Date.now() / 1000 });
+
 // ---------------- HTTP plumbing ----------------
 // Static paths win over parameterised ones (/memory/inbox before /memory/:name).
 let _sorted = null;
@@ -717,6 +722,9 @@ function serveShot(res, url) {
       libselect: `${W} await until(()=>document.querySelector('.lib-card')); await wait(400); const cs=[...document.querySelectorAll('.lib-card .sel-box')].slice(0,3); for(const c of cs) c.click();`,
       plandiff: `${W} const b=await until(()=>[...document.querySelectorAll('button')].find(x=>x.dataset.action==='make-plan')); b.click(); await until(()=>document.querySelector('.plan-file')); await wait(300); const t=document.querySelector('.plan-file summary'); t && t.click();`,
       importnext: `${W} await until(()=>document.querySelector('.wizard .btn.primary')); await wait(300); [...document.querySelectorAll('.wizard .btn.primary')].pop().click(); await until(()=>document.querySelector('.imp-row')); await wait(400);`,
+      evdrawer: `${W} await until(()=>document.querySelector('.ev-name .link-btn')); await wait(300); const n=new URLSearchParams(location.search).get('name')||'curl-pipe-bash-installer'; [...document.querySelectorAll('.ev-name .link-btn')].find(x=>x.textContent===n).click(); await until(()=>document.querySelector('dialog.drawer .ev-detail')); await wait(300); const sr=document.querySelector('dialog.drawer .btn[class~=sm]'); if(new URLSearchParams(location.search).get('report')) { [...document.querySelectorAll('dialog.drawer button')].find(x=>x.textContent==='Show report').click(); await until(()=>document.querySelector('dialog.drawer .md-preview')); }`,
+      evimport: `${W} await until(()=>document.querySelector('.ev-name .link-btn')); await wait(300); const want=['curl-pipe-bash-installer','env-dump-diagnostics','weekly-report-drafter','plan']; for(const r of document.querySelectorAll('tbody tr')){ const nm=r.querySelector('.ev-name .link-btn')?.textContent; if(want.includes(nm)) r.querySelector('.sel-box').click(); await wait(30);} await wait(200); [...document.querySelectorAll('.ev-actions-bar button')].find(x=>/Import/.test(x.textContent)).click(); await until(()=>document.querySelector('dialog.modal .ev-imp-table')); if(new URLSearchParams(location.search).get('submit')){ const ta=document.querySelector('#imp-reason'); ta.value='Reviewed by hand: the download is pinned to a checksum we verify.'; ta.dispatchEvent(new Event('input')); document.querySelector('#imp-conflict').value='rename'; document.querySelector('dialog.modal form button[type=submit]').click(); await until(()=>document.querySelector('.ev-imp-results')); }`,
+      evqueue: `${W} await until(()=>document.querySelector('.ev-actions-bar button')); await wait(300); [...document.querySelectorAll('.ev-actions-bar button')].find(x=>/not yet evaluated/.test(x.textContent)).click(); await until(()=>document.querySelector('dialog.modal .btn.primary')); [...document.querySelectorAll('dialog.modal .btn.primary')].pop().click(); await until(()=>document.querySelector('.ev-queue:not([hidden])'));`,
       wizard: `${W} const b=await until(()=>[...document.querySelectorAll('button')].find(x=>/Add a client/.test(x.textContent))); b.click(); await wait(500); const g=await until(()=>[...document.querySelectorAll('.pick-card input')].find(x=>x.value==='generic')); g.click(); await wait(300); const n=()=>[...document.querySelectorAll('dialog .btn.primary')].pop(); n().click(); await wait(500); const nm=document.querySelector('#cw-name'); nm.value='Cursor 2'; nm.dispatchEvent(new Event('input')); n().click(); await wait(1200);`,
     };
     res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(demos[name] || '');

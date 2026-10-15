@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import threading
+from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -14,7 +15,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from agent_hub.adapters import AdapterRegistry, load_registry
-from agent_hub.adapters.base import ClientAdapter, Diag, RenderContext
+from agent_hub.adapters.base import OBSERVED_ORIGINS, ClientAdapter, Diag, RenderContext
 from agent_hub.config import APP_ROOT, Settings
 from agent_hub.domain import yamlsafe
 from agent_hub.domain.errors import BadRequest, Conflict, NotFound, Unavailable, Unprocessable
@@ -30,27 +31,29 @@ from agent_hub.services.auth import AuthService
 from agent_hub.services.common import atomic_write, harden_tree, new_id, now, redact, sha256
 from agent_hub.services.content import MAX_SKILL_FILES, Catalog, ContentStore, Item
 from agent_hub.services.floor import Floor, load_floor
-from agent_hub.services.fs import LiveFiles, RealFS, RealRunner, discovery_fs
+from agent_hub.services.fs import LiveFiles, RealFS, RealRunner, StreamingRunner, discovery_fs
 from agent_hub.services.gitrepo import EMPTY_TREE, GitRepo
-from agent_hub.services.importer import Importer
+from agent_hub.services.importer import Importer, ImportGate
 from agent_hub.services.inbox import Inbox
 from agent_hub.services.knowledge import KnowledgeProxy
 from agent_hub.services.lock import LockStore
+from agent_hub.services.observe import HubView, ObserveService
 from agent_hub.services.organize import Organizer
 from agent_hub.services.planner import Planner
 from agent_hub.services.resolver import Resolver, client_caps, client_config, manage_flags, to_mcp
 from agent_hub.services.rollback import Rollbacker
-from agent_hub.services.skilleval import EvalRunner, SkillEvalService
+from agent_hub.services.skilleval import EvalRunner, SkillEvalService, security_severity
 from agent_hub.services.store import Store, page_list
 from agent_hub.services.targets import TargetGuard
 
 SNAPSHOTS_KEEP = 5
+SELECT_CAP = 2000                 # subjects one `select` request may queue
 _NO_DRIFT: dict[str, Any] = {"edited_outside": [], "pending_changes": 0}
 
 
 class Hub:
     def __init__(self, cfg: Settings, registry: AdapterRegistry | None = None, runner: RealRunner | None = None,
-                 knowledge_transport: Any = None, eval_runner: EvalRunner | None = None) -> None:
+                 knowledge_transport: Any = None, eval_runner: EvalRunner | None = None, observe_runner: Any = None) -> None:
         self.cfg = cfg
         self.registry = registry if registry is not None else load_registry()
         policy = load_floor(cfg.policy_file)
@@ -78,6 +81,8 @@ class Hub:
         self.resolver = Resolver(self.floor, self.registry, self.guard, self.attestor)
         self.planner = Planner(self.resolver, self.registry, self.locks, cfg.max_live_file_bytes)
         self.runner = runner or RealRunner()
+        # F4: observing a container prints a big JSON document, so `observe` gets its own runner with a larger stdout cap
+        self.observe_runner = observe_runner or StreamingRunner(max_timeout=120, max_stdout=48 * 1024 * 1024)
         self.applies = ApplyLog(cfg.data_dir / "applies")
         self.applier = Applier(self.planner, self.locks, cfg.data_dir / "backups", self.runner, self.applies)
         self.rollbacker = Rollbacker(self.applier, self.applies, self.locks)
@@ -90,7 +95,10 @@ class Hub:
         # Advisory skill evaluation (NVIDIA SkillEvaluator): reads a COPY of a working-tree skill, never plan/apply/floor input.
         self.skilleval = SkillEvalService(cfg.data_dir / "skilleval", cfg.content_dir, runner=eval_runner, guard=self.mutating,
                                           skill_names=lambda: self.work.names("skill"), on_event=self.audit_svc.event,
-                                          max_files=MAX_SKILL_FILES, max_bytes=cfg.max_skill_bytes)
+                                          max_files=MAX_SKILL_FILES, max_bytes=cfg.max_skill_bytes,
+                                          observed_root=cfg.data_dir / "observed",
+                                          gate_min_tiers=lambda: self._setting_str("eval_gate_min_tiers"))
+        self.observe_svc = ObserveService(cfg.data_dir / "observed", self._hub_view, eval_root=cfg.data_dir / "skilleval")
 
     # -- lifecycle --------------------------------------------------------------------------------
     def init_content(self) -> dict[str, Any]:
@@ -117,12 +125,39 @@ class Hub:
             yield
 
     def import_items(self, client: str, selection: list[tuple[str, str]] | None, on_conflict: str | None,
-                     enable: bool = True, overrides: dict[tuple[str, str], str] | None = None) -> dict[str, Any]:
+                     enable: bool = True, overrides: dict[tuple[str, str], str] | None = None,
+                     override_reason: str | None = None, actor: str = "hub") -> dict[str, Any]:
         """Import into the working tree, then record what the client has RIGHT NOW as the last-applied state, so the first
-        plan is a normal change/unchanged (with a diff) instead of a wall of conflicts."""
+        plan is a normal change/unchanged (with a diff) instead of a wall of conflicts. Skills pass the evaluation gate (F8)."""
+        gate = self._import_gate(override_reason, actor, client)
         with self.mutating():
-            out = self.importer.do_import(client, selection, on_conflict, enable, overrides)
+            out = self.importer.do_import(client, selection, on_conflict, enable, overrides, gate)
             out["adopted_live"] = self._adopt_live(client)
+            out["gate_mode"] = gate.mode
+            return out
+
+    def _import_gate(self, override_reason: str | None, actor: str, client: str, setting: str = "eval_gate") -> ImportGate:
+        reason = override_reason.strip() if isinstance(override_reason, str) else None
+        if override_reason is not None and not (10 <= len(reason or "") <= 500):
+            raise Unprocessable("override_reason must be 10 to 500 characters", code="bad_override_reason")
+
+        def audit(name: str, info: dict[str, Any]) -> None:
+            self.audit_svc.event(actor, "skill.import.override", {
+                "client": client, "skill": name, "key": info.get("key"), "content_hash": str(info.get("content_hash") or "")[:12],
+                "run_id": info.get("run_id"), "gate_status": info.get("gate_status"), "overrides": info.get("overrides"),
+                "outcome": info.get("outcome"), "reasons": [str(x)[:200] for x in info.get("reasons", [])][:5],
+                "reason": redact(info.get("override_reason"))})
+        return ImportGate(self._setting_str(setting), self.skilleval.gate, reason or None, audit)
+
+    def import_observed(self, client: str, items: list[dict[str, Any]], on_conflict: str, enable: bool,
+                        override_reason: str | None, actor: str = "hub") -> dict[str, Any]:
+        """F8: create content skills from the client's stored observation (working tree only; enable defaults to false)."""
+        gate = self._import_gate(override_reason, actor, client, "eval_gate_observed")
+        with self.mutating():
+            out = self.importer.import_observed(client, items, on_conflict, enable, gate, self.observe_svc)
+            if out["enabled"]:
+                out["adopted_live"] = self._adopt_live(client)
+            out["gate_mode"] = gate.mode
             return out
 
     def _adopt_live(self, client: str) -> int:
@@ -210,6 +245,7 @@ class Hub:
             raise Unavailable("content repository is not initialised; run `hubctl init`", code="content_not_initialised")
 
     def close(self) -> None:
+        self.skilleval.shutdown()
         self.store.close()
 
     # -- approved snapshot -------------------------------------------------------------------------
@@ -363,6 +399,9 @@ class Hub:
         return a
 
     def put_client(self, cid: str, payload: dict[str, Any], create: bool) -> dict[str, Any]:
+        if cid == "hub" or ":" in cid:
+            raise Unprocessable("the client id `hub` is reserved (it names the hub's own skills in evaluation subjects), and an "
+                                "id cannot contain `:`", code="reserved_client_id")
         payload = self._spec_body(payload)
         with self.lock:
             exists = cid in self.work.names_of("clients")
@@ -390,7 +429,8 @@ class Hub:
         status = self.client_status(cid)
         return {**doc.model_dump(mode="json", exclude_none=True), "manage_effective": manage_flags(doc, adapter),
                 "adapter_installed": adapter is not None, "caps": client_caps(adapter, doc).model_dump() if adapter else None,
-                "status": status["status"], "drift": status["drift"], "committed": status["committed"], **self._lock_info(cid)}
+                "status": status["status"], "drift": status["drift"], "committed": status["committed"],
+                "observed_summary": self.observe_svc.summary(cid), **self._lock_info(cid)}
 
     def _lock_info(self, cid: str) -> dict[str, Any]:
         lk = self.locks.load(cid)
@@ -419,6 +459,7 @@ class Hub:
     def delete_client(self, cid: str) -> None:
         with self.lock:
             self.work.delete_client(cid)
+        self.observe_svc.forget(cid)
 
     def _approved_client(self, cid: str) -> tuple[str, Catalog]:
         tree, store = self.approved()
@@ -646,7 +687,7 @@ class Hub:
 
     def drift(self, cid: str) -> dict[str, Any]:
         _, cat = self._approved_client(cid)
-        return self.planner.drift(self.planner.plan_client(cat, cid))
+        return {**self.planner.drift(self.planner.plan_client(cat, cid)), "observed": self.observe_svc.summary(cid)}
 
     def verify(self, cid: str) -> dict[str, Any]:
         _, cat = self._approved_client(cid)
@@ -780,10 +821,14 @@ class Hub:
 
     # -- settings ---------------------------------------------------------------------------------------
     EDITABLE = {"plan_retention": (1, 200), "inbox_max_per_client": (1, 5000), "inbox_rate_per_min": (1, 600)}
+    ENUMS: dict[str, tuple[str, ...]] = {"eval_gate": ("off", "advisory", "require"),
+                                         "eval_gate_observed": ("off", "advisory", "require"),
+                                         "eval_gate_min_tiers": ("static", "tier1", "tier1+2")}
 
     def settings(self) -> dict[str, Any]:
-        eff = {k: self._setting(k) for k in self.EDITABLE}
-        return {"editable": eff,
+        eff: dict[str, Any] = {k: self._setting(k) for k in self.EDITABLE}
+        eff.update({k: self._setting_str(k) for k in self.ENUMS})
+        return {"editable": eff, "enums": {k: list(v) for k, v in self.ENUMS.items()},
                 "info": {"content_dir": str(self.cfg.content_dir), "data_dir": str(self.cfg.data_dir),
                          "policy_file": str(self.cfg.policy_file), "host": self.cfg.host, "port": self.cfg.port,
                          "knowledge": self.knowledge.status(), "adapters": self.registry.ids(),
@@ -793,11 +838,33 @@ class Hub:
         row = self.store.one("SELECT value FROM settings WHERE key=?", (key,))
         return int(json.loads(row["value"])) if row else int(getattr(self.cfg, key))
 
+    def _setting_str(self, key: str) -> str:
+        """An enum setting: the stored value when it is still one of the allowed values, else the configured default."""
+        row = self.store.one("SELECT value FROM settings WHERE key=?", (key,))
+        if row:
+            with contextlib.suppress(ValueError):
+                v = json.loads(row["value"])
+                if isinstance(v, str) and v in self.ENUMS[key]:
+                    return v
+        return str(getattr(self.cfg, key))
+
     def update_settings(self, patch: dict[str, Any]) -> dict[str, Any]:
-        unknown = set(patch) - set(self.EDITABLE)
+        unknown = set(patch) - set(self.EDITABLE) - set(self.ENUMS)
         if unknown:
             raise Unprocessable(f"unknown or read-only settings: {sorted(unknown)}")
+        for k, v in patch.items():           # validate everything first: a bad value changes nothing
+            if k in self.ENUMS and v not in self.ENUMS[k]:
+                raise Unprocessable(f"{k} must be one of {', '.join(self.ENUMS[k])}")
+            if k in self.EDITABLE:
+                lo, hi = self.EDITABLE[k]
+                if not isinstance(v, int) or isinstance(v, bool) or not lo <= v <= hi:
+                    raise Unprocessable(f"{k} must be an integer in {lo}..{hi}")
         for k, v in patch.items():
+            if k in self.ENUMS:
+                self.store.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                                   (k, json.dumps(v)))
+                setattr(self.cfg, k, v)
+                continue
             lo, hi = self.EDITABLE[k]
             if not isinstance(v, int) or isinstance(v, bool) or not lo <= v <= hi:
                 raise Unprocessable(f"{k} must be an integer in {lo}..{hi}")
@@ -809,6 +876,194 @@ class Hub:
             if k == "inbox_rate_per_min":
                 self.inbox.rate = v
         return self.settings()
+
+    # -- observed inventory (F3/F9) --------------------------------------------------------------------------
+    def _hub_view(self, client: str) -> HubView:
+        """What the working tree has, for the comparison with a client's observed skills."""
+        cat = self.work.catalog()
+        emap = self._enabled_map(cat)
+        view = HubView()
+        for item in cat.of_kind("skill"):
+            h = self.skilleval.current_hash(f"hub:{item.name}")
+            view.hash_of[item.name] = h
+            if h:
+                view.by_hash.setdefault(h, []).append(item.name)
+            if client in emap.get(("skill", item.name), []):
+                view.enabled.add(item.name)
+        return view
+
+    def observe(self, cid: str, actor: str = "hub") -> dict[str, Any]:
+        """Read what the client REALLY has (adapter.observe, read-only) and replace the stored observation."""
+        if cid not in self.work.names_of("clients"):
+            raise NotFound(f"no such client: {cid}")
+        doc = self.work.get_client(cid)
+        adapter = self.registry.get(doc.adapter)
+        if adapter is None:
+            raise Unavailable(f"adapter {doc.adapter!r} is not installed", code="adapter_missing")
+        try:
+            cfg = client_config(doc)
+        except PathError as exc:
+            raise BadRequest(f"client roots invalid: {exc}") from exc
+        fs = discovery_fs(cfg.roots, cfg.params, self.cfg.discover_extra_roots)
+        try:
+            obs = adapter.observe(cfg, fs, self.observe_runner)
+        except Exception as exc:  # noqa: BLE001
+            raise Unavailable(f"adapter observe failed ({type(exc).__name__})", code="observe_failed") from exc
+        try:
+            self.observe_svc.store(cid, obs)
+        except (OSError, ValueError, UnicodeError) as exc:
+            raise Unavailable(f"could not store the observation ({type(exc).__name__}); the previous one is unchanged",
+                              code="observe_store_failed") from exc
+        self.skilleval.prune_observed(cid, {str(s["key"]) for s in (self.observe_svc.index(cid) or {}).get("skills", [])})
+        doc2 = self.observe_svc.annotated(cid) or {"items": [], "notes": []}
+        counts = self.observe_svc.count(doc2["items"])
+        self.audit_svc.event(actor, "client.observe", {"client": cid, "total": len(doc2["items"]),
+                                                       "complete": doc2.get("complete")})
+        return {"client": cid, "observed_at": doc2.get("observed_at"), "complete": doc2.get("complete"),
+                "total": len(doc2["items"]), "by_origin": counts["by_origin"], "by_hub_status": counts["by_hub_status"],
+                "notes": doc2.get("notes", []), "source": doc2.get("source", "")}
+
+    def _evaluation_of(self, subject: str, content_hash: str) -> dict[str, Any] | None:
+        recs = self.skilleval.records(subject, 1)
+        latest = recs[0] if recs else None
+        g = self.skilleval.gate(content_hash)
+        if latest is None and g["status"] == "missing":
+            return None
+        return {"state": self.skilleval._freshness(latest, content_hash),
+                "verdict": latest.get("verdict") if latest else g.get("verdict"), "gate": g["status"],
+                "run_id": latest.get("run_id") if latest else g.get("run_id")}
+
+    def observed_view(self, cid: str, origin: str | None = None, hub_status: str | None = None, q: str | None = None,
+                      limit: int = 100, cursor: str | None = None) -> dict[str, Any]:
+        if cid not in self.work.names_of("clients"):
+            raise NotFound(f"no such client: {cid}")
+        if origin is not None and origin not in OBSERVED_ORIGINS:
+            raise BadRequest(f"origin must be one of {', '.join(OBSERVED_ORIGINS)}")
+        if hub_status is not None and hub_status not in ("in_hub_same", "in_hub_differs", "not_in_hub"):
+            raise BadRequest("hub_status must be in_hub_same, in_hub_differs or not_in_hub")
+        doc = self.observe_svc.annotated(cid)
+        if doc is None:
+            raise NotFound("this client has not been observed yet; POST /clients/{id}/observe first", code="not_observed")
+        items: list[dict[str, Any]] = doc["items"]
+        summary = {"total": len(items), **self.observe_svc.count(items)}
+        if origin:
+            items = [i for i in items if i["origin"] == origin]
+        if hub_status:
+            items = [i for i in items if i["hub_status"] == hub_status]
+        if q:
+            ql = q.lower()
+            items = [i for i in items if ql in str(i["name"]).lower() or ql in str(i["path"]).lower()
+                     or ql in str(i["description"]).lower()]
+        items = sorted(items, key=lambda i: (str(i["path"]), str(i["key"])))
+        page = page_list(items, limit, cursor)
+        page["items"] = [{**i, "evaluation": self._evaluation_of(f"{cid}:{i['key']}", str(i["content_hash"]))}
+                         for i in page["items"]]
+        return {"client": cid, "observed_at": doc.get("observed_at"), "source": doc.get("source", ""),
+                "complete": doc.get("complete"), "notes": doc.get("notes", []), "summary": summary, **page}
+
+    # -- evaluations as a main view (F9) -----------------------------------------------------------------------
+    _HEAVY = ("validators", "validators_llm", "security_findings", "static")
+
+    def _eval_sources(self, source: str) -> list[str]:
+        if source == "hub":
+            return ["hub"]
+        observed = [c for c in self.work.names_of("clients") if self.observe_svc.index(c) is not None]
+        if source == "all":
+            return ["hub", *observed]
+        if not valid_id(source):
+            raise BadRequest("source must be all, hub or a client id")
+        return [source] if source in observed else []
+
+    def eval_rows(self, source: str = "hub") -> list[dict[str, Any]]:
+        svc = self.skilleval
+        run = svc.running()
+        queued = svc.queued_subjects()
+        rows: list[dict[str, Any]] = []
+
+        def row(subject: str, src: str, name: str, key: str, path: str, origin: str, h: str | None,
+                extra: dict[str, Any]) -> dict[str, Any]:
+            recs = svc.records(subject, 1)
+            latest = recs[0] if recs else None
+            g = svc.gate(h) if h else None
+            return {"subject": subject, "source": src, "skill": name, "name": name, "key": key, "path": path, "origin": origin,
+                    "content_hash": h, "state": svc._freshness(latest, h),
+                    "latest": ({**{k: v for k, v in latest.items() if k not in self._HEAVY},
+                                **({"security_severity": sev} if (sev := security_severity(latest)) is not None else {})}
+                               if latest else None),
+                    "queued": subject in queued, "running": bool(run and run.get("subject") == subject),
+                    "gate": g["status"] if g else None, **extra}
+
+        for src in self._eval_sources(source):
+            if src == "hub":
+                for name in sorted(self.work.names("skill")):
+                    rows.append(row(f"hub:{name}", "hub", name, name, name, "hub", svc.current_hash(f"hub:{name}"), {}))
+            else:
+                doc = self.observe_svc.annotated(src)
+                for i in (doc or {"items": []})["items"]:
+                    rows.append(row(f"{src}:{i['key']}", src, str(i["name"]), str(i["key"]), str(i["path"]), str(i["origin"]),
+                                    str(i["content_hash"]),
+                                    {"hub_status": i["hub_status"], "hub_name": i["hub_name"],
+                                     "enabled_for_client": i["enabled_for_client"], "description": i["description"]}))
+        return rows
+
+    def eval_list(self, source: str = "hub", state: str | None = None, verdict: str | None = None, origin: str | None = None,
+                  gate: str | None = None, q: str | None = None, limit: int = 100, cursor: str | None = None) -> dict[str, Any]:
+        """Rows for the Evaluations view. `summary` counts the rows of `source` BEFORE the other filters, so the chips stay
+        usable as facets; reading never starts a process."""
+        if state is not None and state not in ("none", "current", "stale"):
+            raise BadRequest("state must be none, current or stale")
+        if gate is not None and gate not in ("missing", "blocked", "warn", "ok"):
+            raise BadRequest("gate must be missing, blocked, warn or ok")
+        rows = self.eval_rows(source)
+        summary = {"total": len(rows),
+                   "by_state": dict(Counter(r["state"] for r in rows)),
+                   "by_verdict": dict(Counter((r["latest"] or {}).get("verdict") or "none" for r in rows)),
+                   "by_gate": dict(Counter(r["gate"] or "missing" for r in rows))}
+        if state:
+            rows = [r for r in rows if r["state"] == state]
+        if verdict:
+            rows = [r for r in rows if ((r["latest"] or {}).get("verdict") or "none") == verdict]
+        if origin:
+            rows = [r for r in rows if r["origin"] == origin]
+        if gate:
+            rows = [r for r in rows if (r["gate"] or "missing") == gate]
+        if q:
+            ql = q.lower()
+            rows = [r for r in rows if ql in r["name"].lower() or ql in r["path"].lower()]
+        return {**page_list(rows, limit, cursor), "summary": summary, "running": self.skilleval.running()}
+
+    def eval_select(self, source: str, select: str) -> list[str]:
+        """Subjects for `select`: none_or_stale (never evaluated, or changed since) | all."""
+        if select not in ("none_or_stale", "all"):
+            raise BadRequest("select must be none_or_stale or all")
+        return [r["subject"] for r in self.eval_rows(source)
+                if r["content_hash"] and (select == "all" or r["state"] in ("none", "stale"))]
+
+    def eval_run(self, subjects: list[str] | None, select: str | None, source: str, tiers: str, force: bool,
+                 actor: str) -> dict[str, Any]:
+        if (subjects is None) == (select is None):
+            raise Unprocessable("send exactly one of `subjects` or `select`", code="subjects_or_select")
+        chosen = subjects if subjects is not None else self.eval_select(source, select or "all")
+        if len(chosen) > 5000:
+            raise Unprocessable("at most 5000 subjects per request", code="too_many_subjects")
+        over: list[str] = []
+        if subjects is None and len(chosen) > SELECT_CAP:        # a selection is capped per request; ask again for the rest
+            chosen, over = chosen[:SELECT_CAP], chosen[SELECT_CAP:]
+        res = self.skilleval.enqueue(chosen, tiers, force, actor)
+        return {"queued": res["queued"], "skipped": [*res["skipped"], *({"subject": s, "reason": "request_cap"} for s in over)]}
+
+    def eval_detail(self, subject: str) -> dict[str, Any]:
+        out = self.skilleval.detail(subject)
+        src = out["source"]
+        if src == "hub":
+            out.update({"name": out["skill"], "path": out["skill"], "origin": "hub"})
+        else:
+            doc = self.observe_svc.annotated(src) or {"items": []}
+            ent = next((i for i in doc["items"] if i["key"] == out["skill"]), None)
+            if ent is not None:
+                out.update({k: ent[k] for k in ("name", "path", "origin", "description", "hub_status", "hub_name",
+                                                "enabled_for_client")})
+        return out
 
     # -- misc -----------------------------------------------------------------------------------------
     def validate_content(self) -> dict[str, Any]:

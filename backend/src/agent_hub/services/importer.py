@@ -5,25 +5,64 @@ from __future__ import annotations
 
 import hashlib
 import time
-from typing import Any
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
 from agent_hub.adapters import AdapterRegistry
 from agent_hub.adapters.base import CAPABILITIES, DiscoveredContent
 from agent_hub.domain import yamlsafe
-from agent_hub.domain.errors import BadRequest, Conflict, NotFound, Unavailable
+from agent_hub.domain.errors import BadRequest, Conflict, NotFound, ProblemError, Unavailable
 from agent_hub.domain.ids import ENV_NAME_RE, HOST_RE, valid_id
 from agent_hub.domain.models import AgentMeta, InstructionMeta, McpDoc, RuleDoc, Sidecar
 from agent_hub.domain.pathsafe import PathError
+from agent_hub.services.common import scrub
 from agent_hub.services.content import ContentStore
 from agent_hub.services.floor import Floor
 from agent_hub.services.fs import discovery_fs
 from agent_hub.services.organize import Organizer
 from agent_hub.services.resolver import client_config
+from agent_hub.services.skilleval import content_hash
+
+if TYPE_CHECKING:
+    from agent_hub.services.observe import ObserveService
 
 IMPORT_KINDS = ("skill", "agent", "instruction", "mcp", "rule")
 CONFLICT_MODES = ("skip", "rename", "replace", "link")
+
+
+@dataclass
+class ImportGate:
+    """F8: what the evaluation gate says about a skill about to be written into the content tree.
+    mode off: no gate. advisory: every row carries the gate, nothing is refused. require: `missing` and `blocked` are refused
+    (`eval_required` / `eval_blocked`), a blocked skill passes only with an override reason (gate becomes `overridden`)."""
+    mode: str
+    check: Callable[[str], dict[str, Any]]                            # content hash -> SkillEvalService.gate()
+    override_reason: str | None = None
+    audit: Callable[[str, dict[str, Any]], None] | None = None        # called once a skill was written under an override
+
+    def decide(self, files: dict[str, bytes]) -> tuple[dict[str, Any] | None, str | None]:
+        if self.mode == "off":
+            return None, None
+        g = self.check(content_hash(files))
+        info: dict[str, Any] = {"gate": g["status"], "run_id": g.get("run_id"), "verdict": g.get("verdict"),
+                                "reasons": list(g.get("reasons") or [])}
+        if self.mode == "require":
+            if g["status"] == "missing":
+                return info, "eval_required"
+            if g["status"] == "blocked":
+                if self.override_reason:
+                    return {**info, "gate": "overridden", "override_reason": self.override_reason, "gate_status": "blocked"}, None
+                return info, "eval_blocked"
+        return info, None
+
+
+_REFUSED = {"eval_required": "no evaluation of this exact content exists; evaluate it first (eval_gate is `require`)",
+            "eval_blocked": "the evaluation did not clear this skill (security finding, or a security scan that did not finish); fix it "
+                            "or give an override reason",
+            "secret_detected": "the text contains secret-looking values; remove them or give an override reason"}
 
 
 def _slug(name: str) -> str:
@@ -139,7 +178,8 @@ class Importer:
 
     # -- import ---------------------------------------------------------------------------------------
     def do_import(self, client_id: str, selection: list[tuple[str, str]] | None, on_conflict: str | None,
-                  enable: bool = True, overrides: dict[tuple[str, str], str] | None = None) -> dict[str, Any]:
+                  enable: bool = True, overrides: dict[tuple[str, str], str] | None = None,
+                  gate: ImportGate | None = None) -> dict[str, Any]:
         """on_conflict: skip | rename | replace | link, globally and/or per item via `overrides`. Unspecified: an EQUAL existing
         item is linked (enabled for this client), a DIFFERING one is skipped with the differences reported."""
         overrides = overrides or {}
@@ -159,9 +199,9 @@ class Importer:
                 e["notes"] = [n for n in dc.notes if str(e["name"]) in n]
                 res: dict[str, Any] = {"kind": kind, "name": e["name"], "final_name": e["name"], "status": "error", "detail": ""}
                 try:
-                    self._import_one(client_id, kind, e, overrides.get((kind, str(e["name"])), on_conflict), res)
-                except (BadRequest, Conflict, NotFound) as exc:
-                    res["status"], res["detail"] = "error", exc.detail
+                    self._import_one(client_id, kind, e, overrides.get((kind, str(e["name"])), on_conflict), res, gate)
+                except ProblemError as exc:
+                    res["status"], res["code"], res["detail"] = "error", exc.code, exc.detail
                 except Exception as exc:  # noqa: BLE001 - one bad item must not abort the import
                     res["status"], res["detail"] = "error", f"{type(exc).__name__}"
                 results.append(res)
@@ -190,8 +230,57 @@ class Importer:
         if merged != doc.params:
             self.work.put_client(client_id, {**doc.model_dump(mode="json", exclude_none=True), "params": merged})
 
-    def _import_one(self, client: str, kind: str, e: dict[str, Any], on_conflict: str | None, res: dict[str, Any]) -> None:
+    def import_observed(self, client_id: str, items: list[dict[str, Any]], on_conflict: str, enable: bool,
+                        gate: ImportGate | None, observe: ObserveService) -> dict[str, Any]:
+        """F8: create content skills from a client's stored observation. Never enabled unless asked: enabling an observed skill
+        for the SAME client would deliver a second copy next to the original."""
+        if on_conflict not in CONFLICT_MODES:
+            raise BadRequest("on_conflict must be skip, rename, replace or link")
+        if client_id not in self.work.names_of("clients"):
+            raise NotFound(f"no such client: {client_id}")
+        if observe.index(client_id) is None:
+            raise NotFound("this client has not been observed yet", code="not_observed")
+        results: list[dict[str, Any]] = []
+        wanted: list[str] = []
+        for it in items:
+            key = str(it.get("key", ""))
+            row: dict[str, Any] = {"key": key, "final_name": "", "status": "error", "gate": None, "detail": ""}
+            try:
+                ent = observe.entry(client_id, key)
+                if ent is None:
+                    raise NotFound("not in the stored observation of this client")
+                name = str(it.get("name") or ent.get("name") or key)
+                row["final_name"] = name
+                e: dict[str, Any] = {"scan_secrets": True, "observed_key": key, "name": name, "description": ent.get("description", ""), "files": observe.files(client_id, key),
+                                     "observed": {"client": client_id, "path": ent.get("path"), "origin": ent.get("origin"),
+                                                  "content_hash": ent.get("content_hash"),
+                                                  "observed_at": (observe.index(client_id) or {}).get("observed_at")}}
+                inner: dict[str, Any] = {"final_name": name, "status": "error", "detail": ""}
+                self._import_one(client_id, "skill", e, on_conflict, inner, gate)
+                row.update({k: v for k, v in inner.items() if k not in ("kind", "name")})
+                if row["status"] == "identical":
+                    row["status"] = "skipped"
+                    row["detail"] = "identical to the existing skill " + str(row["final_name"])
+                if row["status"] in ("created", "replaced", "renamed"):
+                    wanted.append(str(row["final_name"]))
+            except ProblemError as exc:
+                row["status"], row["code"], row["detail"] = "error", exc.code, exc.detail
+            except Exception as exc:  # noqa: BLE001 - one bad item must not abort the import
+                row["status"], row["detail"] = "error", type(exc).__name__
+            results.append(row)
+        if enable and wanted:
+            self.org.enable_for_client(client_id, "skill", wanted)
+        return {"client": client_id, "results": results, "enabled": bool(enable and wanted)}
+
+    def _import_one(self, client: str, kind: str, e: dict[str, Any], on_conflict: str | None, res: dict[str, Any],
+                    gate: ImportGate | None = None) -> None:
         name = str(e["name"])
+        info, refusal = gate.decide(e["files"]) if (gate is not None and kind == "skill") else (None, None)
+        if info is not None:
+            res["gate"] = info["gate"]
+            e["_eval"] = {k: v for k, v in {"run_id": info.get("run_id"), "verdict": info.get("verdict"), "gate": info["gate"],
+                                            "override_reason": info.get("override_reason")}.items()
+                          if v is not None or k in ("run_id", "verdict")}
         final = name if valid_id(name) else _slug(name)
         if not final:
             raise BadRequest("name cannot be turned into a valid id")
@@ -238,8 +327,47 @@ class Importer:
                 e["payload"] = {k: v for k, v in e["payload"].items() if k in allowed}
                 res["warnings"] = [f"dropped unknown keys: {', '.join(dropped)}"]
         res["warnings"] = [*res.get("warnings", []), *[n for n in e.get("notes", [])]]
-        self._write(client, kind, final, e, replace=replaced)
-        res["status"] = "replaced" if replaced else ("renamed" if final != name else "created")
+        overrides: list[str] = []
+        if info is not None and info["gate"] == "overridden":
+            overrides.append("eval_blocked")
+        if e.get("scan_secrets") and kind == "skill":
+            hits = self._secret_files(e["files"])
+            if hits and gate is not None and gate.override_reason:
+                overrides.append("secret_detected")
+            elif hits and refusal is None:
+                refusal = "secret_detected"
+                res["secret_files"] = hits[:10]
+        if refusal is not None:
+            res["status"], res["code"], res["detail"] = "refused", refusal, _REFUSED[refusal]
+            if info and info.get("reasons") and refusal != "secret_detected":
+                res["detail"] += ": " + "; ".join(str(x) for x in info["reasons"][:3])
+            if refusal == "secret_detected":
+                res["detail"] += " (" + ", ".join(res["secret_files"]) + ")"
+            return
+        outcome = "written"
+        try:
+            self._write(client, kind, final, e, replace=replaced)
+        except BaseException as exc:
+            outcome = f"failed: {type(exc).__name__}"
+            raise
+        else:
+            res["status"] = "replaced" if replaced else ("renamed" if final != name else "created")
+        finally:                                    # the override was USED even if the write then failed: always on record
+            if overrides and gate is not None and gate.audit is not None:
+                gate.audit(final, {**(info or {}), "overrides": overrides, "outcome": outcome, "override_reason": gate.override_reason,
+                                   "content_hash": content_hash(e["files"]), "key": e.get("observed_key")})
+
+    @staticmethod
+    def _secret_files(files: dict[str, bytes]) -> list[str]:
+        """Text files in which the hub's secret scrubber would redact something."""
+        hits: list[str] = []
+        for rel, data in sorted(files.items()):
+            if b"\x00" in data[:4096]:
+                continue
+            text = data.decode("utf-8", "replace")
+            if scrub(text) != text:
+                hits.append(rel)
+        return hits
 
     @staticmethod
     def _prepare_skill(name: str, src: dict[str, bytes]) -> dict[str, bytes]:
@@ -260,10 +388,18 @@ class Importer:
             files = self._prepare_skill(name, e["files"])
             if "SKILL.md" not in files:
                 raise BadRequest("skill has no SKILL.md")
+            self.work.validate_skill_files(files)              # BEFORE anything is removed or written
+            ev = e.get("_eval")
+            if e.get("observed"):
+                prov: dict[str, Any] = {**e["observed"], "imported_at": int(time.time())}
+                side = Sidecar(source=f"observed:{client}", provenance={**prov, **({"evaluation": ev} if ev else {})})
+            else:
+                side = Sidecar(source=f"import:{client}", provenance={"client": client, "imported_at": int(time.time()),
+                                                                      **({"evaluation": ev} if ev else {})})
             if replace and name in self.work.names("skill"):
-                self.work.remove_skill_dir(name)
-            side = Sidecar(source=f"import:{client}", provenance={"client": client, "imported_at": int(time.time())})
-            self.work.write_skill_files(name, files, side)
+                self.work.swap_skill_files(name, files, side)
+            else:
+                self.work.write_skill_files(name, files, side)
             return
         payload = dict(e["payload"])
         key = "id" if kind in ("instruction", "rule") else "name"

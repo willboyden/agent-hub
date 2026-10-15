@@ -1,7 +1,7 @@
 """clients, import, effective/verify/drift/audit."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Body, Response
 from pydantic import BaseModel, ConfigDict
@@ -26,6 +26,21 @@ class ImportIn(BaseModel):
     items: list[ImportItem] | None = None       # None = everything discovered
     on_conflict: str | None = None      # skip | rename | replace | link; unset: link if equal, else skip
     enable: bool = True
+    override_reason: str | None = None  # F8: lets a skill the evaluation gate blocked through (10..500 characters, audited)
+
+
+class ObservedItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    key: str
+    name: str | None = None
+
+
+class ObservedImportIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    items: list[ObservedItem]
+    on_conflict: Literal["skip", "rename", "replace", "link"] = "skip"
+    enable: bool = False
+    override_reason: str | None = None
 
 
 @router.get("/clients")
@@ -67,11 +82,31 @@ def discover(cid: str, hub: H, _: Admin) -> dict[str, Any]:
     return hub.importer.discover(cid)
 
 
+@router.post("/clients/{cid}/observe")
+def observe(cid: str, hub: H, who: Admin) -> dict[str, Any]:
+    """Read what the client really has (read-only) and store it; see GET /clients/{id}/observed."""
+    return hub.observe(cid, who.name)
+
+
+@router.get("/clients/{cid}/observed")
+def observed(cid: str, hub: H, origin: str | None = None, hub_status: str | None = None, q: str | None = None,
+             limit: int = 100, cursor: str | None = None) -> dict[str, Any]:
+    return hub.observed_view(cid, origin, hub_status, q, limit, cursor)
+
+
+@router.post("/clients/{cid}/observed/import")
+def observed_import(cid: str, body: ObservedImportIn, hub: H, who: Admin) -> dict[str, Any]:
+    if not 1 <= len(body.items) <= 500:
+        raise BadRequest("send 1 to 500 items")
+    return hub.import_observed(cid, [i.model_dump() for i in body.items], body.on_conflict, body.enable, body.override_reason,
+                               who.name)
+
+
 @router.post("/import")
-def do_import(body: ImportIn, hub: H, _: Admin) -> dict[str, Any]:
+def do_import(body: ImportIn, hub: H, who: Admin) -> dict[str, Any]:
     sel = None if body.items is None else [(i.kind, i.name) for i in body.items]
     ov = {(i.kind, i.name): i.on_conflict for i in (body.items or []) if i.on_conflict}
-    return hub.import_items(body.client, sel, body.on_conflict, body.enable, ov)
+    return hub.import_items(body.client, sel, body.on_conflict, body.enable, ov, body.override_reason, who.name)
 
 
 @router.get("/clients/{cid}/rendered")

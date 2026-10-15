@@ -14,6 +14,7 @@ import './components/palette.js';
 export const ROUTES = [
   { path: '/', tag: 'ah-home', mod: 'home', nav: 'home', icon: 'home' },
   { path: '/library', tag: 'ah-library', mod: 'library', nav: 'library', icon: 'library' },
+  { path: '/evaluations', tag: 'ah-evaluations', mod: 'evaluations', nav: 'evaluations', icon: 'evaluations' },
   { path: '/collections', tag: 'ah-collections', mod: 'collections', nav: 'collections', icon: 'collections' },
   { path: '/collections/:id', tag: 'ah-collections', mod: 'collections', nav: 'collections', icon: 'collections', hidden: true },
   { path: '/matrix', tag: 'ah-matrix', mod: 'matrix', nav: 'matrix', icon: 'matrix' },

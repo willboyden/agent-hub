@@ -84,3 +84,10 @@ test('setTrustedHtml is only fed by the markdown renderer', () => {
     for (const m of src.matchAll(/setTrustedHtml\(([^;]*)\);/g)) assert.match(m[1], /renderMarkdown\(/, `${rel}: ${m[1]}`);
   }
 });
+
+test('settings enum options and gate labels all have text', () => {
+  for (const g of ['eval_gate', 'eval_gate_observed']) for (const v of ['off', 'advisory', 'require']) assert.ok(`set.${g}_${v}` in en, `set.${g}_${v}`);
+  for (const v of ['static', 'tier1', 'tier1_2']) assert.ok(`set.eval_gate_min_tiers_${v}` in en);
+  for (const g of ['ok', 'warn', 'blocked', 'missing', 'overridden']) assert.ok(`ev.gate_${g}` in en && `ev.gate_${g}_tip` in en, g);
+  for (const k of ['origin_client', 'origin_shipped', 'origin_agent', 'origin_lab_sync', 'origin_hub', 'origin_archived', 'verdict_passed', 'verdict_failed', 'verdict_incomplete', 'verdict_error', 'state_none', 'state_current', 'state_stale', 'mode_off', 'mode_advisory', 'mode_require', 'hub_in_hub_same', 'hub_in_hub_differs', 'hub_not_in_hub', 'sort_name', 'sort_gate', 'sort_verdict', 'sort_quality', 'sort_evaluated', 'pass_static', 'pass_llm']) assert.ok(`ev.${k}` in en, k);
+});

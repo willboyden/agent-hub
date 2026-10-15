@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     inbox_rate_per_min: int = 20
     inbox_max_per_client: int = 200
     plan_retention: int = 20
+    eval_gate: Literal["off", "advisory", "require"] = "advisory"          # F7/F10: HUB_EVAL_GATE
+    eval_gate_observed: Literal["off", "advisory", "require"] = "require"  # HUB_EVAL_GATE_OBSERVED: POST /clients/{id}/observed/import
+    eval_gate_min_tiers: Literal["static", "tier1", "tier1+2"] = "static"  # HUB_EVAL_GATE_MIN_TIERS (F14: the gate is static-based)
     enable_metrics: bool = True
 
     @model_validator(mode="after")

@@ -169,6 +169,34 @@ class DiscoveredContent(BaseModel):
                                                 # (e.g. {"instructions_mode": "own"} when the instructions came from a whole file)
 
 
+ObservedOrigin = Literal["client", "shipped", "agent", "lab_sync", "hub", "archived"]
+OBSERVED_ORIGINS: tuple[str, ...] = ("client", "shipped", "agent", "lab_sync", "hub", "archived")
+
+
+class ObservedSkill(BaseModel):
+    """One skill a client REALLY has, as read by `observe` (Addendum F). Untrusted data: never executed, never rendered as HTML.
+
+    origin: client   = found in the client's own skill sources (the default observe(): whatever discover() reads)
+            shipped  = installed by the client itself (for example a skill bundled with the agent's release)
+            agent    = written by the agent at run time (self-improving agents create and edit their own skills)
+            lab_sync = put there by some other sync process the operator runs (not the hub)
+            hub      = delivered by the hub
+            archived = present but retired by the client (for example moved to an archive folder)"""
+    path: str                                   # relative to the client's skills root, posix ("devops/foo" or "foo")
+    name: str                                   # SKILL.md frontmatter `name`, else the last path segment
+    description: str = ""
+    origin: ObservedOrigin = "client"
+    files: dict[str, bytes]                     # relpath (inside this skill dir) -> bytes; always contains "SKILL.md"
+
+
+class Observation(BaseModel):
+    """What `observe` returns: the client's real skill inventory, read-only."""
+    skills: list[ObservedSkill] = []
+    source: str = ""                            # where it was read, for humans ("files under ...", "container <name>")
+    notes: list[str] = []
+    complete: bool = True                       # False when a cap truncated the read or a source could not be reached
+
+
 class Expected(BaseModel):
     root: str
     path: str
@@ -222,3 +250,14 @@ class ClientAdapter(ABC):
     def verify(self, cfg: ClientConfig, expected: list[Expected], fs: FileSystem, run: CommandRunner) -> list[Check]:
         """Prove the client actually sees what was delivered (files present with the right hash, and where the client
         offers one, ask it: e.g. a `skills list`). Never assume a copy means it loaded."""
+
+    def observe(self, cfg: ClientConfig, fs: FileSystem, run: CommandRunner) -> Observation:
+        """Addendum F (additive, NOT abstract): every skill the client really has, wherever it came from, so the hub can show
+        what it does not manage and evaluate it before anyone imports it. Read-only, like discover(). The default reports what
+        discover() finds (origin `client`); an adapter whose client keeps skills somewhere discover() does not read (a container
+        volume, an agent-written folder) overrides this."""
+        dc = self.discover(cfg, fs)
+        return Observation(
+            skills=[ObservedSkill(path=s.name, name=s.name, description=s.description, origin="client", files=s.files)
+                    for s in dc.skills],
+            source="the client's skill sources (discover)", notes=list(dc.notes))
