@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, Response
 from agent_hub import __version__
 from agent_hub.api.deps import enforce_roles
 from agent_hub.api.errors import install_error_handlers, problem
-from agent_hub.api.routers import changes, clients, content, knowledge, organize, system
+from agent_hub.api.routers import changes, clients, content, knowledge, organize, skilleval, system
 from agent_hub.api.security import SecurityMiddleware
 from agent_hub.config import Settings, check_bind, load_settings
 from agent_hub.services.hub import Hub
@@ -42,6 +42,7 @@ def create_app(cfg: Settings | None = None, hub: Hub | None = None) -> FastAPI:
         try:
             yield
         finally:
+            h.skilleval.shutdown()                     # kill a running SkillEvaluator process group with the hub
             await h.knowledge.aclose()
 
     # No interactive docs page (Swagger loads scripts from a CDN, which our CSP forbids). The OpenAPI JSON stays, behind auth.
@@ -51,7 +52,7 @@ def create_app(cfg: Settings | None = None, hub: Hub | None = None) -> FastAPI:
     install_error_handlers(app)
     # inbox first: /memory/inbox must not be captured by /memory/{name}
     for r in (content.inbox_router, system.router, clients.router, content.router, organize.router, changes.router,
-              knowledge.router):
+              knowledge.router, skilleval.router):
         app.include_router(r, prefix=API, dependencies=[Depends(enforce_roles)])
     if cfg.enable_metrics:
         app.include_router(system.root_router)

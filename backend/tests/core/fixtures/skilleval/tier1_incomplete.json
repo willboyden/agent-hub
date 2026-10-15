@@ -1,0 +1,191 @@
+{
+ "overall_passed": false,
+ "overall_status": "incomplete",
+ "incomplete_scans": [
+  "skillspector"
+ ],
+ "total_validators": 13,
+ "total_errors": 2,
+ "total_warnings": 23,
+ "severity_counts": {
+  "critical": 0,
+  "high": 1,
+  "medium": 6,
+  "low": 15
+ },
+ "skills": [
+  {
+   "name": "sample-skill",
+   "passed": false,
+   "issue_count": 22
+  }
+ ],
+ "generated_at": "2026-10-07T00:41:48.638061+00:00",
+ "quality_summary": [
+  {
+   "overall_score": 83.0,
+   "grade": "B",
+   "skill_type": "guide-only",
+   "skill_name": "sample-skill"
+  }
+ ],
+ "rubric_eval": {
+  "execution_status": "succeeded",
+  "overall_score": 83.6,
+  "overall_pass": true,
+  "judge_score": 85,
+  "skill_name": "sample-skill"
+ },
+ "results": [
+  {
+   "validator": "Schema & Repository Governance",
+   "passed": false,
+   "status": "failed",
+   "incomplete_scans": [],
+   "findings": [
+    {
+     "category": "SCHEMA",
+     "severity": "medium",
+     "check": null,
+     "message": "Missing recommended section: '## Instructions'"
+    },
+    {
+     "category": "SCHEMA",
+     "severity": "medium",
+     "check": null,
+     "message": "Missing recommended section: '## Examples'"
+    },
+    {
+     "category": "SCHEMA",
+     "severity": "high",
+     "check": null,
+     "message": "Author not specified in metadata"
+    }
+   ]
+  },
+  {
+   "validator": "Semantic Version Validation",
+   "passed": true,
+   "status": "passed",
+   "incomplete_scans": [],
+   "findings": []
+  },
+  {
+   "validator": "Security Scan",
+   "passed": false,
+   "status": "incomplete",
+   "incomplete_scans": [
+    "skillspector"
+   ],
+   "findings": []
+  },
+  {
+   "validator": "PII Scan",
+   "passed": true,
+   "status": "passed",
+   "incomplete_scans": [],
+   "findings": []
+  },
+  {
+   "validator": "License Compliance",
+   "passed": true,
+   "status": "passed",
+   "incomplete_scans": [],
+   "findings": []
+  },
+  {
+   "validator": "Code Risk Analysis",
+   "passed": true,
+   "status": "passed",
+   "incomplete_scans": [],
+   "findings": []
+  },
+  {
+   "validator": "Secrets Detection",
+   "passed": true,
+   "status": "passed",
+   "incomplete_scans": [],
+   "findings": []
+  },
+  {
+   "validator": "Code Integrity & Hygiene",
+   "passed": true,
+   "status": "passed",
+   "incomplete_scans": [],
+   "findings": []
+  },
+  {
+   "validator": "Dependency Vulnerability Audit",
+   "passed": true,
+   "status": "passed",
+   "incomplete_scans": [],
+   "findings": []
+  },
+  {
+   "validator": "Unicode Smuggling Detection",
+   "passed": true,
+   "status": "passed",
+   "incomplete_scans": [],
+   "findings": []
+  },
+  {
+   "validator": "QUALITY",
+   "passed": true,
+   "status": "passed",
+   "incomplete_scans": [],
+   "findings": [
+    {
+     "category": "QUALITY",
+     "severity": "low",
+     "check": null,
+     "message": "No examples provided"
+    },
+    {
+     "category": "QUALITY",
+     "severity": "medium",
+     "check": null,
+     "message": "SKILL_SPEC recommended field missing: 'version'"
+    },
+    {
+     "category": "QUALITY",
+     "severity": "medium",
+     "check": null,
+     "message": "SKILL_SPEC recommended field missing: 'metadata.author'"
+    }
+   ]
+  },
+  {
+   "validator": "SCRIPT_LINT",
+   "passed": true,
+   "status": "passed",
+   "incomplete_scans": [],
+   "findings": []
+  },
+  {
+   "validator": "RUBRIC_EVAL",
+   "passed": true,
+   "status": "passed",
+   "incomplete_scans": [],
+   "findings": [
+    {
+     "category": "RUBRIC_EVAL",
+     "severity": "low",
+     "check": null,
+     "message": "[9/10] Description is clear, specific, and explains WHEN to use the skill"
+    },
+    {
+     "category": "RUBRIC_EVAL",
+     "severity": "low",
+     "check": null,
+     "message": "[8/10] Instructions are easy to follow with clear action steps"
+    },
+    {
+     "category": "RUBRIC_EVAL",
+     "severity": "low",
+     "check": null,
+     "message": "[8/10] Examples are helpful, relevant, show proper usage, AND cover sufficient query variations for robust skill detection"
+    }
+   ]
+  }
+ ]
+}

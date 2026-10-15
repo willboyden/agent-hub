@@ -1,8 +1,15 @@
-"""Test doubles: a FakeAdapter exercising every merge mode, and a FakeRunner. No dependency on the real adapters."""
+"""Test doubles: a FakeAdapter exercising every merge mode, a FakeRunner, and a FakeEvalRunner standing in for SkillEvaluator.
+No dependency on the real adapters, and no real SkillEvaluator is ever started."""
 from __future__ import annotations
 
 import json
-from pathlib import PurePosixPath
+import os
+import stat
+import threading
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from pathlib import Path, PurePosixPath
+from typing import Any
 
 from agent_hub.adapters._util import slice_digest
 from agent_hub.adapters.base import (
@@ -26,6 +33,7 @@ from agent_hub.adapters.base import (
     SkillItem,
 )
 from agent_hub.services.common import sha256
+from agent_hub.services.skilleval import EvalResult
 
 BEGIN = "<!-- agent-hub:begin (managed block; edits inside are overwritten) -->"
 END = "<!-- agent-hub:end -->"
@@ -137,3 +145,95 @@ class FakeRunner:
     def run(self, argv: list[str], *, timeout: float) -> tuple[int, str, str]:
         self.calls.append(argv)
         return self.rc, "ok", ""
+
+
+FIXTURES = Path(__file__).parent / "fixtures" / "skilleval"
+
+
+def report(name: str, **changes: Any) -> dict[str, Any]:
+    """A real SkillEvaluator report (tests/core/fixtures/skilleval), with top-level fields replaced."""
+    d: dict[str, Any] = json.loads((FIXTURES / name).read_text())
+    d.update(changes)
+    return d
+
+
+@dataclass
+class Canned:
+    """What one fake SkillEvaluator tier does: its exit code, the JSON report it writes (None = none), its Markdown, its stderr."""
+    rc: int = 1
+    report: dict[str, Any] | None = None
+    markdown: str | None = "# SkillEvaluator report\n\nAll good.\n"
+    stderr: str = ""
+    timed_out: bool = False
+    extra: dict[str, str] = field(default_factory=dict)        # more files written into the output dir
+
+
+class NoEvalRunner:
+    """The default for the shared `hub` fixture: any call is a test bug (nothing may start SkillEvaluator unasked)."""
+
+    def __init__(self) -> None:
+        self.calls: list[list[str]] = []
+
+    def run(self, argv: list[str], *, cwd: Path, env: Mapping[str, str], timeout: float) -> EvalResult:
+        self.calls.append(list(argv))
+        return EvalResult(127, "", "no SkillEvaluator in tests")
+
+    def cancel(self) -> None:
+        pass
+
+
+class FakeEvalRunner:
+    """Pretends to be SkillEvaluator: records argv/cwd/env, snapshots the copy it was given (including any symlink), then writes
+    the canned reports into the `-o` directory. `block` holds a run open (concurrency tests)."""
+
+    def __init__(self, tier1: Canned | None = None, tier2: Canned | None = None, block: threading.Event | None = None,
+                 version_out: str = "skillevaluator, version 0.5.0") -> None:
+        self.script = {"tier1": tier1 or Canned(rc=1, report=report("tier1_incomplete.json")),
+                       "tier2": tier2 or Canned(rc=0, report=report("tier2_passed.json"), markdown=None)}
+        self.block = block
+        self.started = threading.Event()
+        self.version_out = version_out
+        self.calls: list[dict[str, Any]] = []
+        self.seen: list[dict[str, Any]] = []                   # per tier run: {files: {rel: bytes}, symlinks: [rel], modes}
+        self.cancelled = 0
+        self.write_into_cwd = False
+
+    def run(self, argv: list[str], *, cwd: Path, env: Mapping[str, str], timeout: float) -> EvalResult:
+        self.calls.append({"argv": list(argv), "cwd": Path(cwd), "env": dict(env), "timeout": timeout})
+        if argv[1:] == ["--version"]:
+            return EvalResult(0, self.version_out + "\n", "")
+        self.started.set()
+        if self.block is not None:
+            self.block.wait(10)
+        tier, copy = argv[1], Path(argv[2])
+        out = Path(argv[argv.index("-o") + 1])
+        files: dict[str, bytes] = {}
+        links: list[str] = []
+        modes: dict[str, int] = {}
+        for dirpath, dirnames, filenames in os.walk(copy):
+            for n in [*dirnames, *filenames]:
+                full = Path(dirpath) / n
+                rel = full.relative_to(copy).as_posix()
+                st = os.lstat(full)
+                if stat.S_ISLNK(st.st_mode):
+                    links.append(rel)
+                elif stat.S_ISREG(st.st_mode):
+                    files[rel] = full.read_bytes()
+                    modes[rel] = stat.S_IMODE(st.st_mode)
+        self.seen.append({"tier": tier, "files": files, "symlinks": links, "modes": modes})
+        if self.write_into_cwd:                                 # a misbehaving tool writing next to itself
+            (Path(cwd) / "stray.txt").write_text("written by the evaluator")
+            (copy / "SKILL.md").write_text("tampered by the evaluator")
+        c = self.script[tier]
+        if c.timed_out:
+            return EvalResult(-9, "", "", True)
+        if c.report is not None:
+            (out / f"skillevaluator-{tier}.json").write_text(json.dumps(c.report).replace("@COPY@", str(copy)))
+        if c.markdown is not None and tier == "tier1":
+            (out / "skillevaluator-tier1.md").write_text(c.markdown.replace("@COPY@", str(copy)))
+        for name, text in c.extra.items():
+            (out / name).write_text(text)
+        return EvalResult(c.rc, "", c.stderr.replace("@COPY@", str(copy)))
+
+    def cancel(self) -> None:
+        self.cancelled += 1

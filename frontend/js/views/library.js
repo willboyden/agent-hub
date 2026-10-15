@@ -6,6 +6,8 @@ import { local } from '../store.js';
 import { toast, toastError } from '../components/toast.js';
 import { btn, badge, kindBadge, emptyBox, seg, field, notifyChanged, timeText, chip } from '../components/ui.js';
 import { collectionChip, clientDots, issueBadge, sourceBadge, newItemDialog } from '../components/parts.js';
+import { evalBadge } from '../components/eval-badge.js';
+import { evalIndex } from '../skilleval.js';
 import { pickCollections } from '../components/picker.js';
 import { openModal } from '../components/dialog.js';
 import { filterItems, sortItems, facets, itemId, EMPTY_FILTERS, activeFilterCount } from '../filter.js';
@@ -38,10 +40,13 @@ class AhLibrary extends AhView {
   }
   async fetch() {
     this.failed = true;
-    const [items, clients, collections] = await Promise.all([loadAllItems(), this.api.clients(), this.api.collections()]);
+    // Evaluations are advisory extras: if they cannot be read (older backend, error) the library still loads, without badges.
+    const [items, clients, collections, evals] = await Promise.all([loadAllItems(), this.api.clients(), this.api.collections(), this.api.skillEvals().catch(() => null)]);
     this.items = items; this.clients = clients; this.collections = collections; this.clientsById = byId(clients); this.collById = byId(collections);
+    this.evals = evals ? evalIndex(evals.items) : null;
     this.failed = false;
   }
+  evalOf(it) { return it.kind === 'skill' && this.evals ? evalBadge(this.evals[it.name], it.name) : null; }
   buildToolbar() {
     const fc = facets(this.items);
     const q = h('input', { type: 'search', id: 'lib-q', placeholder: t('lib.search_ph'), value: this.f.q, 'aria-label': t('lib.search'), autocomplete: 'off',
@@ -102,7 +107,7 @@ class AhLibrary extends AhView {
     return h('div', { class: 'lib-grid' }, vis.map((it) => {
       const id = itemId(it), on = this.sel.ids.has(id);
       return h('article', { class: `lib-card${on ? ' selected' : ''}`, 'aria-label': `${t(`kind.${it.kind}`)} ${it.name}`, onClick: (e) => this.cardClick(e, it) },
-        h('div', { class: 'lib-card-top' }, this.selBox(it), kindBadge(it.kind), issueBadge(it.issues), sourceBadge(it.source)),
+        h('div', { class: 'lib-card-top' }, this.selBox(it), kindBadge(it.kind), issueBadge(it.issues), sourceBadge(it.source), this.evalOf(it)),
         h('h3', { class: 'lib-name' }, it.locked ? h('span', it.name) : h('a', { href: editHref(it.kind, it.name) }, it.name)),
         h('p', { class: 'lib-desc' }, it.description || t('lib.no_description')),
         h('div', { class: 'lib-tags' }, (it.tags || []).slice(0, 4).map((x) => chip(x, { kind: 'tag' })), (it.tags || []).length > 4 ? h('span', { class: 'muted small' }, `+${it.tags.length - 4}`) : null),
@@ -117,7 +122,7 @@ class AhLibrary extends AhView {
       return h('tr', { class: on ? 'selected' : '', onClick: (e) => this.cardClick(e, it) },
         h('td', { class: 'sel-td' }, this.selBox(it)),
         h('td', it.locked ? h('span', it.name) : h('a', { class: 'name-link', href: editHref(it.kind, it.name), title: it.description }, it.name)),
-        h('td', kindBadge(it.kind)),
+        h('td', h('div', { class: 'kind-cell' }, kindBadge(it.kind), this.evalOf(it))),
         h('td', { class: 'wrap-cell' }, h('div', { class: 'lib-colls' }, it.groups.map((g) => this.collById[g] && collectionChip(this.collById[g])))),
         h('td', { class: 'wrap-cell' }, (it.tags || []).join(', ')),
         h('td', clientDots(it.enabled_for, this.clientsById)),

@@ -1,0 +1,15 @@
+{
+ "overall_passed": true,
+ "overall_status": "passed",
+ "incomplete_scans": [],
+ "total_validators": 1,
+ "total_errors": 0,
+ "total_warnings": 1,
+ "severity_counts": {
+  "critical": 0,
+  "high": 0,
+  "medium": 0,
+  "low": 0
+ },
+ "generated_at": "2026-10-07T00:42:40.182542+00:00"
+}

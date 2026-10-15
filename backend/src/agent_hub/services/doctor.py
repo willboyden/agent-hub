@@ -65,6 +65,7 @@ class DoctorContext:
     permission_gaps: Callable[[str], list[str] | None] = lambda _cid: None
     floor_read: list[str] = field(default_factory=list)     # the floor's deny_path_read / deny_path_write globs
     floor_write: list[str] = field(default_factory=list)
+    skill_evaluator: dict[str, Any] | None = None           # SkillEvalService.doctor_info(); None = not checked
 
 
 def finding(fid: str, sev: str, title: str, detail: str = "", fix: str = "") -> dict[str, str]:
@@ -440,9 +441,30 @@ def check_advisory_gap(c: DoctorContext) -> list[dict[str, str]]:
     return out
 
 
+def check_skill_evaluator(c: DoctorContext) -> list[dict[str, str]]:
+    """Optional tool, so INFO either way: is NVIDIA SkillEvaluator available for the (advisory) skill evaluations?"""
+    from agent_hub.services.skilleval import INSTALL_HINT
+    s = c.skill_evaluator
+    if s is None:
+        return []
+    if not s.get("installed"):
+        return [finding("skill-evaluator", "info", "SkillEvaluator is not installed (optional)",
+                        "Skill evaluation is unavailable: neither skillevaluator-local nor skillevaluator is on the hub's PATH "
+                        "or in ~/.local/bin. Evaluations are advisory; nothing else depends on them.", INSTALL_HINT)]
+    launcher, version = str(s.get("launcher")), s.get("version")
+    names = [str(n) for n in s.get("env_names") or []]
+    if launcher == "skillevaluator-local":
+        how = "The wrapper supplies the model provider settings itself; the hub passes it no key."
+    else:
+        how = ("Plain skillevaluator: the LLM tiers need SKILL_EVAL_* in the hub's environment "
+               f"({len(names)} such variable(s) set; names only: {', '.join(names) or 'none'}). The static tier needs none.")
+    return [finding("skill-evaluator", "info", f"SkillEvaluator is installed ({launcher}{' ' + str(version) if version else ''})",
+                    how, "")]
+
+
 CHECKS: tuple[Callable[[DoctorContext], list[dict[str, str]]], ...] = (
     check_bootstrap_key, check_modes, check_content_dir, check_network_exposure, check_claude_code, check_params_missing, check_opencode, check_ptrace,
-    check_units, check_knowledge, check_advisory_gap)
+    check_units, check_knowledge, check_advisory_gap, check_skill_evaluator)
 
 
 def run_doctor(c: DoctorContext) -> dict[str, Any]:

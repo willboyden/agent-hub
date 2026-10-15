@@ -1,5 +1,6 @@
 """`hubctl`: the operator CLI. Same services as the API, no HTTP, no auth (it is a local process run by the operator).
-Exit codes: 0 ok, 1 error, 2 the plan has errors or floor violations."""
+Exit codes: 0 ok, 1 error, 2 the plan has errors or floor violations. `evaluate-skill(s)`: 0 passed, 2 failed or incomplete
+(a report exists; read it), 1 could not evaluate (no SkillEvaluator, unknown skill, another evaluation running, no report)."""
 from __future__ import annotations
 
 import argparse
@@ -17,8 +18,10 @@ from agent_hub.config import check_bind, load_settings
 from agent_hub.domain.errors import ProblemError, Unauthorized, Unavailable
 from agent_hub.services.auth import BOOTSTRAP_KEY_FILE
 from agent_hub.services.hub import Hub
+from agent_hub.services.skilleval import TIERS as EVAL_TIERS
 
 ACTOR = "hubctl"
+EVAL_EXIT = {"passed": 0, "failed": 2, "incomplete": 2, "error": 1}   # evaluate-skill(s): 1 = could not evaluate
 
 
 def _emit(args: argparse.Namespace, payload: Any, text: str) -> None:
@@ -41,6 +44,41 @@ def _plan_text(plan: dict[str, Any]) -> str:
         for r in cp["blocked_reasons"]:
             lines.append(f"    ! {r}")
     return "\n".join(lines)
+
+
+def _fmt(v: Any, spec: str = "") -> str:
+    return "-" if v is None else format(v, spec)
+
+
+def _eval_text(rec: dict[str, Any]) -> str:
+    t1 = rec.get("tier1") or {}
+    sev = t1.get("severity") or {}
+    lines = [f"{rec['skill']}: {rec['verdict']}  (tiers {rec['tiers']}, run {rec['run_id']}, {rec.get('duration_ms', 0) / 1000:.1f} s)"]
+    if t1:
+        lines.append(f"  quality {_fmt(t1.get('quality_score'), '.1f')} grade {_fmt(t1.get('grade'))}  judge {_fmt(t1.get('judge_score'), '.1f')}"
+                     f"  errors {_fmt(t1.get('errors'))} warnings {_fmt(t1.get('warnings'))}  critical {_fmt(sev.get('critical'))}"
+                     f" high {_fmt(sev.get('high'))} medium {_fmt(sev.get('medium'))}")
+        if t1.get("incomplete"):
+            lines.append(f"  incomplete scans: {', '.join(t1['incomplete'])}")
+    if rec.get("tier2"):
+        lines.append(f"  tier2: {rec['tier2']['status']}")
+    for f in rec.get("findings") or []:
+        lines.append(f"  [{f['severity'].upper()}] {f['validator']}: {f['message']}")
+    if rec.get("error"):
+        lines.append(f"  error: {rec['error']}")
+    lines.append("  advisory only: plan and apply are not affected")
+    return "\n".join(lines)
+
+
+def _eval_table(recs: list[dict[str, Any]]) -> str:
+    rows = [f"{'skill':<40} {'verdict':<10} {'quality':>7} {'grade':>5} {'judge':>6} {'errors':>6} {'high':>4}"]
+    for r in recs:
+        t1 = r.get("tier1") or {}
+        sev = t1.get("severity") or {}
+        rows.append(f"{str(r.get('skill'))[:40]:<40} {str(r.get('verdict')):<10} {_fmt(t1.get('quality_score'), '.1f'):>7} "
+                    f"{_fmt(t1.get('grade')):>5} {_fmt(t1.get('judge_score'), '.1f'):>6} {_fmt(t1.get('errors')):>6} "
+                    f"{_fmt(sev.get('high')):>4}" + (f"  {r['error'][:80]}" if r.get("verdict") == "error" and r.get("error") else ""))
+    return "\n".join(rows)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -82,6 +120,12 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("retire-bootstrap-key", help="verify the admin key, then wipe and remove the bootstrap key file (terminal only)")
     dr = sub.add_parser("doctor", help="read-only report of how exposed the hub's secrets and policy are on this host")
     dr.add_argument("--json", action="store_true", dest="doctor_json")
+    ev = sub.add_parser("evaluate-skill", help="evaluate one skill of the working tree with SkillEvaluator (advisory)")
+    ev.add_argument("name")
+    ev.add_argument("--tiers", default="static", choices=list(EVAL_TIERS),
+                    help="static: no model calls (default); tier1: adds the LLM judge; tier1+2: also Tier 2 deduplication")
+    evs = sub.add_parser("evaluate-skills", help="evaluate every skill of the working tree; prints a table (advisory)")
+    evs.add_argument("--tiers", default="static", choices=list(EVAL_TIERS))
     sub.add_parser("adapters", help="list installed adapters")
     srv = sub.add_parser("serve", help="run the API + UI")
     srv.add_argument("--port", type=int)
@@ -107,6 +151,8 @@ def run(argv: list[str] | None = None, hub: Hub | None = None) -> int:
         return _dispatch(args, hub)
     except ProblemError as exc:
         print(f"error: {exc.code}: {exc.detail}", file=sys.stderr)
+        if isinstance(exc.extra.get("fix"), str):
+            print(f"fix: {exc.extra['fix']}", file=sys.stderr)
         return 1
 
 
@@ -227,6 +273,22 @@ def _dispatch(args: argparse.Namespace, hub: Hub) -> int:
             item = hub.work.attest_mcp(args.name)
         _emit(args, {"name": item.name, "scan_status": "clean"}, f"attested {item.name} (uncommitted; commit it to approve). Scanner: {ref}")
         return 0
+    if cmd == "evaluate-skill":
+        rec = hub.skilleval.evaluate(args.name, args.tiers, ACTOR)
+        _emit(args, rec, _eval_text(rec))
+        return EVAL_EXIT.get(str(rec.get("verdict")), 1)
+    if cmd == "evaluate-skills":
+        names = hub.work.names("skill")
+        if not names:
+            _emit(args, {"items": []}, "no skills in the working tree")
+            return 0
+        if hub.skilleval.find_launcher() is None:            # one clear error instead of N identical rows
+            from agent_hub.services.skilleval import INSTALL_HINT
+            raise Unavailable(f"SkillEvaluator is not installed; install it with: {INSTALL_HINT}", code="evaluator_missing")
+        recs = hub.skilleval.evaluate_many(names, args.tiers, ACTOR)
+        _emit(args, {"items": recs}, _eval_table(recs))
+        verdicts = {str(r.get("verdict")) for r in recs}
+        return 1 if "error" in verdicts else 2 if verdicts & {"failed", "incomplete"} else 0
     if cmd == "adapters":
         views = hub.adapters_view()
         _emit(args, {"adapters": views, "load_errors": hub.registry.load_errors},

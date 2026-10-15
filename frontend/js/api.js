@@ -108,6 +108,12 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
     saveItem: (kind, name, body) => put(`/${kp(kind)}/${enc(name)}`, body),
     deleteItem: (kind, name) => del(`/${kp(kind)}/${enc(name)}`),
     duplicateSkill: (name, newName) => post(`/skills/${enc(name)}/duplicate`, { new_name: newName }),
+    // SkillEvaluator (advisory): reads never start a process; evaluate is an admin POST that answers 202 and runs in the background.
+    skillEvaluator: () => get('/skill-evaluator'),
+    skillEvals: () => get('/skill-evaluations'),
+    skillEval: (name) => get(`/skills/${enc(name)}/evaluations`),
+    skillEvalReport: (name, runId) => get(`/skills/${enc(name)}/evaluations/${enc(runId)}/report`),
+    evaluateSkill: (name, tiers) => post(`/skills/${enc(name)}/evaluate`, { tiers }),
     collections: () => listAll('/collections'),
     suggestions: async () => arr((await get('/collections/suggestions')).items).map(normalizeSuggestion),
     acceptSuggestions: (ids, overrides) => post('/collections/suggestions/accept', { ids, ...(overrides && Object.keys(overrides).length ? { overrides } : {}) }),

@@ -14,7 +14,7 @@ from agent_hub.config import APP_ROOT, Settings
 from agent_hub.main import create_app
 from agent_hub.services.hub import Hub
 
-from .fakes import FakeAdapter, FakeRunner
+from .fakes import FakeAdapter, FakeRunner, NoEvalRunner
 
 HOST = "127.0.0.1:8792"
 CSRF = {"X-Agent-Hub": "1"}
@@ -64,7 +64,8 @@ def runner() -> FakeRunner:
 
 @pytest.fixture
 def hub(cfg: Settings, registry: AdapterRegistry, runner: FakeRunner) -> Iterator[Hub]:
-    h = Hub(cfg, registry=registry, runner=runner)  # type: ignore[arg-type]
+    h = Hub(cfg, registry=registry, runner=runner, eval_runner=NoEvalRunner())  # type: ignore[arg-type]
+    h.skilleval.which = lambda _name, _path: None             # tests never find, let alone run, a real SkillEvaluator
     h.init_content()
     yield h
     h.close()

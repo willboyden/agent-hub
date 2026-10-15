@@ -28,7 +28,7 @@ from agent_hub.services.attest import Attestor
 from agent_hub.services.audit import AuditService, Telemetry
 from agent_hub.services.auth import AuthService
 from agent_hub.services.common import atomic_write, harden_tree, new_id, now, redact, sha256
-from agent_hub.services.content import Catalog, ContentStore, Item
+from agent_hub.services.content import MAX_SKILL_FILES, Catalog, ContentStore, Item
 from agent_hub.services.floor import Floor, load_floor
 from agent_hub.services.fs import LiveFiles, RealFS, RealRunner, discovery_fs
 from agent_hub.services.gitrepo import EMPTY_TREE, GitRepo
@@ -40,6 +40,7 @@ from agent_hub.services.organize import Organizer
 from agent_hub.services.planner import Planner
 from agent_hub.services.resolver import Resolver, client_caps, client_config, manage_flags, to_mcp
 from agent_hub.services.rollback import Rollbacker
+from agent_hub.services.skilleval import EvalRunner, SkillEvalService
 from agent_hub.services.store import Store, page_list
 from agent_hub.services.targets import TargetGuard
 
@@ -49,7 +50,7 @@ _NO_DRIFT: dict[str, Any] = {"edited_outside": [], "pending_changes": 0}
 
 class Hub:
     def __init__(self, cfg: Settings, registry: AdapterRegistry | None = None, runner: RealRunner | None = None,
-                 knowledge_transport: Any = None) -> None:
+                 knowledge_transport: Any = None, eval_runner: EvalRunner | None = None) -> None:
         self.cfg = cfg
         self.registry = registry if registry is not None else load_registry()
         policy = load_floor(cfg.policy_file)
@@ -86,6 +87,10 @@ class Hub:
         self.knowledge = KnowledgeProxy(cfg, knowledge_transport)
         self.lock = threading.RLock()
         self._plans: dict[str, Plan] = {}
+        # Advisory skill evaluation (NVIDIA SkillEvaluator): reads a COPY of a working-tree skill, never plan/apply/floor input.
+        self.skilleval = SkillEvalService(cfg.data_dir / "skilleval", cfg.content_dir, runner=eval_runner, guard=self.mutating,
+                                          skill_names=lambda: self.work.names("skill"), on_event=self.audit_svc.event,
+                                          max_files=MAX_SKILL_FILES, max_bytes=cfg.max_skill_bytes)
 
     # -- lifecycle --------------------------------------------------------------------------------
     def init_content(self) -> dict[str, Any]:
@@ -603,10 +608,14 @@ class Hub:
                 return [f"deny {(f.rule or '').replace(':', ' ', 1)}" for f in self.floor.missing_denies(dc.permissions)]
             except Exception:  # noqa: BLE001
                 return None
+        try:
+            evaluator: dict[str, Any] | None = self.skilleval.doctor_info()     # PATH lookup only, never a subprocess
+        except Exception:  # noqa: BLE001 - an optional tool must not break the report
+            evaluator = None
         ctx = DoctorContext(cfg=self.cfg, fs=fs or RealDoctorFS(), env=env if env is not None else dict(_os.environ),
                             home=home or Path.home(), app_root=APP_ROOT, uid=_os.getuid(), clients=clients, knowledge=knowledge,
                             permission_gaps=gaps, floor_read=list(self.floor.p.deny_path_read),
-                            floor_write=list(self.floor.p.deny_path_write))
+                            floor_write=list(self.floor.p.deny_path_write), skill_evaluator=evaluator)
         return run_doctor(ctx)
 
     def list_applies(self, cid: str) -> dict[str, Any]:
