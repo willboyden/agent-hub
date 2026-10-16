@@ -157,6 +157,31 @@ def test_verify_fails_when_a_hub_skill_was_switched_to_auto_approve(adapter, cfg
     assert not console.ok and "example-skill" in console.detail and "auto_approve" in console.detail
 
 
+def test_files_turnstone_will_refuse_are_warned_in_the_plan(adapter, cfg) -> None:
+    refs = {f"references/r{i:02}.md": b"r" for i in range(11)}
+    odd = skill("odd", extra={"SKILL.md": b"---\nname: odd\ndescription: O. Use when asked.\n---\nSee references/r10.md.\n",
+                              "agents/openai.yaml": b"a", "check.py": b"print()", "assets/logo.png": b"\x89PNG\xff",
+                              "assets/big.js": b"x" * (100 * 1024 + 1), **refs})
+    fine = skill("fine", extra={"scripts/run.sh": b"echo", "references/a.md": b"a", "assets/t.html": b"<p>"})
+    diags = [d for d in adapter.render(sample_ctx(cfg, skills=[odd, fine])).diagnostics if d.code == "resources_not_delivered"]
+    assert [d.item for d in diags] == ["odd"] and diags[0].severity == "warn"       # a warning: the plan is not blocked
+    msg = diags[0].message
+    assert msg.startswith("5 file(s)") and "agents/openai.yaml (outside scripts/, references/, assets/)" in msg
+    assert "check.py (outside" in msg and "assets/logo.png (not UTF-8 text)" in msg and "assets/big.js (over 102400" in msg
+    assert "references/r09.md (past 10 files per skill)" in msg and "r10.md (past" not in msg   # SKILL.md names r10
+
+
+def test_the_plan_and_the_delivery_script_apply_the_same_resource_rules() -> None:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("turnstone_deliver_rules", DELIVER_SCRIPT)
+    assert spec and spec.loader
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+    assert script.RESOURCE_DIRS == ts_mod.RESOURCE_DIRS
+    assert script.MAX_RESOURCE_CHARS == ts_mod.MAX_RESOURCE_CHARS
+    assert script.MAX_RESOURCES_PER_SKILL == ts_mod.MAX_RESOURCES_PER_SKILL
+
+
 def test_allowed_tools_in_frontmatter_is_warned_as_not_delivered(adapter, cfg) -> None:
     tooled = skill("tooled", extra={"SKILL.md": b"---\nname: tooled\ndescription: T. Use when asked.\nallowed-tools: Bash\n---\nBody.\n"})
     assert any(d.code == "allowed_tools_dropped" and d.item == "tooled" and d.severity == "warn"

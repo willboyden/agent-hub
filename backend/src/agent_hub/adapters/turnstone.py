@@ -52,7 +52,37 @@ DEFAULT_CONSOLE = "http://127.0.0.1:8796"
 DEFAULT_TOKEN_FILE = "~/.config/agent-hub/turnstone.token"   # noqa: S105 - the path of the token file, not a secret
 DELIVER_SCRIPT = Path(__file__).resolve().parents[4] / "deploy" / "turnstone-deliver.py"
 MAX_SKILL_MD = 32 * 1024                  # Turnstone refuses a larger SKILL.md / skill body
+# Turnstone 1.8.4's rules for a skill's other files; the delivery script skips the rest. Keep these and the script's
+# copies equal (a test compares them).
+RESOURCE_DIRS = ("scripts/", "references/", "assets/")
+MAX_RESOURCE_CHARS = 100 * 1024
+MAX_RESOURCES_PER_SKILL = 10
 TOKEN_DIR = Path.home() / ".config" / "agent-hub"
+
+
+def undelivered_resources(files: dict[str, bytes]) -> list[tuple[str, str]]:
+    """(path, why) for every file of a skill that deploy/turnstone-deliver.py will skip: its rules, in its order."""
+    skill_md = files.get("SKILL.md", b"").decode("utf-8", errors="replace")
+    out: list[tuple[str, str]] = []
+    ok: list[str] = []
+    for path in sorted(files):
+        if path == "SKILL.md":
+            continue
+        if not path.startswith(RESOURCE_DIRS):
+            out.append((path, f"outside {', '.join(RESOURCE_DIRS)}"))
+            continue
+        try:
+            text = files[path].decode("utf-8")
+        except UnicodeDecodeError:
+            out.append((path, "not UTF-8 text"))
+            continue
+        if len(text) > MAX_RESOURCE_CHARS:
+            out.append((path, f"over {MAX_RESOURCE_CHARS} characters"))
+            continue
+        ok.append(path)
+    order = sorted(ok, key=lambda p: (p not in skill_md, p))      # past the cap, files SKILL.md names are kept first
+    out += [(p, f"past {MAX_RESOURCES_PER_SKILL} files per skill") for p in order[MAX_RESOURCES_PER_SKILL:]]
+    return out
 
 
 def console_problem(url: str) -> str | None:
@@ -122,6 +152,12 @@ class TurnstoneAdapter(ClientAdapter):
             if size > MAX_SKILL_MD:
                 diags.append(u.diag("error", "skill_too_large",
                                     f"SKILL.md is {size} bytes; Turnstone accepts at most {MAX_SKILL_MD}", s.name))
+            if skipped := undelivered_resources(s.files):
+                shown = "; ".join(f"{p} ({why})" for p, why in skipped[:6])
+                more = f"; and {len(skipped) - 6} more" if len(skipped) > 6 else ""
+                diags.append(u.diag("warn", "resources_not_delivered",
+                                    f"{len(skipped)} file(s) are staged but will not reach Turnstone (the delivery script "
+                                    f"skips them): {shown}{more}", s.name))
             fm, _ = u.parse_frontmatter(s.files.get("SKILL.md", b"").decode("utf-8", errors="replace"))
             if fm.get("allowed-tools") or fm.get("allowed_tools"):
                 diags.append(u.diag("warn", "allowed_tools_dropped",
