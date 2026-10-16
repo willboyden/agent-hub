@@ -421,9 +421,11 @@ python3 deploy/turnstone-deliver.py list                                  # what
 - **Instructions and MCP need their flags.** `--instructions` sets `session.instructions` (new workstreams only);
   `--mcp` imports `mcp.json` (servers whose names exist are skipped). They are flags because a concern switched off
   leaves its last stage file in place.
-- **Limits.** Turnstone 1.8 accepts a `SKILL.md` of at most 32 KiB (the plan flags larger ones); binary resource files
-  and resource files over 256 KiB are skipped with a notice. Each change is printed as it happens; there is no rollback,
-  and a re-run converges.
+- **Limits.** Turnstone 1.8 accepts a `SKILL.md` of at most 32 KiB (the plan flags larger ones). Resource files must
+  sit under `scripts/`, `references/` or `assets/`, be UTF-8 text of at most 100 KB (102,400 characters), and number
+  at most 10 per skill (Turnstone 1.8.4's own rules); the script skips every other file with a notice, including in
+  `--dry-run`. Past 10, the files `SKILL.md` names by path are kept first. Each change is printed as it happens; there
+  is no rollback, and a re-run converges.
 - **Verify.** `hubctl verify` checks the stage files, then runs the script's `list` and fails until every staged skill
   is present as a hub-owned skill with `auto_approve` and `is_default` off. Re-run `push` after each apply.
 

@@ -77,6 +77,13 @@ class FakeTurnstone:
             sid = m.group(1)
             if method == "GET":
                 return 200, {"resources": [{"path": k} for k in self.resources[sid]]}
+            # Turnstone 1.8.4's own checks (console/server.py admin_create_skill_resource), in its order
+            if not body["path"].startswith(("scripts/", "references/", "assets/")):
+                return 400, {"error": "path must start with scripts/, references/, or assets/"}
+            if len(body["content"]) > 100 * 1024:
+                return 400, {"error": "Resource exceeds 100KB limit"}
+            if len(self.resources[sid]) >= 10:
+                return 400, {"error": "Maximum 10 resources per skill"}
             if body["path"] in self.resources[sid]:
                 return 409, {"error": "Resource path already exists"}
             self.resources[sid][body["path"]] = body["content"]
@@ -158,7 +165,7 @@ def push(ts, token_file, stage, *extra: str) -> int:
 
 def test_creates_hub_owned_skills_with_resources_and_never_auto_approve(ts, token_file, tmp_path, capsys) -> None:
     stage = make_stage(tmp_path / "stage", {"alpha": {"SKILL.md": md("alpha", extra="effort: high\n"),
-                                                      "refs/notes.md": "notes"},
+                                                      "references/notes.md": "notes"},
                                             "beta": {"SKILL.md": md("beta", extra="user-invocable: false\n")}})
     assert push(ts, token_file, stage) == 0
     a, b = ts.by_name("alpha"), ts.by_name("beta")
@@ -166,7 +173,7 @@ def test_creates_hub_owned_skills_with_resources_and_never_auto_approve(ts, toke
         assert s["author"] == "agent-hub" and json.loads(s["tags"]) == ["agent-hub"]
         assert s["auto_approve"] is False and s["is_default"] is False and "model" not in s or s.get("model") in ("", None)
     assert a["reasoning_effort"] == "high" and b["hidden_from_menu"] is True and "hidden_from_menu" not in a
-    assert ts.resources[a["template_id"]] == {"refs/notes.md": "notes"}
+    assert ts.resources[a["template_id"]] == {"references/notes.md": "notes"}
     out = capsys.readouterr()
     assert TOKEN not in out.out + out.err and "create   alpha" in out.out
 
@@ -211,20 +218,52 @@ def test_prune_removes_only_hub_owned_skills_missing_from_the_stage(ts, token_fi
 
 
 def test_resources_are_synced_and_binary_or_huge_ones_skipped(ts, token_file, tmp_path, capsys) -> None:
-    stage = make_stage(tmp_path / "stage", {"alpha": {"SKILL.md": md("alpha"), "a.md": "one", "b.md": "two",
-                                                      "logo.png": b"\x89PNG\x00\xff"}})
-    push(ts, token_file, stage)
+    stage = make_stage(tmp_path / "stage", {"alpha": {"SKILL.md": md("alpha"), "references/a.md": "one",
+                                                      "references/b.md": "two", "assets/logo.png": b"\x89PNG\x00\xff",
+                                                      "assets/big.js": "x" * (100 * 1024 + 1)}})
+    assert push(ts, token_file, stage) == 0
     sid = ts.by_name("alpha")["template_id"]
-    assert ts.resources[sid] == {"a.md": "one", "b.md": "two"}
-    (stage / "skills/alpha/b.md").unlink()
-    (stage / "skills/alpha/a.md").write_text("ONE")
-    push(ts, token_file, stage)
-    assert ts.resources[sid] == {"a.md": "ONE"}
-    assert "not UTF-8" in capsys.readouterr().out
+    assert ts.resources[sid] == {"references/a.md": "one", "references/b.md": "two"}
+    (stage / "skills/alpha/references/b.md").unlink()
+    (stage / "skills/alpha/references/a.md").write_text("ONE")
+    assert push(ts, token_file, stage) == 0
+    assert ts.resources[sid] == {"references/a.md": "ONE"}
+    out = capsys.readouterr().out
+    assert "not UTF-8" in out and "assets/big.js: 102401 characters is over 102400" in out
+
+
+def test_resources_outside_turnstones_folders_are_skipped_not_fatal(ts, token_file, tmp_path, capsys) -> None:
+    # Turnstone 1.8.4 answers 400 for these; one of them used to abort the whole push halfway.
+    stage = make_stage(tmp_path / "stage", {"alpha": {"SKILL.md": md("alpha"), "agents/openai.yaml": "a",
+                                                      "skill-card.md": "c", "BENCHMARK.md": "b",
+                                                      "scripts/run.py": "print()"},
+                                            "beta": {"SKILL.md": md("beta")}})
+    assert push(ts, token_file, stage, "--dry-run") == 0
+    dry = capsys.readouterr().out
+    assert push(ts, token_file, stage) == 0
+    assert ts.resources[ts.by_name("alpha")["template_id"]] == {"scripts/run.py": "print()"}
+    assert ts.by_name("beta")["author"] == "agent-hub"                     # the push went on past alpha
+    for path in ("agents/openai.yaml", "skill-card.md", "BENCHMARK.md"):
+        assert f"SKIPPED alpha/{path}: Turnstone accepts resources only under scripts/, references/, assets/" in dry
+
+
+def test_past_ten_resources_the_ones_skill_md_names_are_kept(ts, token_file, tmp_path, capsys) -> None:
+    refs = {f"references/r{i:02}.md": str(i) for i in range(12)}
+    body = "Read references/r10.md and references/r11.md first."
+    stage = make_stage(tmp_path / "stage", {"alpha": {"SKILL.md": md("alpha", body=body), **refs}})
+    assert push(ts, token_file, stage) == 0
+    got = set(ts.resources[ts.by_name("alpha")["template_id"]])
+    assert len(got) == 10 and {"references/r10.md", "references/r11.md"} <= got
+    out = capsys.readouterr().out
+    assert "SKIPPED alpha/references/r08.md: over Turnstone's 10 resources per skill" in out
+    assert "SKIPPED alpha/references/r09.md" in out
+    ts.calls.clear()
+    assert push(ts, token_file, stage) == 0                                # converged: nothing to write
+    assert not any(m in ("POST", "PUT", "DELETE") and p != "/v1/api/admin/skills/parse" for m, p in ts.calls)
 
 
 def test_dry_run_changes_nothing(ts, token_file, tmp_path, capsys) -> None:
-    stage = make_stage(tmp_path / "stage", {"alpha": {"SKILL.md": md("alpha"), "x.md": "x"}})
+    stage = make_stage(tmp_path / "stage", {"alpha": {"SKILL.md": md("alpha"), "references/x.md": "x"}})
     (stage / "instructions.md").write_text("Be careful.\n")
     assert push(ts, token_file, stage, "--dry-run", "--instructions", "--prune") == 0
     assert ts.skills == {} and ts.settings == {} and "DRY RUN" in capsys.readouterr().out

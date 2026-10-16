@@ -44,7 +44,11 @@ from pathlib import Path
 HUB_AUTHOR = "agent-hub"
 HUB_TAG = "agent-hub"
 MAX_SKILL_BYTES = 32 * 1024            # Turnstone 1.8's cap for SKILL.md (parse) and skill content
-MAX_RESOURCE_BYTES = 256 * 1024
+# Turnstone 1.8.4's resource rules (console/server.py admin_create_skill_resource); it refuses anything else with a
+# 400, so a resource outside them is skipped with a notice instead of aborting the push halfway.
+RESOURCE_DIRS = ("scripts/", "references/", "assets/")
+MAX_RESOURCE_CHARS = 100 * 1024        # checked on the decoded text, as Turnstone does
+MAX_RESOURCES_PER_SKILL = 10
 NAME_OK = set("abcdefghijklmnopqrstuvwxyz0123456789-_.")
 TOKEN_RE = re.compile(r"[A-Za-z0-9._~+/=-]{8,512}")
 # Fields copied from Turnstone's own parse of the SKILL.md (a whitelist; anything else it returns is ignored:
@@ -257,8 +261,36 @@ def needs_update(existing: dict, body: dict) -> list[str]:
     return sorted(k for k, v in body.items() if k != "name" and k in existing and _norm(existing[k]) != _norm(v))
 
 
+def deliverable_resources(files: dict[str, bytes], name: str) -> dict[str, str]:
+    """The resources Turnstone will accept, as text; every other file is reported as SKIPPED with the reason.
+
+    Past the per-skill cap, files SKILL.md mentions by path come first, then the rest, each in path order."""
+    skill_md = files.get("SKILL.md", b"").decode("utf-8", errors="replace")
+    ok: dict[str, str] = {}
+    for path, raw in sorted(files.items()):
+        if path == "SKILL.md":
+            continue
+        if not path.startswith(RESOURCE_DIRS):
+            say(f"  resource SKIPPED {name}/{path}: Turnstone accepts resources only under "
+                f"{', '.join(RESOURCE_DIRS)}")
+            continue
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            say(f"  resource SKIPPED {name}/{path}: not UTF-8 text (binary resources are not delivered)")
+            continue
+        if len(text) > MAX_RESOURCE_CHARS:
+            say(f"  resource SKIPPED {name}/{path}: {len(text)} characters is over {MAX_RESOURCE_CHARS}")
+            continue
+        ok[path] = text
+    order = sorted(ok, key=lambda p: (p not in skill_md, p))
+    for path in order[MAX_RESOURCES_PER_SKILL:]:
+        say(f"  resource SKIPPED {name}/{path}: over Turnstone's {MAX_RESOURCES_PER_SKILL} resources per skill")
+    return {p: ok[p] for p in order[:MAX_RESOURCES_PER_SKILL]}
+
+
 def sync_resources(api: Api, sid: str, files: dict[str, bytes], dry: bool, name: str) -> None:
-    want = {p: b for p, b in files.items() if p != "SKILL.md"}
+    want = deliverable_resources(files, name)
     have: dict[str, dict] = {}
     if sid:
         data = api.ok("GET", f"/skills/{sid}/resources", want=(200,))
@@ -268,15 +300,7 @@ def sync_resources(api: Api, sid: str, files: dict[str, bytes], dry: bool, name:
         say(f"  resource remove {name}/{path}")
         if not dry:
             api.ok("DELETE", f"/skills/{sid}/resources/{urllib.parse.quote(path)}")
-    for path, raw in sorted(want.items()):
-        if len(raw) > MAX_RESOURCE_BYTES:
-            say(f"  resource SKIPPED {name}/{path}: {len(raw)} bytes is over {MAX_RESOURCE_BYTES}")
-            continue
-        try:
-            text = raw.decode("utf-8")
-        except UnicodeDecodeError:
-            say(f"  resource SKIPPED {name}/{path}: not UTF-8 text (binary resources are not delivered)")
-            continue
+    for path, text in sorted(want.items()):
         if path in have:
             cur = api.ok("GET", f"/skills/{sid}/resources/{urllib.parse.quote(path)}", want=(200,))
             if isinstance(cur, dict) and cur.get("content") == text:
