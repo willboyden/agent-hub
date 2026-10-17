@@ -418,6 +418,13 @@ python3 deploy/turnstone-deliver.py list                                  # what
   `auto_approve` that list would let tools run unasked), whatever its `SKILL.md` says; the plan warns about
   `allowed-tools`. A hub-owned skill someone flipped in the console is reported by `list` and `verify` and reset on the
   next push. A skill's `model` is not copied.
+- **Labels.** Turnstone's Skills list shows one label per skill, its category. With the client param
+  `category_from_source` (a map of hub `source` to category name, e.g. `{"import:video-agent": "video-agent"}`), the
+  adapter writes `skills-meta.json` into the stage and the script sets that category on each mapped skill and adds it,
+  plus the skill's hub tags, after the `agent-hub` tag. A hub tag Turnstone cannot take (other characters, over 64
+  characters, past 20 per skill) is left out, with a `tag_not_delivered` warning in the plan. Skills it does not list
+  keep the category Turnstone has (new ones: `general`): an update sends no category, and Turnstone's `PUT` changes
+  only the fields it is sent. A malformed `skills-meta.json` stops the push before anything changes.
 - **Instructions and MCP need their flags.** `--instructions` sets `session.instructions` (new workstreams only);
   `--mcp` imports `mcp.json` (servers whose names exist are skipped). They are flags because a concern switched off
   leaves its last stage file in place.

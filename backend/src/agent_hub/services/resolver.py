@@ -225,7 +225,8 @@ class Resolver:
         mems = [(i, meta_as(i, MemoryMeta)) for i in chosen["memory"]]
         res.ctx = RenderContext(
             client=res.cfg,
-            skills=[SkillItem(name=i.name, description=m.description, files=dict(i.files), groups=i.groups, tags=i.tags)
+            skills=[SkillItem(name=i.name, description=m.description, files=dict(i.files), groups=i.groups, tags=i.tags,
+                              source=i.source)
                     for i, m in skills],
             agents=[AgentItem(name=i.name, description=m.description, capabilities=list(m.capabilities),
                               model_tier=m.model_tier, mode=m.mode, read_only=m.read_only, body=i.body)

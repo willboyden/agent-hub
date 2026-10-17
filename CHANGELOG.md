@@ -16,6 +16,11 @@
   a token file under `~/.config/agent-hub/` only). The script refuses non-loopback plain http, unnamed remote hosts,
   redirects, proxies, a token file that is not one private token, and `--prune` on an empty stage. See
   `docs/OPERATIONS.md` section 8b.
+- Turnstone skill labels: the client param `category_from_source` maps a skill's hub `source` to a Turnstone category
+  (the one label Turnstone's Skills list shows). The adapter stages `skills-meta.json`; `turnstone-deliver.py` sets the
+  category and adds it, plus the skill's hub tags, after the `agent-hub` tag (a tag Turnstone cannot take is left out
+  with a warning). Unlisted skills keep their category.
+  See `docs/OPERATIONS.md` section 8b.
 - A plan is blocked with `root_missing` when a managed artifact's client root does not exist (the hub never creates a
   client root), instead of the apply failing with a file-not-found error.
 - Observed inventory: `ClientAdapter.observe()` and a Hermes implementation (reads a running container's skills directory

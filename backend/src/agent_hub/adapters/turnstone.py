@@ -5,6 +5,8 @@ not from files, so the hub never writes into it. ``render`` produces a STAGE tre
 the hub owns):
 
   skills/<name>/...      the skills tree (SKILL.md + resources); Turnstone parses the same SKILL.md format
+  skills-meta.json       {"<skill>": {"category": ..., "tags": [...]}}: the labels the delivery script sets on each
+                         skill (only skills that have one; the file is absent when none does)
   instructions.md        the default system instruction (the ``session.instructions`` setting)
   mcp.json               {"mcpServers": {...}}, the format of Turnstone's MCP import
 
@@ -18,6 +20,11 @@ Params (all optional). They come from the client YAML, so verify refuses (a fail
   console_url    a loopback http(s) URL, no credentials, path or query (default http://127.0.0.1:8796)
   token_file     a `*.token` file directly or deeper under ~/.config/agent-hub/, not a symlink, holding a Turnstone API
                  token with read,write,approve scopes for an admin user (default ~/.config/agent-hub/turnstone.token)
+  category_from_source  {"<hub source>": "<category>"}, e.g. {"import:video-agent": "video-agent"}: a skill whose
+                 hub.yaml `source` is a key is delivered with that Turnstone category (the one column the Skills list
+                 shows) and that category as a tag too. Category names: lowercase letters, digits, - _ . (at most 64).
+                 Skills with no mapped source keep whatever category Turnstone has (new ones: "general"). A hub tag
+                 Turnstone cannot take (other characters, over 64, past 20 per skill) is left out with a warning.
 The script runs under the hub's own interpreter; no parameter can choose the program.
 """
 from __future__ import annotations
@@ -52,6 +59,9 @@ DEFAULT_CONSOLE = "http://127.0.0.1:8796"
 DEFAULT_TOKEN_FILE = "~/.config/agent-hub/turnstone.token"   # noqa: S105 - the path of the token file, not a secret
 DELIVER_SCRIPT = Path(__file__).resolve().parents[4] / "deploy" / "turnstone-deliver.py"
 MAX_SKILL_MD = 32 * 1024                  # Turnstone refuses a larger SKILL.md / skill body
+META_FILE = "skills-meta.json"            # per-skill category + tags; read by deploy/turnstone-deliver.py
+MAX_CATEGORY = 64                         # Turnstone truncates a longer category
+MAX_TAGS = 20                             # per skill; deploy/turnstone-deliver.py refuses more
 # Turnstone 1.8.4's rules for a skill's other files; the delivery script skips the rest. Keep these and the script's
 # copies equal (a test compares them).
 RESOURCE_DIRS = ("scripts/", "references/", "assets/")
@@ -166,6 +176,10 @@ class TurnstoneAdapter(ClientAdapter):
             if fm.get("auto_approve") or fm.get("auto-approve"):
                 diags.append(u.diag("info", "auto_approve_ignored",
                                     "the delivery script always creates skills with auto_approve off", s.name))
+        staged = {a.path.split("/")[1] for a in arts if a.path.startswith("skills/")}
+        if meta := self._skill_meta(ctx, staged, diags):
+            arts.append(Artifact(root="stage", path=META_FILE, content=u.dump_json(meta), kind="skill", merge="own",
+                                 source_ids=sorted(meta)))
         if ctx.agents:
             diags.append(u.diag(u.unsupported_severity(cfg), "unsupported_capability",
                                 "Turnstone has no per-agent definitions the hub can map (personas stay in Turnstone); "
@@ -185,6 +199,42 @@ class TurnstoneAdapter(ClientAdapter):
                                  merge="own", source_ids=sorted(servers)))
         arts.sort(key=lambda a: (a.root, a.path))
         return RenderResult(artifacts=arts, diagnostics=diags)
+
+    def _skill_meta(self, ctx: RenderContext, staged: set[str], diags: list[Diag]) -> dict[str, dict[str, Any]]:
+        """Labels for each staged skill: the category its hub source maps to (param category_from_source) and its hub
+        tags plus that category. Turnstone's Skills list shows only the category; the tags are what the agent's own
+        skill search filters on."""
+        raw = ctx.client.params.get("category_from_source") or {}
+        if not isinstance(raw, dict) or not all(
+                isinstance(k, str) and isinstance(v, str) and len(v) <= MAX_CATEGORY and u.valid_name(v)
+                for k, v in raw.items()):
+            diags.append(u.diag("error", "invalid_param",
+                                "category_from_source must map a hub source to a category name (lowercase letters, digits, - _ ., "
+                                f"at most {MAX_CATEGORY}); no categories rendered"))
+            raw = {}
+        out: dict[str, dict[str, Any]] = {}
+        for s in sorted(ctx.skills, key=lambda x: x.name):
+            if s.name not in staged:
+                continue
+            category = raw.get(s.source, "")
+            # hub tags are free text, and the deliver script refuses the whole stage over one it cannot send: drop those here
+            ok = sorted({t for t in s.tags if len(t) <= MAX_CATEGORY and u.valid_name(t)} - {category})
+            room = MAX_TAGS - (1 if category else 0)
+            dropped = sorted({t for t in s.tags if t != category and t not in ok}) + ok[room:]
+            if dropped:
+                diags.append(u.diag("warn", "tag_not_delivered",
+                                    f"{len(dropped)} tag(s) left out (Turnstone takes lowercase letters, digits, - _ ., at most "
+                                    f"{MAX_CATEGORY} characters, {MAX_TAGS} per skill): {', '.join(map(repr, dropped[:5]))}",
+                                    s.name))
+            tags = sorted(set(ok[:room]) | ({category} if category else set()))
+            entry: dict[str, Any] = {}
+            if category:
+                entry["category"] = category
+            if tags:
+                entry["tags"] = tags
+            if entry:
+                out[s.name] = entry
+        return out
 
     def _mcp(self, items: list[McpItem], diags: list[Diag]) -> dict[str, Any]:
         out: dict[str, Any] = {}

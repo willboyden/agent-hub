@@ -32,7 +32,7 @@ class FakeTurnstone:
     def add(self, name: str, **fields: Any) -> str:
         sid = uuid.uuid4().hex
         self.skills[sid] = {"template_id": sid, "name": name, "description": "", "content": "", "tags": "[]",
-                            "author": "", "auto_approve": False, "is_default": False, **fields}
+                            "category": "general", "author": "", "auto_approve": False, "is_default": False, **fields}
         self.resources[sid] = {}
         return sid
 
@@ -405,3 +405,61 @@ def test_symlinked_or_malformed_stage_files_are_clean_errors(ts, token_file, tmp
     assert push(ts, token_file, stage, "--mcp") == 1 and "not valid JSON" in capsys.readouterr().err
     bad = make_stage(tmp_path / "b", {"alpha": {"SKILL.md": b"---\nname: alpha\n---\n\xff\xfe"}})
     assert push(ts, token_file, bad) == 1 and "not UTF-8" in capsys.readouterr().err and ts.settings == {}
+
+
+# ---- labels from the hub's skills-meta.json --------------------------------------------------------------------------
+def write_meta(stage: Path, doc: object) -> None:
+    (stage / "skills-meta.json").write_text(json.dumps(doc))
+
+
+def test_meta_sets_category_and_adds_tags_after_the_hub_tag(ts, token_file, tmp_path, capsys) -> None:
+    stage = make_stage(tmp_path / "stage", {"alpha": {"SKILL.md": md("alpha")}, "beta": {"SKILL.md": md("beta")}})
+    write_meta(stage, {"alpha": {"category": "video-agent", "tags": ["video-agent", "agent-hub", "video"]}})
+    assert push(ts, token_file, stage) == 0
+    a, b = ts.by_name("alpha"), ts.by_name("beta")
+    assert a["category"] == "video-agent" and json.loads(a["tags"]) == ["agent-hub", "video-agent", "video"]
+    assert b["category"] == "general" and json.loads(b["tags"]) == ["agent-hub"]   # unlisted: Turnstone's default
+    assert deliver.hub_owned(a)
+    ts.calls.clear()
+    assert push(ts, token_file, stage) == 0                                         # labels compare equal: no writes
+    assert not any(m in ("POST", "PUT", "DELETE") and p != "/v1/api/admin/skills/parse" for m, p in ts.calls)
+
+
+def test_meta_relabels_an_existing_hub_skill_and_leaves_unlisted_categories_alone(ts, token_file, tmp_path, capsys) -> None:
+    stage = make_stage(tmp_path / "stage", {"alpha": {"SKILL.md": md("alpha")}, "beta": {"SKILL.md": md("beta")}})
+    assert push(ts, token_file, stage) == 0
+    ts.by_name("beta")["category"] = "engineering"                                  # set by hand in Turnstone
+    write_meta(stage, {"alpha": {"category": "video-agent", "tags": ["video-agent"]}})
+    capsys.readouterr()
+    assert push(ts, token_file, stage) == 0
+    assert "update   alpha (category, tags)" in capsys.readouterr().out
+    assert ts.by_name("alpha")["category"] == "video-agent" and ts.by_name("beta")["category"] == "engineering"
+
+
+@pytest.mark.parametrize("doc", [["alpha"], {"ghost": {"category": "x"}}, {"alpha": {"category": "Has Caps"}},
+                                 {"alpha": {"category": "x", "color": "red"}}, {"alpha": {"tags": "video"}},
+                                 {"alpha": {"tags": ["ok", "../x"]}}, {"alpha": {}}, {"alpha": {"category": "x" * 65}}])
+def test_a_bad_meta_file_is_refused_before_anything_changes(ts, token_file, tmp_path, doc) -> None:
+    stage = make_stage(tmp_path / "stage", {"alpha": {"SKILL.md": md("alpha")}})
+    write_meta(stage, doc)
+    assert push(ts, token_file, stage) == 1
+    assert not ts.skills and not any(m in ("POST", "PUT", "DELETE") for m, _ in ts.calls)
+
+
+@pytest.mark.parametrize("make", [lambda f: f.mkdir(), lambda f: f.write_text(" " * (deliver.MAX_META_BYTES + 1)),
+                                  lambda f: f.write_text("[" * 100_000 + "]" * 100_000)])
+def test_a_meta_dir_huge_or_deeply_nested_file_is_a_clean_error(ts, token_file, tmp_path, capsys, make) -> None:
+    stage = make_stage(tmp_path / "stage", {"alpha": {"SKILL.md": md("alpha")}})
+    make(stage / "skills-meta.json")
+    assert push(ts, token_file, stage) == 1
+    err = capsys.readouterr().err
+    assert "skills-meta.json" in err and "unexpected" not in err
+    assert not ts.skills and not any(m in ("POST", "PUT", "DELETE") for m, _ in ts.calls)
+
+
+def test_a_symlinked_meta_file_is_refused(ts, token_file, tmp_path) -> None:
+    stage = make_stage(tmp_path / "stage", {"alpha": {"SKILL.md": md("alpha")}})
+    real = tmp_path / "elsewhere.json"
+    real.write_text(json.dumps({"alpha": {"category": "x"}}))
+    (stage / "skills-meta.json").symlink_to(real)
+    assert push(ts, token_file, stage) == 1 and not ts.skills

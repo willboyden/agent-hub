@@ -12,7 +12,9 @@ push
   skills        every DIR/skills/<name>/SKILL.md (+ resource files): parsed by Turnstone, then created or
                 updated. Hub-delivered skills carry author "agent-hub" and the tag "agent-hub"; a skill of the
                 same name that is NOT hub-owned is a conflict and is left alone. auto_approve and is_default are
-                always false and allowed-tools is never delivered, whatever the SKILL.md says.
+                always false and allowed-tools is never delivered, whatever the SKILL.md says. DIR/skills-meta.json,
+                when the hub rendered one, labels skills: its `category` is set on the skill, its `tags` are
+                added after "agent-hub". A skill it does not list keeps the category Turnstone has.
   --instructions  DIR/instructions.md -> the session.instructions setting (new workstreams pick it up)
   --mcp           DIR/mcp.json ({"mcpServers": {...}}) -> the MCP import endpoint (skips names that exist)
   --prune         delete hub-owned skills that are no longer in the stage (refused for an empty stage unless
@@ -50,6 +52,10 @@ RESOURCE_DIRS = ("scripts/", "references/", "assets/")
 MAX_RESOURCE_CHARS = 100 * 1024        # checked on the decoded text, as Turnstone does
 MAX_RESOURCES_PER_SKILL = 10
 NAME_OK = set("abcdefghijklmnopqrstuvwxyz0123456789-_.")
+META_FILE = "skills-meta.json"         # written by the hub's Turnstone adapter: {"<skill>": {"category", "tags"}}
+MAX_LABEL = 64                         # Turnstone keeps at most 64 characters of a category
+MAX_TAGS = 20
+MAX_META_BYTES = 1024 * 1024
 TOKEN_RE = re.compile(r"[A-Za-z0-9._~+/=-]{8,512}")
 # Fields copied from Turnstone's own parse of the SKILL.md (a whitelist; anything else it returns is ignored:
 # `model` because it names a client's model, `allowed_tools` because together with auto_approve it lets tools
@@ -207,6 +213,46 @@ def stage_skills(stage: Path) -> dict[str, dict[str, bytes]]:
     return out
 
 
+def _label(value: object, where: str) -> str:
+    if not isinstance(value, str) or not value or len(value) > MAX_LABEL or set(value) - NAME_OK:
+        raise DeliverError(f"{where}: {value!r} is not a valid label (lowercase letters, digits, - _ ., at most {MAX_LABEL})")
+    return value
+
+
+def stage_meta(stage: Path, skills: dict[str, dict[str, bytes]]) -> dict[str, dict]:
+    """The labels in DIR/skills-meta.json, checked; {} when the hub rendered none. Refused (nothing pushed) if the file
+    is not exactly what the adapter writes: an object of staged skill names to {"category"?: str, "tags"?: [str]}."""
+    f = stage / META_FILE
+    if f.is_symlink():
+        raise DeliverError(f"{f} is a symlink; refused")
+    if not f.exists():
+        return {}
+    if not f.is_file() or f.stat().st_size > MAX_META_BYTES:
+        raise DeliverError(f"{f} is not a regular file of at most {MAX_META_BYTES} bytes; refused")
+    try:
+        doc = json.loads(f.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError, RecursionError) as e:
+        raise DeliverError(f"{f}: not valid JSON ({type(e).__name__})") from None
+    if not isinstance(doc, dict):
+        raise DeliverError(f"{f}: expected an object of skill name -> labels")
+    out: dict[str, dict] = {}
+    for name, entry in doc.items():
+        if name not in skills:
+            raise DeliverError(f"{f}: {name!r} is not a staged skill")
+        if not isinstance(entry, dict) or not entry or set(entry) - {"category", "tags"}:
+            raise DeliverError(f"{f}: {name}: expected {{'category'?: ..., 'tags'?: [...]}}")
+        labels: dict = {}
+        if "category" in entry:
+            labels["category"] = _label(entry["category"], f"{name} category")
+        if "tags" in entry:
+            tags = entry["tags"]
+            if not isinstance(tags, list) or len(tags) > MAX_TAGS:
+                raise DeliverError(f"{f}: {name}: tags must be a list of at most {MAX_TAGS}")
+            labels["tags"] = [_label(t, f"{name} tag") for t in tags]
+        out[name] = labels
+    return out
+
+
 def stage_file(stage: Path, name: str, flag: str) -> str:
     f = stage / name
     if f.is_symlink():
@@ -219,7 +265,7 @@ def stage_file(stage: Path, name: str, flag: str) -> str:
         raise DeliverError(f"{f} is not UTF-8 text") from None
 
 
-def desired_body(api: Api, name: str, skill_md: bytes) -> dict:
+def desired_body(api: Api, name: str, skill_md: bytes, labels: dict | None = None) -> dict:
     if len(skill_md) > MAX_SKILL_BYTES:
         raise DeliverError(f"{name}: SKILL.md is {len(skill_md)} bytes; Turnstone accepts at most {MAX_SKILL_BYTES}")
     try:
@@ -239,8 +285,12 @@ def desired_body(api: Api, name: str, skill_md: bytes) -> dict:
     for k in LIST_FIELDS:                                         # Turnstone accepts JSON strings for list fields
         if isinstance(body.get(k), list):
             body[k] = json.dumps(body[k])
-    body.update({"name": name, "author": HUB_AUTHOR, "tags": json.dumps([HUB_TAG]),
+    labels = labels or {}
+    tags = [HUB_TAG] + [t for t in dict.fromkeys(labels.get("tags", [])) if t != HUB_TAG]   # hub tag first, no repeats
+    body.update({"name": name, "author": HUB_AUTHOR, "tags": json.dumps(tags),
                  "auto_approve": False, "is_default": False, "allowed_tools": "[]"})
+    if labels.get("category"):          # otherwise no key: Turnstone's PUT changes only the fields it is sent
+        body["category"] = labels["category"]
     if not body.get("description"):
         raise DeliverError(f"{name}: SKILL.md has no description")
     return body
@@ -319,6 +369,7 @@ def push(api: Api, stage: Path, *, instructions: bool, mcp: bool, prune: bool, f
     if stage.is_symlink() or not stage.is_dir():
         raise DeliverError(f"stage {stage} is not a directory")
     wanted = stage_skills(stage)
+    meta = stage_meta(stage, wanted)
     if prune and not wanted and not force_empty:
         raise DeliverError("--prune with no skills in the stage would delete every hub skill; "
                            "check --stage, or add --force-empty if that is what you want")
@@ -326,7 +377,7 @@ def push(api: Api, stage: Path, *, instructions: bool, mcp: bool, prune: bool, f
     conflicts = 0
     existing = list_skills(api)
     for name, files in wanted.items():
-        body = desired_body(api, name, files["SKILL.md"])
+        body = desired_body(api, name, files["SKILL.md"], meta.get(name))
         cur = existing.get(name)
         if cur is not None and not hub_owned(cur):
             conflicts += 1

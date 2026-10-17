@@ -36,6 +36,7 @@ class SkillItem(BaseModel):
     files: dict[str, bytes]                     # relpath -> bytes; always contains "SKILL.md" (the shared standard)
     groups: list[str] = []
     tags: list[str] = []
+    source: str = ""                            # hub.yaml `source`, e.g. "import:video-agent" (where it came from)
 
 
 class AgentItem(BaseModel):

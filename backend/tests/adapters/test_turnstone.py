@@ -214,3 +214,54 @@ def test_registry_loads_it() -> None:
     reg = load_registry()
     assert "turnstone" in reg.ids() and "turnstone" not in reg.load_errors
     assert Path(reg.get("turnstone").__class__.__module__.replace(".", "/")).name == "turnstone"  # type: ignore[union-attr]
+
+
+# ---- labels: skills-meta.json (category from the hub source, plus tags) ---------------------------------------------
+def test_category_from_source_labels_only_the_mapped_skills(adapter, cfg) -> None:
+    cfg.params["category_from_source"] = {"import:video-agent": "video-agent"}
+    s1, s2, s3 = skill("from-video"), skill("tagged-only"), skill("plain")
+    s1.source, s2.tags, s3.source = "import:video-agent", ["video"], "import:claude-code"
+    res = adapter.render(sample_ctx(cfg, skills=[s3, s1, s2]))
+    meta = next(a for a in res.artifacts if a.path == "skills-meta.json")
+    assert meta.root == "stage" and meta.merge == "own" and meta.kind == "skill"
+    assert json.loads(meta.content) == {"from-video": {"category": "video-agent", "tags": ["video-agent"]},
+                                        "tagged-only": {"tags": ["video"]}}
+    assert meta.source_ids == ["from-video", "tagged-only"]
+    assert not [d for d in res.diagnostics if d.code == "invalid_param"]
+
+
+def test_no_labels_no_meta_file(adapter, cfg) -> None:
+    cfg.params["category_from_source"] = {"import:video-agent": "video-agent"}
+    res = adapter.render(sample_ctx(cfg))          # sample skills have no source and no tags
+    assert "skills-meta.json" not in {a.path for a in res.artifacts}
+
+
+def test_a_withheld_skill_gets_no_label(adapter, cfg) -> None:
+    cfg.params["category_from_source"] = {"import:video-agent": "video-agent"}
+    bad = skill("Bad Name")                        # invalid name: skill_artifacts drops it
+    bad.source = "import:video-agent"
+    res = adapter.render(sample_ctx(cfg, skills=[bad]))
+    assert "skills-meta.json" not in {a.path for a in res.artifacts}
+
+
+def test_tags_turnstone_cannot_take_are_left_out_with_a_warning(adapter, cfg) -> None:
+    cfg.params["category_from_source"] = {"import:video-agent": "video-agent"}
+    s = skill("many")
+    s.source = "import:video-agent"
+    s.tags = ["Video Tools", "x" * 65, "ok"] + [f"t{i:02d}" for i in range(25)]      # 2 bad + 26 good, room for 19
+    res = adapter.render(sample_ctx(cfg, skills=[s]))
+    tags = json.loads(next(a for a in res.artifacts if a.path == "skills-meta.json").content)["many"]["tags"]
+    assert len(tags) == 20 and "video-agent" in tags and "ok" in tags and "Video Tools" not in tags
+    warn = [d for d in res.diagnostics if d.code == "tag_not_delivered"]
+    assert len(warn) == 1 and warn[0].severity == "warn" and warn[0].item == "many" and warn[0].message.startswith("9 tag(s)")
+
+
+@pytest.mark.parametrize("param", [{"import:x": "Has Caps"}, {"import:x": "x" * 65}, {"import:x": 3}, ["import:x"],
+                                   {"import:x": ""}])
+def test_invalid_category_param_is_an_error_and_renders_no_category(adapter, cfg, param) -> None:
+    cfg.params["category_from_source"] = param
+    s = skill("one")
+    s.source = "import:x"
+    res = adapter.render(sample_ctx(cfg, skills=[s]))
+    assert any(d.code == "invalid_param" and d.severity == "error" for d in res.diagnostics)
+    assert "skills-meta.json" not in {a.path for a in res.artifacts}
