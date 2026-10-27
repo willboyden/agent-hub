@@ -40,8 +40,18 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
   const f = (...a) => (fetchImpl || globalThis.fetch)(...a);
   const authHeaders = () => { const k = getKey(); return k ? { Authorization: `Bearer ${k}` } : {}; };
   const url = (path, query) => `${base}${path}${buildQuery(query)}`;
+  // After the hub's own 401 nothing is sent with the same key (or with none) until the user signs in again: views poll
+  // on timers, and a signed-out tab used to send the refused requests forever. /health stays open (public; it reports
+  // the role). A knowledge-service refusal (not isHubAuth) never holds anything.
+  let authHeld = false;
+  let heldKey = null;
+  const clearAuthHold = () => { authHeld = false; heldKey = null; };
 
   async function raw(method, path, { query, body, signal, headers } = {}) {
+    if (authHeld && path !== '/health' && (getKey() || null) === heldKey) {
+      onUnauthorized();
+      throw new ApiError(401, { title: 'Unauthorized', detail: 'Sign in to continue', code: 'unauthorized' });
+    }
     const h = { Accept: 'application/json', ...authHeaders(), ...headers };
     // CSRF / DNS-rebinding guard: a custom header a cross-site form or <img> cannot set.
     if (!SAFE_METHODS.has(method.toUpperCase())) h[CSRF_HEADER] = '1';
@@ -54,9 +64,10 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
       let problem = {};
       try { problem = await res.json(); } catch { /* not json */ }
       const err = new ApiError(res.status, problem);
-      if (err.isHubAuth) onUnauthorized();
+      if (err.isHubAuth) { authHeld = true; heldKey = getKey() || null; onUnauthorized(); }
       throw err;
     }
+    clearAuthHold();
     return res;
   }
   async function request(method, path, opts) {
@@ -86,7 +97,7 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
   const kp = (kind) => KIND_PATH[kind] || kind;
 
   return {
-    url, authHeaders, raw, request, get, post, put, del, listAll,
+    url, authHeaders, raw, request, get, post, put, del, listAll, clearAuthHold,
     health: () => get('/health'),
     adapters: () => listAll('/adapters'),
     adapter: (id) => get(`/adapters/${enc(id)}`),

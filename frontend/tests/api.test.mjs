@@ -56,3 +56,30 @@ test('only a 401 from the hub itself opens the key dialog; knowledge-side failur
   await assert.rejects(mk(503, 'knowledge_unavailable').get('/knowledge/health'), (e) => e.isHubAuth === false && e.isKnowledgeSetup);
   assert.equal(fired, 1, 'the knowledge codes did not fire onUnauthorized');
 });
+
+test("after the hub's 401 nothing is sent with the same key until a sign-in or a success; knowledge refusals never hold", async () => {
+  let key = null; let unauth = 0; const sent = [];
+  let knowledge401 = false;
+  const c = createClient({ getKey: () => key, onUnauthorized: () => unauth++,
+    fetchImpl: async (u) => {
+      sent.push(u);
+      if (knowledge401) return resp(401, { title: 'Unauthorized', code: 'knowledge_unauthorized' });
+      return key === 'good' ? resp(200, {}) : resp(401, { title: 'Unauthorized', code: 'unauthorized' });
+    } });
+  await assert.rejects(c.get('/clients'), (e) => e.status === 401);
+  await assert.rejects(c.get('/clients'), (e) => e.status === 401 && e.code === 'unauthorized');
+  assert.equal(sent.length, 1, 'held requests never reach the server');
+  assert.equal(unauth, 2);
+  await c.health().catch(() => {});
+  assert.equal(sent.length, 2, '/health is not held');
+  key = 'good'; await c.get('/clients'); assert.equal(sent.length, 3, 'a new key is tried and a success clears the hold');
+  knowledge401 = true;
+  await assert.rejects(c.get('/knowledge/namespaces'), (e) => e.status === 401 && !e.isHubAuth);
+  await assert.rejects(c.get('/knowledge/namespaces'));
+  assert.equal(sent.length, 5, "a knowledge service 401 is not the hub's and holds nothing");
+  knowledge401 = false; key = 'wrong';
+  await assert.rejects(c.get('/clients')); await assert.rejects(c.get('/clients'));
+  assert.equal(sent.length, 6, 'held again after the hub refuses the new key');
+  c.clearAuthHold(); await assert.rejects(c.get('/clients'));
+  assert.equal(sent.length, 7, 'signing in again with the same key retries');
+});

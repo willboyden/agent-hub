@@ -19,6 +19,7 @@ export const api = createClient({
 
 export function setApiKey(key) {
   if (key) session.set('ah.apiKey', key); else session.remove('ah.apiKey');
+  api.clearAuthHold();   // a new sign-in, even with the same key, lets requests through again
   store.set({ apiKey: key || '', authRequired: false });
 }
 
