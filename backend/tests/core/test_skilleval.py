@@ -726,3 +726,17 @@ def test_service_defaults_to_the_real_runner_and_shutil_which(tmp_path: Path) ->
     exe.chmod(0o755)
     assert s.find_launcher() == ("skillevaluator", str(exe))
     assert s.status()["version"] == "9.9.9"                           # a stand-in script on a temp PATH, not the real tool
+
+
+def test_compiled_bytecode_is_never_evaluated_and_does_not_change_the_hash(hub: Hub) -> None:
+    """A `__pycache__/` copied into a skill used to reach SkillSpector, which cannot read it: partial coverage, a block."""
+    r = use(hub)
+    src = skill(hub, files={"ref/notes.md": "notes", "scripts/tool.py": "print('hi')\n"})
+    clean = hub.skilleval.snapshot("alpha")
+    (src / "scripts" / "__pycache__").mkdir()
+    (src / "scripts" / "__pycache__" / "tool.cpython-313.pyc").write_bytes(b"\x00\x0d\x0d\x0a bytecode")
+    (src / "stray.pyc").write_bytes(b"\x00 bytecode")
+    (src / "old.pyo").write_bytes(b"\x00 bytecode")
+    rec = hub.skilleval.evaluate("alpha", "static", "t")
+    assert set(r.seen[0]["files"]) == {"SKILL.md", "ref/notes.md", "scripts/tool.py"}
+    assert rec["content_hash"] == clean.content_hash and rec["files"] == 3

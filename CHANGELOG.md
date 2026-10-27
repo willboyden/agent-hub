@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- A signed-out tab no longer polls forever. Views refresh on timers, and after the hub's 401 the UI asked for a key but
+  kept sending the refused requests. The API client now holds every request made with the same key (or with none) after a
+  hub 401 and answers it locally, until the user signs in again (even with the same key) or a request succeeds; `/health`
+  stays open, and a knowledge-service refusal holds nothing. The same fix went into Nemo Console and Engine Console.
+- Compiled Python bytecode (`__pycache__/`, `*.pyc`, `*.pyo`) is no longer evaluated, stored with an observation or
+  imported. A skill that carried a `__pycache__/` made SkillSpector report partial coverage and the import gate block it
+  (6 of the 25 lab skills still blocked in the 0.2.0 measurement); bytecode is generated, unreadable to the scanners and
+  never delivered, so what is evaluated stays what gets imported. An observation notes how many files it left out.
+
 ## 0.2.0
 
 Upgrading from 0.1.0: pull, run `make setup` (it also enables the pre-push hook), restart the hub (the UI is served from the

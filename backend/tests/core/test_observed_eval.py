@@ -735,3 +735,16 @@ def test_list_rows_carry_security_severity(api: TestClient, hub: Hub) -> None:
     del rec["validators"]                                                                     # an older record: the field is omitted
     from agent_hub.services.skilleval import security_severity
     assert security_severity(rec) is None
+
+
+def test_observed_bytecode_is_left_out_of_the_store_the_hash_evaluation_and_import(hub: Hub, obs: ObsAdapter) -> None:
+    obs.skills = [oskill("tool", extra={"scripts/t.py": b"print(1)\n", "scripts/__pycache__/t.cpython-313.pyc": b"\x00bc",
+                                        "x.pyc": b"\x00bc"})]
+    out = hub.observe("obs1")
+    entry = out["skills"][0] if "skills" in out else None
+    idx = json.loads((hub.cfg.data_dir / "observed" / "obs1" / "index.json").read_text())
+    s = idx["skills"][0]
+    assert s["files"] == 2 and any("2 compiled Python bytecode" in n for n in idx["notes"])
+    assert set(hub.observe_svc.files("obs1", s["key"])) == {"SKILL.md", "scripts/t.py"}
+    assert hub.skilleval.current_hash(f"obs1:{s['key']}") == s["content_hash"]
+    assert entry is None or entry.get("files", 2) == 2

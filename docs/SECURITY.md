@@ -329,7 +329,8 @@ code the hub runs.
   starts a container.
 * For evaluation: the `skillevaluator-local` wrapper or `skillevaluator`, by bare name, as an argv list (no shell), in its own
   process group with a timeout per tier, on a private COPY of the skill (regular files only, never through a symlink, no
-  content repo or `.git`), with a minimal environment plus `SKILL_EVAL_*` / `SKILLEVAL_*`. Output is capped and scrubbed of
+  content repo or `.git`, no compiled Python bytecode: `__pycache__/`, `*.pyc`, `*.pyo` are generated, unreadable to the
+  scanners and never imported or delivered either), with a minimal environment plus `SKILL_EVAL_*` / `SKILLEVAL_*`. Output is capped and scrubbed of
   absolute paths; reports are kept 0600 in 0700 directories.
 
 **What the hub never runs.** It never executes an observed or hub skill's own files. It never starts or restarts a client. It

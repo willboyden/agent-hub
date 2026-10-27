@@ -289,15 +289,29 @@ def _read_regular(path: Path, limit: int) -> tuple[bytes, int] | None:
         os.close(fd)
 
 
+BYTECODE_DIR = "__pycache__"
+BYTECODE_SUFFIXES = (".pyc", ".pyo")
+
+
+def is_bytecode(rel: str) -> bool:
+    """Compiled Python bytecode: generated, not authored, and unreadable to the scanners (a SKILL.md folder that carried a
+    `__pycache__/` made SkillSpector report partial coverage and the gate block). It is neither evaluated nor imported, so
+    what was evaluated is what gets delivered."""
+    return BYTECODE_DIR in rel.split("/") or rel.endswith(BYTECODE_SUFFIXES)
+
+
 def _walk_skill(skill_dir: Path, skip_sidecar: bool = True) -> Iterator[tuple[str, Path]]:
-    """(relative posix path, absolute path) of every candidate file. Symlinked directories and `.git` are not entered, the
-    top-level hub.yaml sidecar is skipped (not for an observed skill: it is the client's file), and unsafe relative paths are dropped."""
+    """(relative posix path, absolute path) of every candidate file. Symlinked directories, `.git` and `__pycache__` are
+    not entered, bytecode files are skipped (is_bytecode), the top-level hub.yaml sidecar is skipped (not for an observed
+    skill: it is the client's file), and unsafe relative paths are dropped."""
     for dirpath, dirnames, filenames in os.walk(skill_dir, followlinks=False):
-        dirnames[:] = sorted(d for d in dirnames if d != ".git" and not os.path.islink(os.path.join(dirpath, d)))
+        dirnames[:] = sorted(d for d in dirnames if d not in (".git", BYTECODE_DIR) and not os.path.islink(os.path.join(dirpath, d)))
         for name in sorted(filenames):
             full = Path(dirpath) / name
             rel = full.relative_to(skill_dir).as_posix()
             if skip_sidecar and rel == SIDECAR:
+                continue
+            if is_bytecode(rel):
                 continue
             try:
                 check_relpath(rel)

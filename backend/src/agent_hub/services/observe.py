@@ -28,7 +28,15 @@ from agent_hub.domain.errors import BadRequest, NotFound, Unavailable
 from agent_hub.domain.ids import slugify, valid_id
 from agent_hub.domain.pathsafe import PathError, check_relpath
 from agent_hub.services.common import fsync_dir, scrub
-from agent_hub.services.skilleval import INDEX_CAP, KEY_RE, _mkdir_private, _read_regular, _TooBig, content_hash
+from agent_hub.services.skilleval import (
+    INDEX_CAP,
+    KEY_RE,
+    _mkdir_private,
+    _read_regular,
+    _TooBig,
+    content_hash,
+    is_bytecode,
+)
 
 MAX_SKILLS = 5000
 MAX_BYTES = 64 * 1024 * 1024
@@ -99,6 +107,7 @@ class ObserveService:
         payload: dict[str, dict[str, bytes]] = {}
         seen: set[str] = set()
         total = 0
+        bytecode = 0
         for s in obs.skills:
             if len(entries) >= self.max_skills:
                 complete = False
@@ -113,6 +122,9 @@ class ObserveService:
                 continue
             files: dict[str, bytes] = {}
             for rel, data in s.files.items():
+                if is_bytecode(rel):                       # generated, unscannable, never delivered (skilleval.is_bytecode)
+                    bytecode += 1
+                    continue
                 try:
                     if _bad_text(rel):
                         raise PathError("unprintable path")
@@ -140,6 +152,8 @@ class ObserveService:
             entries.append({"key": key, "path": path, "name": _display(s.name, 200), "description": _display(s.description, 500),
                             "origin": s.origin if s.origin in OBSERVED_ORIGINS else "client", "content_hash": content_hash(files),
                             "files": len(files), "bytes": size})
+        if bytecode:
+            notes.append(f"left out {bytecode} compiled Python bytecode file(s) (__pycache__, .pyc): never evaluated or imported")
         index = {"client": client, "observed_at": self.clock(), "source": _display(obs.source, 300), "complete": complete,
                  "notes": notes[:MAX_NOTES + 5], "skills": entries}
         with self._mu:
@@ -205,7 +219,8 @@ class ObserveService:
         return None
 
     def files(self, client: str, key: str) -> dict[str, bytes]:
-        """The stored files of one observed skill (regular files only, never through a symlink)."""
+        """The stored files of one observed skill (regular files only, never through a symlink; no compiled bytecode, the
+        same rule as evaluation, so an import delivers exactly what was evaluated)."""
         if self.entry(client, key) is None:
             raise NotFound(f"no such observed skill: {client}:{key}")
         base = self.root / client / "skills" / key
@@ -216,6 +231,8 @@ class ObserveService:
             for n in sorted(filenames):
                 full = Path(dirpath) / n
                 rel = full.relative_to(base).as_posix()
+                if is_bytecode(rel):
+                    continue
                 try:
                     check_relpath(rel)
                     got = _read_regular(full, self.max_bytes - total)
