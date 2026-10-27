@@ -155,6 +155,14 @@ class Planner:
                     elif any(s in low or s in e for s in stems):
                         bad("permissions", e[:60], "rendered config allows an entry that touches a floor-denied path")
         for a in artifacts:
+            if a.kind == "mcp" and a.merge == "block":     # TOML: [<key_path>.<name>] tables inside a hub marker block
+                names, why = toml_block_mcp_servers(bytes(a.content))
+                if why is not None:
+                    bad("mcp", str(a.path)[:60], f"rendered TOML MCP block cannot be inspected ({why}); it is refused")
+                extra = sorted(set(names) - approved)
+                if extra:
+                    bad("mcp", extra[0], f"rendered MCP server(s) {extra[:5]} are not in the approved (clean) set")
+                continue
             if a.kind not in ("mcp", "rule") or not str(a.path).lower().endswith((".json", ".yaml", ".yml")):
                 continue
             fmt = "json" if str(a.path).lower().endswith(".json") else "yaml"
@@ -388,3 +396,50 @@ class Planner:
             status = "in_sync"
         return {"client": ip.plan.client, "status": status, "files": rows,
                 "drift": {"edited_outside": edited, "pending_changes": pending}}
+
+
+def toml_block_mcp_servers(content: bytes) -> tuple[list[str], str | None]:
+    """Server names of a rendered TOML MCP block (merge='block': `[<key_path>.<name>]` tables between hub markers, as the
+    generic adapter emits them), or why it cannot be inspected. The floor re-check refuses what it cannot read: a block
+    that does not parse, or that holds anything besides server tables under one key path, is a finding, not a pass."""
+    import tomllib
+
+    from agent_hub.adapters._util import extract_block
+    region = extract_block(content.decode("utf-8", errors="replace"), "hash")
+    if region is None:
+        return [], "no agent-hub marker block"
+    try:
+        doc = tomllib.loads(region)                    # the marker lines are TOML comments
+    except tomllib.TOMLDecodeError:
+        return [], "not valid TOML"
+    prefixes: set[tuple[str, ...]] = set()
+    for line in region.splitlines():
+        head = line.strip()
+        if not head.startswith("["):
+            continue
+        if head.startswith("[["):
+            return [], "an array-of-tables header"
+        try:
+            node: Any = tomllib.loads(head)
+        except tomllib.TOMLDecodeError:
+            return [], "an unreadable table header"
+        path: list[str] = []
+        while isinstance(node, dict) and len(node) == 1:
+            key, node = next(iter(node.items()))
+            path.append(key)
+        if len(path) < 2:
+            return [], "a table outside any key path"
+        prefixes.add(tuple(path[:-1]))
+    if not prefixes:
+        return [], (None if not doc else "keys outside any server table")
+    if len(prefixes) > 1:
+        return [], "tables under more than one key path"
+    node = doc
+    for key in next(iter(prefixes)):
+        if not isinstance(node, dict) or set(node) != {key}:
+            return [], "content outside its server tables"
+        node = node[key]
+    if not isinstance(node, dict) or not all(isinstance(v, dict) for v in node.values()):
+        return [], "a server entry that is not a table"
+    return sorted(node), None
+

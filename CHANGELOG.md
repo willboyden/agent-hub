@@ -48,6 +48,15 @@
   `hubctl import-observed` and `POST /api/v1/clients/{id}/observed/import` (enable defaults to off). See ADR-0011,
   `docs/OPERATIONS.md` section 4d, `docs/SECURITY.md` section 14.
 
+### Security
+- **The floor's re-check of rendered output now covers TOML MCP blocks.** The generic adapter's `format: toml` MCP output
+  (`[<key_path>.<name>]` tables between hub markers) was not inspected, so an adapter bug or a hostile spec could have
+  rendered an unapproved server there. Each server table must now be in the approved (clean) set, and a block that does
+  not parse, or holds anything besides server tables under one key path, is a `floor_violation_rendered` finding (it
+  blocks a managed concern). Tests include a block with a smuggled server, which is refused, and the old planner fails
+  them. Markdown instruction blocks and skill/agent files are still not re-checked after rendering (`docs/SECURITY.md`
+  section 12).
+
 ### Fixed
 - **Leaving the editor opened its "Delete <item>?" confirmation, and leaving Collections threw an error.** Both views
   defined a method named `remove` (their delete flow), which replaced the DOM's `Element.remove()` that the router calls

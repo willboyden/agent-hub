@@ -49,7 +49,7 @@ work).
 
 | Feature | Status | Notes |
 |---|---|---|
-| Policy floor from the app repo (paths, egress, tool ceilings, command patterns, MCP scan + egress), fail-closed load; second-audit hardening: delivery-target checks, digest-bound MCP `clean`, rendered-artifact re-check (JSON/YAML only), marker-injection and skill `allowed-tools`/`hooks` refusals, dirfd + compare-and-swap writes | Implemented |  |
+| Policy floor from the app repo (paths, egress, tool ceilings, command patterns, MCP scan + egress), fail-closed load; second-audit hardening: delivery-target checks, digest-bound MCP `clean`, rendered-artifact re-check (JSON, YAML and TOML MCP blocks), marker-injection and skill `allowed-tools`/`hooks` refusals, dirfd + compare-and-swap writes | Implemented |  |
 | Audit of a live client config against the floor (advisory concerns included) | Implemented |  |
 | Roles admin / viewer / per-client token; keys shown once, hashed | Implemented |  |
 | Host allowlist, same-origin, CSRF header, strict CSP, no CORS, body and SSE caps, append-only audit | Implemented |  |

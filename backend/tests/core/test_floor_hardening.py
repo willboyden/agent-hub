@@ -117,3 +117,78 @@ def test_skill_frontmatter_is_floor_checked_and_never_rewritten(hub: Hub, home: 
     if not blocks:
         hub.apply(hub.plan(None).id, True, [], "t")
         assert (home / "skills/sk/SKILL.md").read_text() == raw   # bytes untouched
+
+
+# ---- TOML MCP blocks (generic adapter, format: toml) ------------------------------------------------------------------
+from agent_hub.adapters._util import wrap_block  # noqa: E402
+from agent_hub.adapters.generic import toml_tables  # noqa: E402
+from agent_hub.services.planner import toml_block_mcp_servers  # noqa: E402
+
+
+def toml_block(body: str) -> bytes:
+    return wrap_block(body, "hash").encode()
+
+
+def test_toml_block_servers_are_read_from_the_emitter_output() -> None:
+    body = toml_tables("mcp.servers", {"fs": {"command": "npx", "args": ["x"]}, "odd name.v2": {"url": "http://127.0.0.1:9"}})
+    assert toml_block_mcp_servers(toml_block(body)) == (["fs", "odd name.v2"], None)
+    assert toml_block_mcp_servers(toml_block(toml_tables("mcp_servers", {"one": {"command": "a"}}))) == (["one"], None)
+    assert toml_block_mcp_servers(b"# agent-hub:begin (managed block; edits inside are overwritten)\n# agent-hub:end\n") == ([], None)
+
+
+@pytest.mark.parametrize("body,why", [
+    ("[mcp.servers.fs\ncommand = 'x'", "not valid TOML"),
+    ("[[mcp.servers]]\nname = 'x'", "an array-of-tables header"),
+    ("[mcp_servers.fs]\ncommand = 'a'\n[other.evil]\ncommand = 'b'", "tables under more than one key path"),
+    ("evil = { command = 'b' }\n[mcp_servers.fs]\ncommand = 'a'", "content outside its server tables"),
+    ("mcp_servers.evil.command = 'b'", "keys outside any server table"),
+    ("[fs]\ncommand = 'a'", "a table outside any key path"),
+])
+def test_toml_blocks_that_cannot_be_inspected_are_refused(body: str, why: str) -> None:
+    names, reason = toml_block_mcp_servers(toml_block(body))
+    assert reason == why and names == []
+
+
+def test_toml_without_markers_is_refused() -> None:
+    assert toml_block_mcp_servers(b"[mcp_servers.fs]\ncommand = 'a'\n") == ([], "no agent-hub marker block")
+
+
+class LeakyToml(FakeAdapter):
+    """Renders the approved MCP servers as a TOML block, plus whatever `extra` adds (the generic adapter's output form)."""
+    id = "leakytoml"
+    extra: dict[str, dict[str, str]] = {}
+
+    def render(self, ctx: RenderContext) -> RenderResult:
+        servers = {m.name: {"command": "ok"} for m in ctx.mcp_servers} | self.extra
+        return RenderResult(artifacts=[Artifact(root="home", path="config.toml", kind="mcp", merge="block",
+                                                content=toml_block(toml_tables("mcp_servers", servers)))])
+
+
+def toml_client(hub: Hub, home: Path, extra: dict[str, dict[str, str]]) -> None:
+    """A client on LeakyToml with one approved (clean, sandboxed) MCP server enabled, plus `extra` rendered beside it."""
+    adapter = LeakyToml()
+    adapter.extra = extra
+    hub.registry.register(adapter)
+    hub.put_client("lt", {"adapter": "leakytoml", "display_name": "LT", "roots": {"home": str(home)},
+                          "manage": {"mcp": True}}, create=True)
+    hub.work.put("mcp", "srv", {"transport": "stdio", "command": "srv", "args": ["--x"], "sandbox_profile": "srt",
+                                "scan_status": "clean"})
+    hub.work.put_profile("lt", {"enable": {"mcp": ["srv"]}})
+    hub.commit("c", "t")
+
+
+def test_floor_is_rechecked_against_a_rendered_toml_block(hub: Hub, home: Path) -> None:
+    toml_client(hub, home, {"smuggled": {"command": "evil"}})
+    cp = hub.plan(["lt"]).clients[0]
+    rendered = [f for f in cp.floor_violations if f.code == "floor_violation_rendered"]
+    assert cp.blocked and [f.item for f in rendered] == ["smuggled"] and rendered[0].concern == "mcp"
+    res = hub.apply(hub.plan(["lt"]).id, True, [], "t")["results"][0]
+    assert res["status"] == "blocked" and not (home / "config.toml").exists()
+
+
+def test_a_clean_toml_block_passes_the_recheck(hub: Hub, home: Path) -> None:
+    toml_client(hub, home, {})                                   # only the approved server is rendered
+    cp = hub.plan(["lt"]).clients[0]
+    assert not [f for f in cp.floor_violations if f.code == "floor_violation_rendered"]
+    toml = next(f for f in cp.files if f.path == "config.toml")
+    assert "[mcp_servers.srv]" in (toml.diff or "")              # the approved server really was rendered and inspected

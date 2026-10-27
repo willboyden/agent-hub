@@ -251,8 +251,13 @@ forge an attestation.
 
 **Remaining limits:**
 
-1. The rendered-output floor re-check covers **JSON and YAML** permission and MCP artifacts only. **TOML and `block`
-   artifacts are not inspected.**
+1. The rendered-output floor re-check covers permission and MCP artifacts in **JSON and YAML**, and since 0.2.0 the
+   **TOML MCP blocks** the generic adapter writes (`[<key_path>.<name>]` tables between hub markers): every server table
+   must be in the approved (clean) set, and a block that does not parse, or holds anything besides server tables under
+   one key path, is refused rather than passed. Permissions are never rendered as TOML (the spec allows only JSON and
+   YAML for them). **Not inspected:** Markdown instruction blocks (prose; the floor's rules are about permissions and
+   MCP servers, which instructions cannot grant) and skill and agent files (their tools are capped by the resolver
+   before rendering, not re-checked after).
 2. A project root that **contains** the app dirs is allowed (for example a project root that is a checkout containing the hub).
    Targets inside the app tree are refused except `out/` (N4). Other paths inside a project root are not refused, and a
    project-root client means the applier can write `AGENTS.md`, `CLAUDE.md` and `.claude/` there by design.
@@ -304,7 +309,8 @@ forge an attestation.
   project directory that contains the checkout) can change the hub's code, and the next start runs that change with
   access to everything the hub protects. The trusted desktop icon makes such starts routine. Keep the checkout outside
   every governed client's writable paths, or deny writes to it in each client's sandbox.
-* The section 12 limits (TOML/block artifacts uninspected, app-containing roots allowed, CAS-to-rename window).
+* The section 12 limits (instruction blocks and skill/agent files not re-checked after rendering, app-containing roots
+  allowed, CAS-to-rename window).
 
 ## 14. Observed skills and skill evaluation
 
