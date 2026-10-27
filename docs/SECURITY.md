@@ -344,9 +344,11 @@ through an explicit import, then commit review, plan and apply like any other ed
 **The gate rule.** Every evaluation runs a static pass first (`--no-llm`). The import gate reads the stored reports, never a
 model, and fails closed: a critical or high finding from a security validator blocks; so does any of the six expected security
 validators (Security Scan, PII Scan, Code Risk Analysis, Secrets Detection, Code Integrity & Hygiene, Unicode Smuggling
-Detection) missing from the report, and any security validator whose status is not `passed` or `failed`. SkillSpector often
-reports `incomplete` when it could not fully analyse files a skill references, so such skills are blocked until an operator
-overrides, by design; an unfinished scan is not evidence of safety. An empty report is `missing`; medium findings alone warn.
+Detection) missing from the report, and any security validator whose status is not `passed` or `failed`, so a skill whose scan
+did not finish is blocked until an operator overrides, by design; an unfinished scan is not evidence of safety. There is one exception since 0.2.0: SkillSpector 2.12 calls its analysis `partial` whenever a SKILL.md mentions a local path the skill does not bundle (a repository script, a config file), even when every bundled file was fully analysed. For that pattern alone the hub reads SkillSpector's own static report of the same copy and records `unresolved_references`; the gate then **warns** and names the references instead of blocking. It must be the only reason: full coverage, no file partially inspected or skipped, no limitation, no fatal ledger entry, every ledger entry `reference_missing`, and every analyzer completed, not applicable, or LLM-backed and switched off by `--no-llm`. Anything else, or a report the hub cannot read, still blocks.
+The extra SkillSpector run is contained like SkillEvaluator itself: a bare name found on the hub's search path, an argv list,
+the same minimal environment and timeout, the private copy as its target and its report written to the private work dir
+(deleted after the run); only the classification is stored. An empty report is `missing`; medium findings alone warn.
 The LLM pass can add blocks (its critical/high security findings) and can never clear a static finding,
 because its finding verifier can downgrade findings and skill text can steer it. The judge score (`RUBRIC_EVAL`) never gates.
 Publication and quality validators (schema, version, license, quality, lint, rubric) are excluded because they say nothing

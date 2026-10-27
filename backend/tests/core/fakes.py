@@ -198,11 +198,17 @@ class FakeEvalRunner:
         self.seen: list[dict[str, Any]] = []                   # per tier run: {files: {rel: bytes}, symlinks: [rel], modes}
         self.cancelled = 0
         self.write_into_cwd = False
+        self.spector: dict[str, Any] | None = None             # the report a `skillspector scan --output F` call writes to F
+        self.spector_timed_out = False
 
     def run(self, argv: list[str], *, cwd: Path, env: Mapping[str, str], timeout: float) -> EvalResult:
         self.calls.append({"argv": list(argv), "cwd": Path(cwd), "env": dict(env), "timeout": timeout})
         if argv[1:] == ["--version"]:
             return EvalResult(0, self.version_out + "\n", "")
+        if argv[1] == "scan":                                   # SkillSpector, run by the hub to explain a partial Security Scan
+            if self.spector is not None and not self.spector_timed_out:
+                Path(argv[argv.index("--output") + 1]).write_text(json.dumps(self.spector).replace("@COPY@", argv[2]))
+            return EvalResult(-9 if self.spector_timed_out else 0, "", "", self.spector_timed_out)
         self.started.set()
         if self.block is not None:
             self.block.wait(10)

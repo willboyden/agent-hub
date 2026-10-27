@@ -41,6 +41,11 @@ for every client it is enabled for, and the content repo is the source of truth.
 * Cost, deliberate: SkillSpector often reports `incomplete` (it could not fully analyse files a skill references). That
   blocks, so such skills need a reason-bearing override before they can be imported under `require`. Treating "the scan did
   not finish" as safe would let skill text that defeats the scanner through.
+* Addendum (0.2.0): the most common `incomplete` was not a scan that did not finish. SkillSpector 2.12 marks its analysis
+  `partial` when a SKILL.md merely mentions a local path the skill does not bundle; SkillEvaluator 0.5.0 turns that into an
+  incomplete Security Scan. On 61 real skills that was the only reason for 38 of 55 incomplete scans. For exactly that pattern
+  the hub reads SkillSpector's own report of the same copy and the gate warns (`unresolved_references`, the references named)
+  instead of blocking; every other partial reason still blocks (`docs/SECURITY.md` section 14).
 * Cost: the queue is in memory. A hub restart drops queued jobs and records the running one as `error` (`interrupted`).
 * Cost: with `require`, every new skill needs an evaluation first, which needs SkillEvaluator installed.
 * Not covered: cross-skill duplication (Tier 2 runs without a catalog) and live agent runs (Tier 3).

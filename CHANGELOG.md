@@ -48,6 +48,20 @@
   `hubctl import-observed` and `POST /api/v1/clients/{id}/observed/import` (enable defaults to off). See ADR-0011,
   `docs/OPERATIONS.md` section 4d, `docs/SECURITY.md` section 14.
 
+### Changed
+- **The import gate no longer blocks a skill only because it mentions local paths it does not bundle.** SkillSpector 2.12
+  marks its analysis `partial` whenever a SKILL.md refers to a local path that is not in the skill (a repository script, a
+  config file), even when every bundled file was fully analysed, and SkillEvaluator 0.5.0 reports that as an incomplete
+  Security Scan, which the gate blocked as "the scan did not finish" (in a live run: 94 of 161 blocks). For that case the
+  hub now runs SkillSpector's static scan on the same private copy (contained like SkillEvaluator) and reads why; when the
+  only reason is unresolved local references (full coverage, no file partially inspected or skipped, no limitation, no
+  fatal entry, LLM-backed analyzers off only because of `--no-llm`) it records `scan_partial.unresolved_references` and
+  the gate **warns**, naming the references. Every other partial reason still blocks, and critical/high findings still
+  block. Measured through a scratch hub on 61 real skills with the real launcher and SkillSpector 2.12.0: before, 55
+  blocked and 6 ok; after, 25 blocked (17 scans with a real coverage gap, such as an unreadable `__pycache__/*.pyc` or a
+  parse limit, and 8 with critical/high findings), 30 warn and 6 ok. Run records gain `eval_rev` (2) and `scan_partial`;
+  older runs whose Security Scan was incomplete are evaluated again once instead of being reused.
+
 ### Security
 - **The floor's re-check of rendered output now covers TOML MCP blocks.** The generic adapter's `format: toml` MCP output
   (`[<key_path>.<name>]` tables between hub markers) was not inspected, so an adapter bug or a hostile spec could have

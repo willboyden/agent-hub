@@ -29,6 +29,9 @@ Addendum F (observed skills, queue, gate) and F14 (security of the evaluator inv
     gate stricter, never clear a static finding.
   * One FIFO worker thread drains an in-memory queue; the same flock is held per job. Finished runs are indexed by content hash
     (<root>/@by-hash/<hash>.json) so an identical skill is never evaluated twice (`reused_from`) unless forced.
+  * Record revision 2 (EVAL_REV): a static Security Scan that is `incomplete` only because SkillSpector called its analysis
+    `partial` gets one more contained SkillSpector run on the same copy to read why; `unresolved_references` alone is stored in
+    `scan_partial` and the gate warns instead of blocking. Older records with an incomplete Security Scan are not reused.
 """
 from __future__ import annotations
 
@@ -82,6 +85,20 @@ VERDICTS = ("passed", "failed", "incomplete", "error")
 SEVERITIES = ("critical", "high", "medium", "low")
 RUN_ID_RE = re.compile(r"\d{8}T\d{9}Z-[0-9a-f]{8}")         # UTC time with milliseconds, then 32 random bits
 T1_JSON, T1_MD, T2_JSON, RECORD = "skillevaluator-tier1.json", "skillevaluator-tier1.md", "skillevaluator-tier2.json", "run.json"
+# Why a static Security Scan came back `incomplete` (record revision 2). SkillSpector (the scanner behind "Security Scan")
+# reports `analysis_completeness.status: partial` whenever a SKILL.md mentions a local path the skill does not bundle (for
+# example a repository script), even when every bundled file was fully analysed; SkillEvaluator 0.5.0 then marks the scan
+# incomplete, and the gate blocked such skills as "did not finish" (2026-10-15: 94 of 161 blocks). For that one pattern the
+# hub reads SkillSpector's own static report and records `unresolved_references`, which the gate shows as a warning. Any
+# other partial reason (a file not fully inspected, excluded executable content, a parse limit, a fatal ledger entry, a
+# degraded analyzer, a limitation) still blocks, as does anything the hub cannot read.
+EVAL_REV = 2
+SKILLSPECTOR = "skillspector"
+SKILLSPECTOR_TIMEOUT_S = 300.0     # SkillEvaluator's own limit for the same scan
+SKILLSPECTOR_REPORT = "skillspector.json"
+PARTIAL_ERROR = "skillspector JSON field 'analysis_completeness' reports incomplete analysis (status 'partial')"
+UNRESOLVED_REFERENCES = "unresolved_references"
+FINDING_LINE = re.compile(r"\[SECURITY-(CRITICAL|HIGH|MEDIUM|LOW|INFO)\] ")
 SIDECAR = "hub.yaml"            # the hub's own metadata next to SKILL.md: not part of the skill, never evaluated
 COPY_MARK = "<skill-copy>"      # replaces the temporary copy's absolute path in stored reports
 WORK_MARK = "<work-dir>"
@@ -349,6 +366,44 @@ def top_findings(d: Mapping[str, Any], limit: int = TOP_FINDINGS) -> tuple[list[
 
 def is_security_validator(name: str) -> bool:
     return name not in NON_SECURITY_VALIDATORS
+
+
+def classify_partial_scan(report: Mapping[str, Any]) -> dict[str, Any] | None:
+    """SkillSpector's static JSON report -> {reason: unresolved_references, references, ...} when its analysis is `partial`
+    ONLY because of local references the skill does not bundle; None for anything else (the caller keeps blocking)."""
+    ac = _dict(report.get("analysis_completeness"))
+    meta = _dict(report.get("metadata"))
+    exceptions = ac.get("ledger_exceptions")
+    analyzers = ac.get("analyzer_statuses")
+    counts = [ac.get(k) for k in ("total_components", "scanned_components", "fully_inspected_files",
+                                  "partially_inspected_files", "entirely_uninspected_files")]
+    if not (report.get("execution_successful") is True and ac.get("execution_successful") is True
+            and ac.get("status") == "partial" and ac.get("is_complete") is False
+            and all(isinstance(c, int) and not isinstance(c, bool) for c in counts)
+            and counts[0] == counts[1] == counts[2] and counts[3] == 0 and counts[4] == 0
+            and ac.get("coverage_percent") in (100, 100.0) and ac.get("limitations") == []
+            and isinstance(exceptions, list) and exceptions and isinstance(analyzers, list) and analyzers):
+        return None
+    refs: list[dict[str, Any]] = []
+    for e in exceptions:
+        e = _dict(e)
+        if (e.get("fatal") is not False or e.get("phase") != "reference_resolution" or e.get("reason_code") != "reference_missing"
+                or e.get("outcome") != "partial"):
+            return None
+        refs.append({"path": str(e.get("path") or "?")[:200], "line": _int(e.get("start_line"))})
+    # A static (`--no-llm`) scan disables SkillSpector's LLM-backed analyzers; it names them in llm_provenance. Only those may
+    # be `disabled`, and only by configuration with no LLM requested. Anything else (`degraded`, `failed`, ...) is a real gap.
+    llm_ids = {str(_dict(x).get("analyzer_id")) for x in _list(_dict(meta.get("llm_provenance")).get("analyzers"))}
+    for a in analyzers:
+        a = _dict(a)
+        status = a.get("status")
+        llm_off = (status == "disabled" and a.get("reason_code") == "disabled_by_configuration"
+                   and meta.get("llm_requested") is False and str(a.get("analyzer_id")) in llm_ids)
+        if status not in ("completed", "not_applicable") and not llm_off:
+            return None
+    version = meta.get("skillspector_version")
+    return {"reason": UNRESOLVED_REFERENCES, "count": len(refs), "references": refs[:20],
+            "skillspector_version": version[:20] if isinstance(version, str) else None}
 
 
 def validator_summaries(d: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -956,6 +1011,10 @@ class SkillEvalService:
         if (TIER_RANK.get(str(rec.get("tiers")), -1) < TIER_RANK[p.tiers] or rec.get("verdict") in (None, "error")
                 or "validators" not in rec or ptr.get("evaluator_version") != p.version):
             return None
+        if (_int(rec.get("eval_rev")) or 1) < EVAL_REV and any(
+                _dict(v).get("validator") == "Security Scan" and _dict(v).get("status") == "incomplete"
+                for v in _list(rec.get("validators"))):
+            return None             # recorded before the hub explained partial scans: evaluate again, once
         return best
 
     def gate(self, content_hash: str) -> dict[str, Any]:
@@ -998,7 +1057,12 @@ class SkillEvalService:
                                    and f.get("pass") == which for f in shown):
                     blocked.append(f"{name}: {bad} critical/high finding(s)")
                 if which == "static":
-                    if v.get("status") not in ("passed", "failed"):
+                    part = _dict(_dict(rec.get("scan_partial")).get(name))
+                    if v.get("status") == "incomplete" and part.get("reason") == UNRESOLVED_REFERENCES:
+                        where = ", ".join(f"{_dict(x).get('path')}:{_dict(x).get('line')}" for x in _list(part.get("references"))[:3])
+                        warn.append(f"{name}: {_int(part.get('count'))} local reference(s) not bundled with the skill ({where}); "
+                                    "every bundled file was scanned")
+                    elif v.get("status") not in ("passed", "failed"):
                         blocked.append(f"{name}: status {str(v.get('status'))[:20]} (the scan did not finish)")
                     if _int(sev.get("medium")):
                         warn.append(f"{name}: {_int(sev.get('medium'))} medium finding(s)")
@@ -1275,7 +1339,8 @@ class SkillEvalService:
                 "started_at": p.started_at, "content_hash": p.snap.content_hash, "files": len(p.snap.files),
                 "bytes": p.snap.total_bytes, "actor": actor[:64], "model_calls": p.tiers != "static", "static": None,
                 "tier1": None, "tier2": None, "validators": None, "validators_llm": None, "security_findings": [],
-                "findings": [], "findings_total": 0, "error": None, "llm_error": None, "reused_from": None}
+                "findings": [], "findings_total": 0, "error": None, "llm_error": None, "reused_from": None,
+                "eval_rev": EVAL_REV, "scan_partial": {}}
 
     def _emit(self, actor: str, p: _Prepared, rec: Mapping[str, Any]) -> None:
         if self.on_event is not None:
@@ -1325,6 +1390,9 @@ class SkillEvalService:
                 static = self._clean(summarize_tier1(ts), copy)
                 rec["static"] = rec["tier1"] = static
                 rec["validators"] = self._clean(validator_summaries(ts), copy)
+                partial = self._explain_partial_security(ts, copy, work, env)
+                if partial is not None:
+                    rec["scan_partial"] = {"Security Scan": self._clean(partial, copy)}
                 rec["security_findings"] = self._clean(security_findings(ts, "static"), copy)
                 findings, total = top_findings(ts)
                 verdict = static["status"] or "error"
@@ -1382,6 +1450,29 @@ class SkillEvalService:
         return rec
 
     # -- helpers ------------------------------------------------------------------------------------------------------------
+    def _explain_partial_security(self, ts: Mapping[str, Any], copy: Path, work: Path,
+                                  env: Mapping[str, str]) -> dict[str, Any] | None:
+        """For a static Security Scan that is `incomplete` ONLY because SkillSpector called its analysis partial, run
+        SkillSpector's static scan on the same copy (same containment, report written to the private work dir) and classify
+        why (classify_partial_scan). None whenever anything differs or cannot be read: the gate then keeps blocking."""
+        sec = next((_dict(r) for r in _list(ts.get("results")) if _dict(r).get("validator") == "Security Scan"), {})
+        # The scan's error lines: its findings ("[SECURITY-HIGH] ...", judged by the gate anyway) plus, here, exactly one
+        # line saying the analysis was partial. Any other error means something else went wrong: no classification.
+        errors = [str(e) for e in _list(_dict(sec.get("legacy")).get("errors")) if not FINDING_LINE.match(str(e))]
+        if (sec.get("status") != "incomplete" or sec.get("incomplete_scans") != [SKILLSPECTOR] or len(errors) != 1
+                or not errors[0].startswith(PARTIAL_ERROR)):
+            return None
+        exe = self.which(SKILLSPECTOR, self.search_path())
+        if not exe:
+            return None
+        out = work / SKILLSPECTOR_REPORT
+        r = self.runner.run([exe, "scan", str(copy), "--format", "json", "--no-llm", "--output", str(out)], cwd=work,
+                            env=env, timeout=SKILLSPECTOR_TIMEOUT_S)
+        if r.timed_out:
+            return None
+        report = self._load_report(out)
+        return classify_partial_scan(report) if report is not None else None
+
     def _clean_work(self) -> None:
         """Leftovers of an interrupted run (the hub was killed mid-run). Only called while holding the global lock."""
         w = self.root / ".work"
