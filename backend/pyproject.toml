@@ -1,6 +1,6 @@
 [project]
 name = "agent-hub"
-version = "0.1.0"
+version = "0.2.0"
 description = "Agent Hub: change-controlled control plane that compiles shared agent content into each client's native format"
 requires-python = ">=3.13,<3.14"
 dependencies = [

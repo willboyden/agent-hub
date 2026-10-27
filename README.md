@@ -8,6 +8,9 @@ Supported clients out of the box: **Claude Code**, **opencode**, **Hermes Agent*
 declarative `generic` adapter (a YAML spec; no code). License: MIT (`LICENSE`). Architecture contract:
 `docs/ARCHITECTURE.md`. Per-feature status: `docs/FEATURES.md`. Reporting a vulnerability: `SECURITY.md`.
 
+Status: **0.2.0** (what changed: `CHANGELOG.md`). Developed and used on Linux by one operator; every feature's status is in
+`docs/FEATURES.md`, and the browser suite (`make e2e`) gates every push.
+
 Security: read `docs/SECURITY.md`, including its residual risks. The hub cannot protect you from an unsandboxed client
 that runs as your own OS user; run `hubctl doctor` to see what is exposed on your host.
 

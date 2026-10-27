@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
+
+Upgrading from 0.1.0: pull, run `make setup` (it also enables the pre-push hook), restart the hub (the UI is served from the
+checkout), and reload the browser once with Ctrl+Shift+R. Skills whose recorded Security Scan was `incomplete` are evaluated
+again the next time they are queued. Back up the state dir first; no state migration is needed.
 
 ### Added
 - Browser end-to-end suite (`frontend/e2e/run.mjs`, `make e2e`, part of `make all`, CI job `e2e`): `hubctl init` and the

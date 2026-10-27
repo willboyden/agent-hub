@@ -356,7 +356,7 @@ before 0.2.0 needs one hard reload (Ctrl+Shift+R, Cmd+Shift+R on a Mac).
 
 Read the plan: adapter changes can change rendered output for unchanged content, which shows up as file diffs. The
 state schema is created on first start; migrations between versions are **not** provided or tested (the project is at
-0.1.0). Back up the state dir before upgrading. Pins mean tested, not frozen: bump `uv.lock` only after `make all`.
+0.2.0; 0.1.0 to 0.2.0 needs none). Back up the state dir before upgrading. Pins mean tested, not frozen: bump `uv.lock` only after `make all`.
 
 ## 7. Opt-in systemd (--user)
 
