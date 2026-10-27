@@ -197,7 +197,7 @@ class AhCollections extends AhView {
     clear(this.main).append(
       h('div', { class: 'card coll-head-card' }, h('div', { class: 'card-body' },
         h('div', { class: 'row between wrap gap' }, h('div', { class: 'coll-title' }, colorDot(c.color, 'swatch lg'), icon(c.icon || 'folder', 22), h('h2', c.title)),
-          h('div', { class: 'row gap' }, btn(t('common.edit'), { icon: 'editor', onClick: () => this.edit(c) }), btn(t('common.delete'), { icon: 'trash', kind: 'danger', onClick: () => this.remove(c) }))),
+          h('div', { class: 'row gap' }, btn(t('common.edit'), { icon: 'editor', onClick: () => this.edit(c) }), btn(t('common.delete'), { icon: 'trash', kind: 'danger', onClick: () => this.confirmDelete(c) }))),
         h('p', { class: 'muted' }, c.description || t('coll.no_description')))),
       this.enableCard(c),
       h('section', { class: 'card' }, h('header', { class: 'card-head' }, h('h2', t('coll.members', { count: members.length }))),
@@ -249,7 +249,9 @@ class AhCollections extends AhView {
       field(t('coll.f_title'), title), field(t('coll.f_desc'), desc), look.node, h('div', { class: 'row gap end' }, btn(t('common.cancel'), { onClick: () => m.close() }), h('button', { type: 'submit', class: 'btn primary' }, t('common.save'))));
     const m = openModal(t('coll.edit_title'), form); title.focus();
   }
-  async remove(c) {
+  // Not `remove`: that name would shadow Element.remove(), which the router calls to detach a view (it opened this
+  // view's delete flow with no collection on every navigation away).
+  async confirmDelete(c) {
     if (!(await confirmDialog(t('coll.delete_confirm', { name: c.title }), { danger: true, confirmLabel: t('common.delete') }))) return;
     try { await this.api.deleteCollection(c.id); toast(t('coll.deleted', { name: c.title }), { kind: 'ok' }); location.hash = '#/collections'; this.cid = null; notifyChanged(); } catch (e) { toastError(e); }
   }

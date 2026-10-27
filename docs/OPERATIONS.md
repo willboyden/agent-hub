@@ -343,9 +343,15 @@ reports conflicts. Re-import (`hubctl import`) records the current live files as
 
 ```bash
 git pull   # or however you update the checkout
-cd hub && make setup && make all        # lint, mypy, backend/knowledge/frontend tests (offline)
+make setup && make all                  # lint, mypy, backend/knowledge/frontend tests (offline) and the browser suite
 cd backend && uv run hubctl validate && uv run hubctl plan
 ```
+
+`make all` includes `make e2e`, which needs a Chrome or Chromium (`CHROME_BIN`, or name it once with
+`git config agent-hub.chrome /path/to/chrome`). Restart the hub after an upgrade: the UI is served from the checkout, so a
+running hub would pair new frontend files with an old backend. Since 0.2.0 every frontend file is served with
+`Cache-Control: no-cache`, so the browser picks up new files on the next load; a browser that still holds files from
+before 0.2.0 needs one hard reload (Ctrl+Shift+R, Cmd+Shift+R on a Mac).
 
 Read the plan: adapter changes can change rendered output for unchanged content, which shows up as file diffs. The
 state schema is created on first start; migrations between versions are **not** provided or tested (the project is at

@@ -63,7 +63,7 @@ class AhEditor extends AhView {
       h('nav', { class: 'crumbs', 'aria-label': t('editor.breadcrumb') }, h('a', { href: '#/library' }, t('nav.library')), ' / ', kindBadge(this.kind), ' ', h('strong', this.name)),
       h('div', { class: 'row gap wrap' }, this.dirty ? badge(t('editor.unsaved'), 'warn') : null,
         this.kind === 'skill' && !this.creating ? btn(t('editor.duplicate'), { icon: 'copy', onClick: () => this.duplicate() }) : null,
-        !this.creating && !this.locked ? btn(t('common.delete'), { icon: 'trash', onClick: () => this.remove() }) : null,
+        !this.creating && !this.locked ? btn(t('common.delete'), { icon: 'trash', onClick: () => this.confirmDelete() }) : null,
         !this.locked ? btn(this.creating ? t('editor.create') : t('common.save'), { icon: 'check', kind: 'primary', disabled: !this.dirty || this.blocking().length > 0, onClick: () => this.save(), title: 'Ctrl S' }) : badge(t('lib.locked'), 'muted')));
   }
   // ---- validation ----
@@ -292,6 +292,8 @@ class AhEditor extends AhView {
     let files, diags = [];
     try { const r = await this.api.rendered(clientId, this.kind, this.name); files = r.files; diags = r.diagnostics || []; }
     catch (e) {
+      // A client created but not committed yet is a normal step, not a failure: say what to do instead of an error.
+      if (e.code === 'client_not_committed') return emptyBox(t('editor.rendered_uncommitted', { client: cname || clientId }), t('editor.rendered_uncommitted_hint'), h('a', { class: 'btn', href: '#/changes' }, t('nav.changes')));
       if (e.status !== 404 && e.status !== 405) throw e;
       // Fallback for backends without /rendered: rebuild what we can from the plan (built from COMMITTED content). A file that is new to the
       // client shows its full content; a changed one shows the diff; an unchanged one is already exactly what the client has.
@@ -331,7 +333,9 @@ class AhEditor extends AhView {
       field(t('editor.duplicate_name'), input), err, h('div', { class: 'row gap end' }, btn(t('common.cancel'), { onClick: () => m.close() }), h('button', { type: 'submit', class: 'btn primary' }, t('editor.duplicate'))));
     const m = openModal(t('editor.duplicate'), form); input.select();
   }
-  async remove() {
+  // Not `remove`: that name would shadow Element.remove(), which the router calls to detach a view, so leaving the
+  // editor opened this "Delete <item>?" confirmation.
+  async confirmDelete() {
     if (!(await confirmDialog(t('editor.delete_confirm', { name: this.name }), { danger: true, confirmLabel: t('common.delete') }))) return;
     try { await this.api.deleteItem(this.kind, this.name); this.dirty = false; toast(t('editor.deleted', { name: this.name }), { kind: 'ok' }); notifyChanged(); location.hash = '#/library'; } catch (e) { toastError(e); }
   }

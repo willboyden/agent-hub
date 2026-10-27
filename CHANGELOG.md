@@ -3,6 +3,18 @@
 ## Unreleased
 
 ### Added
+- Browser end-to-end suite (`frontend/e2e/run.mjs`, `make e2e`, part of `make all`, CI job `e2e`): `hubctl init` and the
+  real server in a throwaway HOME (loopback not trusted, signed in with the bootstrap key), a skill, an agent, a
+  collection and a Claude Code client created through the API, then every page, detail route and tab in headless Chrome
+  over the DevTools protocol with Node 22's built-in WebSocket (no npm), once before and once after committing that
+  content. It fails on an error or not-found state, a dialog that opened by itself, the sign-in dialog, an uncaught
+  exception, a console error, an API 5xx (the knowledge proxy's designed `503 knowledge_unavailable` excepted while that
+  service is not running) and a frontend file without `Cache-Control: no-cache`. The backend gets `PATH=/usr/bin:/bin`,
+  so locally installed tools are as absent as in CI.
+- Ship gate: a versioned `.githooks/pre-push` (enabled by `make hooks`, which `make setup` now runs) refuses to push a
+  commit or tag unless the suite passed on its exact `backend/`, `frontend/` and `policy/` trees (`scripts/e2e-gate.sh`,
+  record kept in `.git`); when the pushed commit is the clean HEAD it runs the suite first. A Chrome that is not on PATH
+  is named once per checkout with `git config agent-hub.chrome <path>`.
 - Desktop launcher (Linux, opt-in): `agent-hub open` starts the hub in the background if needed and opens the UI;
   `agent-hub stop` stops the hub it started. `make install-desktop` adds the app-menu entry and `make install-desktop-icon`
   also places it on the desktop. See `docs/OPERATIONS.md` section 2.
@@ -37,6 +49,19 @@
   `docs/OPERATIONS.md` section 4d, `docs/SECURITY.md` section 14.
 
 ### Fixed
+- **Leaving the editor opened its "Delete <item>?" confirmation, and leaving Collections threw an error.** Both views
+  defined a method named `remove` (their delete flow), which replaced the DOM's `Element.remove()` that the router calls
+  to detach a view, so every navigation away ran the delete flow: the editor asked to delete the item you had just left
+  (confirming would have deleted it), and Collections called its handler with no collection and threw. Renamed to
+  `confirmDelete`; a frontend test now fails when a view or component defines a method named like a DOM method. Found
+  by the new browser suite.
+- **Frontend files were served without `Cache-Control`,** so after an update a browser could keep old ES modules for days
+  (heuristic caching) and pair them with new views, which then fail their imports. Every frontend file is now served with
+  `Cache-Control: no-cache` and answers a matching `If-None-Match` with 304; the API keeps `no-store`. A view whose code
+  fails to load now says to reload with Ctrl+Shift+R. A browser that holds files from before this release needs that
+  reload once.
+- The editor's Rendered tab showed an error ("client not committed") for a client created but not committed yet. It is
+  a normal step, so the tab now says the client is not committed yet and links to Changes.
 - Turning a concern off for a client (it becomes advisory) now releases the lock entries of its files and leaves the
   files in place. Before, the old entry stayed, so `hubctl verify` kept comparing a file the hub no longer manages with
   the content it last delivered, and failed once that file was edited. A file that still holds a managed concern's slice

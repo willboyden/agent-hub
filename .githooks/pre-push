@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Refuses to push Agent Hub code that the browser end-to-end suite has not passed on (`make e2e`).
+# Enabled by `make hooks` (also part of `make setup`): git config core.hooksPath .githooks
+#
+# git passes one line per ref on stdin: <local ref> <local sha> <remote ref> <remote sha>. Each pushed commit or tag
+# must have a recorded e2e pass for its backend/, frontend/ and policy/ trees (scripts/e2e-gate.sh). When the pushed
+# commit is the clean HEAD, the suite is run here first. Deleting a remote ref needs nothing.
+# 2026-10-26: the suite's first run found two views that ran their delete flow whenever you navigated away.
+set -uo pipefail
+
+top=$(git rev-parse --show-toplevel) || exit 1
+gate="$top/scripts/e2e-gate.sh"
+status=0
+while read -r lref lsha _rref _rsha; do
+  [[ "$lsha" =~ ^0+$ ]] && continue                                  # a delete
+  "$gate" check "$lsha" </dev/null 2>/dev/null && continue
+  head=$(git rev-parse HEAD 2>/dev/null)
+  commit=$(git rev-parse --verify --quiet "$lsha^{commit}")
+  if [ -n "$commit" ] && [ "$commit" = "$head" ] && [ -z "$(git -C "$top" status --porcelain -- backend frontend policy)" ]; then
+    echo "pre-push: no e2e pass recorded for $lref; running the browser suite now (about a minute)" >&2
+    "$gate" run </dev/null && "$gate" check "$lsha" </dev/null && continue
+  fi
+  echo "pre-push: refusing $lref: the browser e2e suite has not passed on its backend/, frontend/ and policy/." >&2
+  echo "pre-push: commit everything under backend/, frontend/ and policy/, run 'make e2e', then push again." >&2
+  status=1
+done
+exit "$status"

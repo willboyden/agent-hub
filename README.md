@@ -142,9 +142,18 @@ optionally `~/.config/agent-hub/env`. Ports: hub 8792, knowledge service 8795. D
 
 ## Developer commands
 
-`make help` lists them: `setup`, `test`, `lint`, `typecheck`, `frontend-test`, `knowledge-test`, `mock`, `all`.
-`make install-desktop` adds an app-menu launcher (Linux); see `docs/OPERATIONS.md` section 2.
-CI (`.github/workflows/ci.yml`) runs lint, `mypy --strict`, tests and a dependency audit per project.
+`make help` lists them: `setup`, `hooks`, `test`, `lint`, `typecheck`, `frontend-test`, `knowledge-test`, `e2e`, `mock`,
+`all`. `make install-desktop` adds an app-menu launcher (Linux); see `docs/OPERATIONS.md` section 2.
+CI (`.github/workflows/ci.yml`) runs lint, `mypy --strict`, tests and a dependency audit per project, and the browser suite.
+
+`make e2e` (part of `make all`) is a browser end-to-end check: `hubctl init` and the real server in a throwaway HOME,
+signed in with the bootstrap key, a few items created through the API, then every page, detail route and tab in a
+headless Chrome over the DevTools protocol (no npm), before and after a commit. It fails on an error or not-found state,
+a dialog that opened by itself, an uncaught exception, a console error, an API 5xx (except the knowledge proxy's
+designed 503 when that service is not running) and a frontend file served without `Cache-Control: no-cache`. It needs
+a Chrome: `CHROME_BIN`, or `git config agent-hub.chrome /path/to/chrome` once. `make setup` enables the versioned
+`.githooks/pre-push`, which refuses to push a commit the suite has not passed on (its `backend/`, `frontend/` and
+`policy/` trees are recorded inside `.git` by `scripts/e2e-gate.sh`).
 
 ## License
 

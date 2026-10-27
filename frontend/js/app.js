@@ -108,7 +108,7 @@ async function navigate({ path, route, params, query }) {
   $('#crumb').textContent = title;
   document.title = `${title} · ${t('app.name')}`;
   try { await import(`./views/${route.mod}.js`); }
-  catch (e) { clear(main).append(h('div', { class: 'state error', role: 'alert' }, `${t('common.error')}: ${e.message}`)); return; }
+  catch (e) { clear(main).append(h('div', { class: 'state error', role: 'alert' }, h('strong', `${t('common.error')}: ${e.message}`), h('p', t('err.module')))); return; }
   if (my !== seq) return;
   current?.remove();
   current = document.createElement(route.tag);

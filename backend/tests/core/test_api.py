@@ -288,6 +288,27 @@ def test_static_allowlist_and_spa_fallback(api: TestClient) -> None:
         assert r.status_code == 404 and "secret dev file" not in r.text and r.text != "outside", path
 
 
+def test_static_files_are_revalidated_on_every_load(api: TestClient, frontend: Path) -> None:
+    # Without Cache-Control browsers keep old ES modules for days; after an update a new view meets an old shared
+    # module and its import fails (Nemo Console 0.3.0 shipped exactly that to a user).
+    (frontend / "js" / "util.js").write_text("export const a = 1;")
+    for path in ("/", "/index.html", "/js/util.js", "/css/app.css", "/some/deep/link"):
+        r = api.get(path)
+        assert r.status_code == 200, path
+        assert r.headers["cache-control"] == "no-cache", path
+        etag = r.headers["etag"]
+        again = api.get(path, headers={"If-None-Match": f'W/{etag}, "other"'})
+        assert again.status_code == 304, path
+        assert again.content == b""
+        assert again.headers["etag"] == etag and again.headers["cache-control"] == "no-cache"
+        assert "default-src 'none'" in again.headers["content-security-policy"]           # 304s keep the headers
+    etag = api.get("/js/util.js").headers["etag"]
+    (frontend / "js" / "util.js").write_text("export const a = 1, b = 2;")                # changed: new size, new etag
+    r = api.get("/js/util.js", headers={"If-None-Match": etag})
+    assert r.status_code == 200 and "b = 2" in r.text
+    assert api.get(f"{API}/health").headers["cache-control"] == "no-store"                # the API stays uncached
+
+
 def test_static_symlink_escape(api: TestClient, frontend: Path, tmp_path: Path) -> None:
     (frontend / "js" / "leak.js").symlink_to(tmp_path / "outside.txt")
     assert api.get("/js/leak.js").status_code == 404

@@ -7,14 +7,18 @@ BACKEND   := backend
 KNOWLEDGE := knowledge
 FRONTEND  := frontend
 
-.PHONY: help setup setup-knowledge run run-knowledge mock test knowledge-test knowledge-live lint typecheck frontend-test all \
+.PHONY: help setup setup-knowledge hooks run run-knowledge mock test knowledge-test knowledge-live lint typecheck frontend-test e2e all \
         install-desktop install-desktop-icon uninstall-desktop
 
 help:  ## list targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | sed 's/:.*## /\t/'
 
-setup:  ## create the backend venv and install runtime + dev deps from uv.lock
+setup:  ## create the backend venv and install runtime + dev deps from uv.lock; enable the git hooks
 	cd $(BACKEND) && uv venv --python 3.13 && uv sync --frozen
+	if git rev-parse --git-dir >/dev/null 2>&1; then $(MAKE) --no-print-directory hooks; fi
+
+hooks:  ## use the versioned git hooks in .githooks (pre-push refuses code without a recorded e2e pass)
+	git config core.hooksPath .githooks
 
 setup-knowledge:  ## create the knowledge-service venv from its uv.lock
 	cd $(KNOWLEDGE) && uv venv --python 3.13 && uv sync --frozen
@@ -48,7 +52,10 @@ typecheck:  ## mypy --strict on the backend and the knowledge service
 frontend-test:  ## node --test on the pure-logic modules (no npm install needed)
 	cd $(FRONTEND) && node --test tests/*.test.mjs
 
-all: lint typecheck test knowledge-test frontend-test  ## everything the quality bar requires
+e2e:  ## browser end-to-end: real backend + headless Chrome, every page and tab; records a pass for the pre-push hook
+	scripts/e2e-gate.sh run
+
+all: lint typecheck test knowledge-test frontend-test e2e  ## everything the quality bar requires
 
 # Desktop launcher (opt-in, Linux). Paths go into a .desktop Exec line and a sed replacement, so the checkout path is
 # limited to a safe character set. Fixed ~/.local/share, like the app's own config (XDG vars are unreliable under snaps);

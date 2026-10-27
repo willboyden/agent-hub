@@ -113,6 +113,8 @@ work).
 | `hubctl` (init, validate, plan, apply, verify, drift, audit, import, status, commit, rollback, applies, migrate-content, attest-mcp, retire-bootstrap-key, doctor, adapters, serve, observe, evaluate, evaluate-skill(s), import-observed), exit codes 0/1/2, `--json` | Implemented |  |
 | Opt-in systemd `--user` units for the hub and knowledge service (narrow `ReadWritePaths`, venv entry points) | Implemented |  |
 | Zero-build UI served by the backend; contract mock (`frontend/dev/mock-server.mjs`) | Implemented |  |
+| Frontend files revalidated on every load (`Cache-Control: no-cache`, ETag/304), so an update never pairs a new view with a stale module | Implemented | Backend test; checked on every page by the browser suite. |
+| Browser end-to-end suite (`make e2e`, CI job `e2e`) and a pre-push hook that refuses code it has not passed on | Implemented | Real backend after `hubctl init`, headless Chrome; every page, detail route and tab, before and after a commit. |
 | Windows or cgroup-only hosts | Not planned | Developed and used on Linux; other platforms are not supported. |
 
 ## How the UX compares (facts only)

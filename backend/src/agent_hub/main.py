@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 import uvicorn
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse, Response
 
 from agent_hub import __version__
@@ -22,6 +22,9 @@ from agent_hub.services.hub import Hub
 log = logging.getLogger("agent_hub")
 API = "/api/v1"
 STATIC_DIRS = ("css", "js", "i18n")
+# Frontend files are revalidated on every load (a 304 while unchanged). Without it browsers cache the ES modules
+# heuristically for days, and after an update a page can pair a new view with an old shared module and fail its import.
+STATIC_CACHE = "no-cache"
 
 
 def default_frontend_dir() -> Path:
@@ -68,7 +71,7 @@ def _mount_frontend(app: FastAPI, root: Path) -> None:
     root = root.resolve()
 
     @app.get("/{path:path}", include_in_schema=False)
-    async def spa(path: str) -> Response:
+    async def spa(path: str, request: Request) -> Response:
         if path.startswith("api/") or path == "api":
             return problem(404, "not_found", "not found", "no such API route")
         top = path.split("/", 1)[0]
@@ -76,14 +79,28 @@ def _mount_frontend(app: FastAPI, root: Path) -> None:
             base = (root / top).resolve()
             target = (root / path).resolve()
             if target.is_file() and base in target.parents:          # defeats ../ and symlink escapes
-                return FileResponse(target)
+                return _file_response(request, target)
             return problem(404, "not_found", "not found", "no such file")
         if "." in path.rsplit("/", 1)[-1] and path != "index.html":
             return problem(404, "not_found", "not found", "no such file")     # a missing asset must not return the SPA
         index = root / "index.html"                                             # SPA fallback for hash-less deep links
         if index.is_file():
-            return FileResponse(index)
+            return _file_response(request, index)
         return problem(404, "not_found", "not found", "frontend not built")
+
+
+def _file_response(request: Request, target: Path) -> Response:
+    """The file with `Cache-Control: no-cache`, answering a matching `If-None-Match` with 304 (STATIC_CACHE)."""
+    try:
+        st = target.stat()
+    except OSError:
+        return problem(404, "not_found", "not found", "no such file")
+    resp = FileResponse(target, stat_result=st, headers={"Cache-Control": STATIC_CACHE})
+    etag = resp.headers["etag"]
+    sent = {tag.strip().removeprefix("W/") for tag in request.headers.get("if-none-match", "").split(",")}
+    if etag in sent:
+        return Response(status_code=304, headers={"ETag": etag, "Cache-Control": STATIC_CACHE})
+    return resp
 
 
 def run() -> None:
