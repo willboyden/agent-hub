@@ -1,0 +1,138 @@
+[
+ {
+  "yaml": "",
+  "fields": {
+   "host": "127.0.0.1",
+   "port": 8795,
+   "router_url": "http://127.0.0.1:4000",
+   "qdrant_url": null,
+   "qdrant_api_key_env": "KNOWLEDGE_QDRANT_API_KEY",
+   "data_dir": "/home/golden/.local/share/agent-knowledge",
+   "lance_path": "/home/golden/.local/share/agent-knowledge/lance",
+   "ingest_roots": [],
+   "allowed_hosts": [],
+   "body_cap_bytes": 4194304,
+   "qdrant_vectors_on_disk": true
+  }
+ },
+ {
+  "yaml": "null",
+  "fields": {
+   "host": "127.0.0.1",
+   "port": 8795,
+   "router_url": "http://127.0.0.1:4000",
+   "qdrant_url": null,
+   "qdrant_api_key_env": "KNOWLEDGE_QDRANT_API_KEY",
+   "data_dir": "/home/golden/.local/share/agent-knowledge",
+   "lance_path": "/home/golden/.local/share/agent-knowledge/lance",
+   "ingest_roots": [],
+   "allowed_hosts": [],
+   "body_cap_bytes": 4194304,
+   "qdrant_vectors_on_disk": true
+  }
+ },
+ {
+  "yaml": "[1, 2]",
+  "error": "config must be a mapping"
+ },
+ {
+  "yaml": "x: 1",
+  "error": "1 validation error for Config\nx\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden"
+ },
+ {
+  "yaml": "port: x\nhost: 5\nrouter_api_key_env: sk-live-1\nzzz: 1\n",
+  "error": "4 validation errors for Config\nhost\n  Input should be a valid string [type=string_type, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type\nport\n  Input should be a valid integer, unable to parse string as an integer [type=int_parsing, input_value='x', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_parsing\nrouter_api_key_env\n  Value error, must be an environment variable NAME, not a value [type=value_error, input_value='sk-live-1', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\nzzz\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden"
+ },
+ {
+  "yaml": "router_url: http://router.example:4000/\n",
+  "fields": {
+   "host": "127.0.0.1",
+   "port": 8795,
+   "router_url": "http://router.example:4000",
+   "qdrant_url": null,
+   "qdrant_api_key_env": "KNOWLEDGE_QDRANT_API_KEY",
+   "data_dir": "/home/golden/.local/share/agent-knowledge",
+   "lance_path": "/home/golden/.local/share/agent-knowledge/lance",
+   "ingest_roots": [],
+   "allowed_hosts": [],
+   "body_cap_bytes": 4194304,
+   "qdrant_vectors_on_disk": true
+  }
+ },
+ {
+  "yaml": "router_url: http://user:pw@evil/x?y=1\n",
+  "error": "1 validation error for Config\nrouter_url\n  Value error, must be a plain http(s) URL without credentials or query [type=value_error, input_value='http://user:pw@evil/x?y=1', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+ },
+ {
+  "yaml": "qdrant_url: http://qd:6333/\nqdrant_api_key_env: null\n",
+  "fields": {
+   "host": "127.0.0.1",
+   "port": 8795,
+   "router_url": "http://127.0.0.1:4000",
+   "qdrant_url": "http://qd:6333",
+   "qdrant_api_key_env": null,
+   "data_dir": "/home/golden/.local/share/agent-knowledge",
+   "lance_path": "/home/golden/.local/share/agent-knowledge/lance",
+   "ingest_roots": [],
+   "allowed_hosts": [],
+   "body_cap_bytes": 4194304,
+   "qdrant_vectors_on_disk": true
+  }
+ },
+ {
+  "yaml": "qdrant_api_key_env: 'bad name'\n",
+  "error": "1 validation error for Config\nqdrant_api_key_env\n  Value error, must be an environment variable NAME, not a value [type=value_error, input_value='bad name', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+ },
+ {
+  "yaml": "data_dir: ~/kdata//x/./y/\nlance_dir: ~/lance\n",
+  "fields": {
+   "host": "127.0.0.1",
+   "port": 8795,
+   "router_url": "http://127.0.0.1:4000",
+   "qdrant_url": null,
+   "qdrant_api_key_env": "KNOWLEDGE_QDRANT_API_KEY",
+   "data_dir": "/home/golden/kdata/x/y",
+   "lance_path": "~/lance",
+   "ingest_roots": [],
+   "allowed_hosts": [],
+   "body_cap_bytes": 4194304,
+   "qdrant_vectors_on_disk": true
+  }
+ },
+ {
+  "yaml": "ingest_roots: [/a, 5, /b//c/]\nindex_roots: x\n",
+  "error": "2 validation errors for Config\ningest_roots.1\n  Input is not a valid path for <class 'pathlib._local.Path'> [type=path_type, input_value=5, input_type=int]\nindex_roots\n  Input should be a valid list [type=list_type, input_value='x', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type"
+ },
+ {
+  "yaml": "store_timeout_s: abc\nlance_lock_wait_s: 2\nmax_k: 2.5\nqdrant_vectors_on_disk: maybe\n",
+  "error": "3 validation errors for Config\nqdrant_vectors_on_disk\n  Input should be a valid boolean, unable to interpret input [type=bool_parsing, input_value='maybe', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_parsing\nmax_k\n  Input should be a valid integer, got a number with a fractional part [type=int_from_float, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_from_float\nstore_timeout_s\n  Input should be a valid number, unable to parse string as a number [type=float_parsing, input_value='abc', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/float_parsing"
+ },
+ {
+  "yaml": "allowed_hosts: [Example.com:1, 2]\n",
+  "error": "1 validation error for Config\nallowed_hosts.1\n  Input should be a valid string [type=string_type, input_value=2, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type"
+ },
+ {
+  "yaml": "data_dir: 5\nlance_dir: [1]\n",
+  "error": "2 validation errors for Config\ndata_dir\n  Input is not a valid path for <class 'pathlib._local.Path'> [type=path_type, input_value=5, input_type=int]\nlance_dir\n  Input is not a valid path for <class 'pathlib._local.Path'> [type=path_type, input_value=[1], input_type=list]"
+ },
+ {
+  "yaml": "default_embedding_model: 7\n",
+  "error": "1 validation error for Config\ndefault_embedding_model\n  Input should be a valid string [type=string_type, input_value=7, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type"
+ },
+ {
+  "yaml": "port: 8795.0\nbody_cap_bytes: '1024'\nqdrant_vectors_on_disk: 'yes'\n",
+  "fields": {
+   "host": "127.0.0.1",
+   "port": 8795,
+   "router_url": "http://127.0.0.1:4000",
+   "qdrant_url": null,
+   "qdrant_api_key_env": "KNOWLEDGE_QDRANT_API_KEY",
+   "data_dir": "/home/golden/.local/share/agent-knowledge",
+   "lance_path": "/home/golden/.local/share/agent-knowledge/lance",
+   "ingest_roots": [],
+   "allowed_hosts": [],
+   "body_cap_bytes": 1024,
+   "qdrant_vectors_on_disk": true
+  }
+ }
+]

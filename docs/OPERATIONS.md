@@ -2,18 +2,23 @@
 
 Audience: the person running the hub on their own workstation. Review your first apply in the UI plan.
 
-Commands run from `backend/` of the checkout unless stated. Everything optional (systemd units, Docker templates,
+Commands assume the release binaries are on your `PATH` (`export PATH="<checkout>/backend/target/release:$PATH"`) or are
+called by their path; `make` targets run from the checkout root. Everything optional (systemd units, Docker templates,
 delivery scripts) is opt-in; nothing here is started or enabled by any script in this repo.
 
 ## 1. Install
 
-Requirements: `uv`, `git`, Python 3.13 (managed by `uv`; system 3.14 lacks some wheels). No Node needed to run.
+Requirements: `git`, `rustup` (it installs the exact toolchain pinned in `backend/rust-toolchain.toml`) and a C linker
+(`cc`). protoc for the knowledge service's Lance engine is vendored (`backend/tools/protoc`). No Node and no Python are
+needed to run the hub (`deploy/turnstone-deliver.py` alone uses `python3`).
 
 ```bash
-make setup              # backend/.venv from uv.lock (--frozen: no re-resolution, no PyPI surprises)
-make setup-knowledge              # only if you will run the knowledge service
-cd backend && uv run hubctl init  # content repo + first commit + bootstrap admin key
+make release            # backend/target/release/{agent-hub,hubctl,agent-knowledge}; Cargo.lock is used as is (--locked)
+hubctl init             # content repo + first commit + bootstrap admin key
 ```
+
+The first build compiles the Lance engine of the knowledge service and takes several minutes; later builds are
+incremental. `make setup` builds the debug binaries instead and enables the git hooks (for development).
 
 `hubctl init` creates `HUB_CONTENT_DIR` (default `~/.local/share/agent-hub/content`, outside your project tree, its own git repo; older builds defaulted to an in-tree `content/`),
 seeds `hub.yaml`, `endpoints.yaml` and `.gitkeep` files, commits, and writes
@@ -22,21 +27,30 @@ seeds `hub.yaml`, `endpoints.yaml` and `.gitkeep` files, commits, and writes
 ## 2. Run
 
 ```bash
-uv run hubctl serve          # prints the key FILE path; UI + API on http://127.0.0.1:8792
+hubctl serve                 # prints the key FILE path; UI + API on http://127.0.0.1:8792
 # or, equivalent and what the systemd template uses:
-uv run agent-hub
+agent-hub
 ```
 
 To change the port use `HUB_PORT` (what the systemd unit does) or `hubctl serve --port N`; the Host allowlist follows the
 effective bind. A non-loopback `HUB_HOST` is refused at start unless `HUB_ALLOW_NONLOOPBACK=1` (then put an
-authenticating reverse proxy in front and add its Host to `HUB_ALLOWED_HOSTS`).
+authenticating reverse proxy in front and add its Host to `HUB_ALLOWED_HOSTS`); loopback means `localhost` or a loopback
+IP address, not any name that starts with `127.`.
+
+The server closes a connection that does not send its request headers within 30 s or stays idle that long between
+requests, serves at most 256 connections at once (more wait until one closes), answers 408 to a request body that has
+not arrived after 60 s and 400 to one that breaks off. The knowledge service (`agent-knowledge`) applies the same
+limits.
+
+The binaries find `policy/` and `frontend/` from their own location: `backend/target/release/` (or `debug/`) of the
+checkout they were built in. If you copy a binary elsewhere, set `AGENT_HUB_APP_ROOT` to the checkout.
 
 UI: paste the admin key into the auth dialog on first load; it lives in the tab's `sessionStorage` and is gone when the
 tab closes. Use the keyboard palette with Ctrl-K.
 
 ### From the desktop (opt-in, Linux)
 
-Run these from the checkout root, after `make setup`:
+Run these from the checkout root, after `make release`:
 
 ```bash
 make install-desktop         # menu entry: ~/.local/share/applications/agent-hub.desktop
@@ -49,7 +63,7 @@ The launcher runs `agent-hub open`. Its right-click action **Stop Agent Hub** ru
 - `open` only uses a loopback address: it refuses a `HUB_HOST` that is not loopback. A wildcard `HUB_HOST` (`0.0.0.0`,
   `::`) is probed and opened on `127.0.0.1` / `::1` if a hub already runs, but the launcher never starts a hub with it.
   If the hub already answers, it opens the UI with `xdg-open`. If nothing answers, it starts the hub in the background
-  (`python -I -m agent_hub.main`, so the launch directory is not on its import path), waits up to 30 s for
+  (the same `agent-hub` binary, in its own process group, with stdin on /dev/null), waits up to 30 s for
   `/api/v1/health`, then opens the UI. Concurrent launches (a double click) wait on `<data dir>/hub.lock`, so only one
   hub is started.
 - The hub's output goes to `<data dir>/hub.log` (mode 0600). It holds the server log, including one access line per
@@ -62,8 +76,9 @@ The launcher runs `agent-hub open`. Its right-click action **Stop Agent Hub** ru
   (SECURITY.md section 13, "Inherent").
 - It never reads or passes a key: each new tab asks for one, as above.
 - `stop` signals only the process recorded in `hub.pid`, and only if it is yours and its command line is the launcher's
-  (same interpreter, same arguments). A hub started with `make run`, `hubctl serve` or systemd is not touched.
-- The launcher runs the code in this checkout's `backend/.venv`, and `install-desktop-icon` marks the desktop copy as
+  (the same binary path). A hub started with `make run`, `hubctl serve` or systemd is not touched, and neither is a hub
+  that the 0.2.x (Python) launcher started: stop that one by hand after upgrading.
+- The launcher runs this checkout's `backend/target/release/agent-hub`, and `install-desktop-icon` marks the desktop copy as
   trusted, so a double click runs it without a prompt. Keep the checkout out of reach of the agents the hub governs
   (SECURITY.md section 13).
 - The launcher starts only the hub, not the knowledge service (section 9). The Knowledge page reports it as unavailable
@@ -84,7 +99,7 @@ path with `AGENT_HUB_ENV_FILE`); **the real environment wins over the file**. Ke
 | `HUB_DATA_DIR` | `~/.local/share/agent-hub` | State: `hub.db`, `bootstrap-admin.key`, `locks/`, `plans/`, `snapshots/`, `backups/`. |
 | `HUB_POLICY_FILE` | `<hub>/policy/floor.yaml` | App repo, never content. |
 | `HUB_TRUST_LOOPBACK` | `false` | Leave it. See `SECURITY.md` section 4. |
-| `HUB_ALLOWED_HOSTS` | empty | Extra Host values (a list; pydantic-settings expects JSON such as `["hub.lan:8792"]`). |
+| `HUB_ALLOWED_HOSTS` | empty | Extra Host values (a list, written as JSON such as `["hub.lan:8792"]`). |
 | `HUB_KNOWLEDGE_URL` | `http://127.0.0.1:8795` | The knowledge service. |
 | `HUB_KNOWLEDGE_ADMIN_KEY` (legacy `HUB_KNOWLEDGE_TOKEN`), `KNOWLEDGE_ADMIN_KEY_FILE` | unset, `~/.local/share/agent-knowledge/admin.key` | Admin key the hub proxy sends. If no key is set the hub reads the 0600 file the knowledge service writes on first start. Secret: 0600 file only. |
 | `HUB_ALLOW_NONLOOPBACK` | unset | Must be `1` to bind a non-loopback `HUB_HOST`. Process environment. |
@@ -94,6 +109,8 @@ path with `AGENT_HUB_ENV_FILE`); **the real environment wins over the file**. Ke
 | `HUB_MAX_SSE_CONNECTIONS`, `HUB_SSE_IDLE_TIMEOUT_S` | `8`, `300` | 429 `too_many_streams`. |
 | `HUB_ENABLE_METRICS` | `true` | `/metrics` (needs a key). |
 | `HUB_API_KEY` | unset | Read by `hubctl` from the process environment, else from `~/.config/agent-hub/env`, else the bootstrap key file. The server does not use it. Never printed. |
+| `HUB_PYTHON` | unset | Absolute path of the Python interpreter that Turnstone verify runs `deploy/turnstone-deliver.py` with; unset means `/usr/bin/python3`, else `/bin/python3` (never a `PATH` lookup). Process environment (systemd: `Environment=`). |
+| `AGENT_HUB_APP_ROOT` | the checkout above the binary | Where `policy/`, `frontend/` and `deploy/` are. Only needed for a binary moved out of `backend/target/`. Process environment. |
 
 The systemd unit reads the same file through `EnvironmentFile=`; that syntax is plain `KEY=value` (no `export`).
 
@@ -128,7 +145,7 @@ There is no reset link: keep a way back before you retire the bootstrap file.
   agent-hub stop                       # or stop it however you started it
   cp ~/.local/share/agent-hub/hub.db ~/.local/share/agent-hub/hub.db.bak
   python3 -c "import sqlite3, os; c = sqlite3.connect(os.path.expanduser('~/.local/share/agent-hub/hub.db')); c.execute('DELETE FROM api_keys'); c.commit()"
-  agent-hub open                       # or `uv run agent-hub`; writes <data dir>/bootstrap-admin.key (0600)
+  agent-hub open                       # or `agent-hub` in a terminal; writes <data dir>/bootstrap-admin.key (0600)
   ```
 
   Use your `HUB_DATA_DIR` if you changed it. This deletes **every** key, including viewer keys and client tokens:
@@ -147,12 +164,12 @@ them). The command exits 2 when any finding is CRIT, else 0. Work top-down: fix 
 ## 4. The daily loop
 
 ```bash
-uv run hubctl status                       # pending content changes
-uv run hubctl validate
-uv run hubctl commit -m "why"              # content approval
-uv run hubctl plan [--client X]            # exit 0 ok, 2 blocked by errors or floor violations
-uv run hubctl apply [--client X] --yes     # exit 1 on failed apply or failed verify, 2 if blocked, 1 (no write) without --yes
-uv run hubctl verify | drift | audit       # per client (audit exits 2 when the live config violates the floor)
+hubctl status                       # pending content changes
+hubctl validate
+hubctl commit -m "why"              # content approval
+hubctl plan [--client X]            # exit 0 ok, 2 blocked by errors or floor violations
+hubctl apply [--client X] --yes     # exit 1 on failed apply or failed verify, 2 if blocked, 1 (no write) without --yes
+hubctl verify | drift | audit       # per client (audit exits 2 when the live config violates the floor)
 ```
 
 `apply` always re-plans first and prints the plan; without `--yes` it applies nothing. In the UI the same flow is
@@ -195,7 +212,7 @@ Do this in order, one client at a time. Steps 1-3 write nothing.
 `apply` skips any file whose live content differs from what the hub last applied. To let the hub overwrite it, name it:
 
 ```bash
-uv run hubctl apply --client claude-code --yes --adopt project:CLAUDE.md
+hubctl apply --client claude-code --yes --adopt project:CLAUDE.md
 ```
 
 Format: `<root>:<path>` or `<client>:<root>:<path>` (both are matched; the CLI passes the strings through), where `root` is the client's root name
@@ -253,7 +270,7 @@ Check with `GET /api/v1/skill-evaluator` or the Evaluations view status line (in
 **Observe a client** (reads only; admin key; the client must be running):
 
 ```bash
-uv run hubctl observe --client NAME        # or: Clients, Observed card, Observe now
+hubctl observe --client NAME        # or: Clients, Observed card, Observe now
 ```
 
 Reading goes through a streaming runner that kills the command once its output passes the cap. It prints counts by origin (`client` for generic discovery; for Hermes `shipped / agent / lab_sync / hub / archived`) and by
@@ -275,8 +292,8 @@ not run again (`reused_from`); `force` re-runs.
 reach. Without `--wait` it lists the subjects and runs nothing:
 
 ```bash
-uv run hubctl evaluate --source NAME --select none_or_stale --tiers static --wait
-uv run hubctl evaluate --subject hub:my-skill --subject NAME:some-key-1a2b3c4d --wait
+hubctl evaluate --source NAME --select none_or_stale --tiers static --wait
+hubctl evaluate --subject hub:my-skill --subject NAME:some-key-1a2b3c4d --wait
 ```
 
 `--wait` runs here, under the same lock as the server. Exit 0 all passed, 2 any `failed` or `incomplete`, 1 any `error`.
@@ -312,7 +329,7 @@ reads as `missing`. The gate checks the exact content hash, so editing a skill m
 **Import observed skills.**
 
 ```bash
-uv run hubctl import-observed --client NAME --key some-key-1a2b3c4d [--key ...] \
+hubctl import-observed --client NAME --key some-key-1a2b3c4d [--key ...] \
     [--name NEW] [--on-conflict skip|rename|replace|link] [--enable] [--override-reason "why this is safe"]
 ```
 
@@ -344,8 +361,8 @@ reports conflicts. Re-import (`hubctl import`) records the current live files as
 
 ```bash
 git pull   # or however you update the checkout
-make setup && make all                  # lint, mypy, backend/knowledge/frontend tests (offline) and the browser suite
-cd backend && uv run hubctl validate && uv run hubctl plan
+make all                                # rustfmt, clippy, tests, test map, deny, audit, frontend tests, browser suite
+make release && hubctl validate && hubctl plan
 ```
 
 `make all` includes `make e2e`, which needs a Chrome or Chromium (`CHROME_BIN`, or name it once with
@@ -356,7 +373,16 @@ before 0.2.0 needs one hard reload (Ctrl+Shift+R, Cmd+Shift+R on a Mac).
 
 Read the plan: adapter changes can change rendered output for unchanged content, which shows up as file diffs. The
 state schema is created on first start; migrations between versions are **not** provided or tested (the project is at
-0.2.0; 0.1.0 to 0.2.0 needs none). Back up the state dir before upgrading. Pins mean tested, not frozen: bump `uv.lock` only after `make all`.
+0.3.0; 0.1.0 to 0.2.0 needs none). Back up the state dir before upgrading. Pins mean tested, not frozen: bump
+`backend/Cargo.lock` only after `make all`, and only to versions at least 14 days old (`make crate-age`; security fixes are
+the only exceptions).
+
+**0.2.x to 0.3.0 (Python to Rust).** The state dir, the content repo, `~/.config/agent-hub/env` and the `HUB_*` variables
+are read unchanged: the differential harness starts the Rust server on state the Python `hubctl init` wrote. Steps:
+stop the 0.2.x hub (a hub its desktop launcher started is not stopped by the 0.3.0 launcher), `make release`, point
+systemd units and desktop launchers at `backend/target/release/` (`make install-desktop` again; the units: section 7),
+start it, run `hubctl validate && hubctl plan`. The old virtualenvs (`backend/.venv`, `knowledge/.venv`) are no longer
+used; delete them. The few deliberate behaviour differences are listed in `CHANGELOG.md`.
 
 ## 7. Opt-in systemd (--user)
 
@@ -371,8 +397,8 @@ state schema is created on first start; migrations between versions are **not** 
   not apply to.
 * `ProtectHome=read-only` also covers `/run/user`, where the rootless docker socket lives; Hermes `verify` may then need
   the socket directory in `BindPaths=`.
-* The units run the venv entry points directly (`.venv/bin/agent-hub`, `.venv/bin/agent-knowledge`), so no uv cache or
-  venv write access is granted. Run `make setup` / `make setup-knowledge` first.
+* The units run the release binaries directly (`backend/target/release/agent-hub`, `.../agent-knowledge`); nothing is
+  written next to them. Run `make release` first.
 * `IPAddressDeny=any` + `IPAddressAllow=localhost` may need to be commented out if the first start misbehaves.
 * Do not set secrets with `Environment=`; `systemctl show` prints them. Use the 0600 env file.
 * After enabling: `systemctl --user status agent-hub`, `journalctl --user -u agent-hub -n 50`, and
@@ -415,8 +441,8 @@ python3 deploy/turnstone-deliver.py list                                  # what
 - **Where the token may go.** The console must be a bare base URL. A loopback address may use plain `http`; any other host
   needs `https` **and** `--allow-remote-host <host>`. No proxy is used and redirects are refused, so the token only reaches
   the host you named. The adapter's `verify` is stricter: `params.console_url` must be loopback and `params.token_file`
-  must be a `*.token` file inside `~/.config/agent-hub/` (not a symlink), or the check fails without running anything; the script always
-  runs under the hub's own interpreter.
+  must be a `*.token` file inside `~/.config/agent-hub/` (not a symlink), or the check fails without running anything; the script
+  runs under `HUB_PYTHON` or the system `python3` (`/usr/bin`, `/bin`), never one found on `PATH`.
 - **Ownership.** Delivered skills carry author `agent-hub` and the tag `agent-hub`. A skill of the same name that does not
   is a **conflict**: it is left alone and the script exits 2. `--prune` deletes only hub-owned skills that left the stage,
   and refuses an empty stage unless you add `--force-empty` (a wrong `--stage` must not wipe every hub skill). The marker
@@ -444,6 +470,46 @@ python3 deploy/turnstone-deliver.py list                                  # what
 - **Verify.** `hubctl verify` checks the stage files, then runs the script's `list` and fails until every staged skill
   is present as a hub-owned skill with `auto_approve` and `is_default` off. Re-run `push` after each apply.
 
+## 8c. Delivering to DeepSeek Harness (`deploy/dsh-deliver.sh`)
+
+dsh reads user-global skills, an `AGENTS.md` and MCP rows from its agents home (`$DSH_AGENTS_HOME`). The hub assumes dsh
+runs in a container that mounts a docker **volume** read-only there, and never writes into it. Applying a
+`deepseek-harness` client writes a **stage tree** under its `stage` root: `skills/`, and `hub.cordis.patch.yml` (MCP rows
+only) when MCP is managed. An `AGENTS.md` is rendered too, but the hub's delivery guard blocks it at apply (only `opencode`
+and `generic` may write one), so keep `instructions` off for now (`docs/ADDING-A-CLIENT.md`). Delivery is a separate
+manual step:
+
+```bash
+DSH_STAGE_DIR=<stage dir> DSH_VOLUME=<volume> DSH_DOCKER_CONTEXT=<context> DSH_CONTAINER=<container> deploy/dsh-deliver.sh
+DSH_VOLUME=<volume> DSH_DOCKER_CONTEXT=<context> deploy/dsh-deliver.sh rollback     # put back what the last delivery replaced
+```
+
+- **What it copies.** Only `skills/`, `AGENTS.md` and `hub.cordis.patch.yml` (anything else in the stage is named and
+  ignored), as one set: an entry no longer in the stage is removed from the volume. `__pycache__/` and `*.pyc` are left
+  out. Whether dsh loads the patch (`--patch`) is up to your image's entrypoint; have it refuse anything but `insert`
+  rows of `@deepseek-ai/dsh-mcp-client` and any `!!`.
+- **What it refuses**, before anything reaches docker: an unset `DSH_STAGE_DIR` / `DSH_VOLUME`; a `DSH_VOLUME` that is not a
+  plain volume name (a path would become a bind mount) or a volume that does not exist (docker would create an empty one);
+  symlinks, hard links (link count above 1) and special files anywhere in what it copies, checked on the stage before and
+  after copying and on the private copy; a skill folder whose name is not `[a-z0-9]+(-[a-z0-9]+)*` or that has no
+  `SKILL.md`; a `SKILL.md` over 64 KiB or holding a `<skill_...>` tag; a skill folder over 4 MiB; a patch containing `!!`,
+  `!<` or a `%` directive line (a YAML tag in a dsh patch can execute JavaScript); and a stage with nothing to deliver.
+  The plan refuses the same skills earlier and more (frontmatter `name` and `description`, see `docs/ADDING-A-CLIENT.md`).
+- **How it writes.** Through a throwaway `alpine` container (pinned by digest; pulled if absent) with `--network none`, a
+  read-only root, `--cap-drop ALL` plus `CHOWN`, `DAC_OVERRIDE`, `FOWNER`, and only the volume mounted. It extracts into
+  `.hub-new` beside the live tree, makes it root-owned and world-readable without group/other write (dsh runs as another
+  uid and must read, never write), renames each entry into place, and keeps the replaced tree in `.hub-prev` (one
+  generation). A failed extract or rename leaves or puts back the live tree. dsh does not read the `.hub-*` directories.
+- **The check.** With `DSH_CONTAINER` set, it then runs `node /opt/lab/list-skills.mjs` in that container (a helper your
+  image provides that runs dsh's own skill discovery and prints JSON) and rolls back unless every staged skill is listed
+  with source `user-agents`. Without it the delivery is reported as not checked. Reading the answer needs `python3` on the
+  host. `hubctl verify` asks the same helper through the client's `container` / `docker_context` params.
+- **Output.** Skill names, counts and ignored entry names only; never file contents or the environment.
+- **Mount it read-only.** The hub cannot see how the dsh container mounts the volume. Mounted writable, dsh could change
+  its own skills between deliveries. Re-run the script after each apply.
+- **What was tested.** The script's tests run it for real with a fake `docker` (the in-volume part runs under the local
+  `sh` against a temp directory); it has not been run against a real dsh image here.
+
 ## 9. Knowledge service and Qdrant
 
 Two deployments exist.
@@ -451,8 +517,8 @@ Two deployments exist.
 **A. Host process.** LanceDB and Qdrant v1.16.3 are supported by the service.
 
 ```bash
-cd hub && make setup-knowledge
-cd knowledge && uv run agent-knowledge --config ~/.config/agent-knowledge/config.yaml   # 127.0.0.1:8795
+make release
+agent-knowledge --config ~/.config/agent-knowledge/config.yaml   # 127.0.0.1:8795
 ```
 
 Config keys (unknown keys are rejected): `host`, `port`, `allowed_hosts`, `data_dir`, `lance_dir` (put on SSD, never
@@ -476,16 +542,17 @@ credential broker (not done in the template). Text queries need the router, and 
 
 ### Docker build DNS problem
 
-If package installs fail inside `docker build` steps (for example `pip install uv` in `deploy/knowledge/Dockerfile`), check that
-build steps can resolve DNS (some rootless setups need a host-network builder):
+If dependency downloads fail inside `docker build` steps (`cargo build` fetching crates in `deploy/knowledge/Dockerfile`),
+check that build steps can resolve DNS (some rootless setups need a host-network builder):
 
 ```bash
 docker buildx create --name hostnet --driver docker-container --driver-opt network=host --use
-docker buildx build --builder hostnet --load -f deploy/knowledge/Dockerfile -t agent-knowledge:local knowledge
+docker buildx build --builder hostnet --load -f deploy/knowledge/Dockerfile -t agent-knowledge:local .
 ```
 
 A host-network build step can reach the LAN and any local service, so it is a deliberate egress exception: run it once,
-review the Dockerfile (it only installs pinned `uv` and runs `uv sync --frozen`), and do not leave the builder as the
+review the Dockerfile (it only runs `cargo build --locked --release` with the vendored protoc; the image holds the
+binary alone), and do not leave the builder as the
 default. If it still fails, run the host-process deployment (A) instead. Note also `docker-compose.broker.yml` builds
 with the default builder; use the built `agent-knowledge:local` image, or pre-load the image and change `build:` to
 `image:` yourself.
@@ -572,6 +639,8 @@ Find the string you see. The API returns RFC 7807 JSON with a `code`; the UI sho
 | knowledge `403 csrf_header_required` | Send `X-Agent-Knowledge: 1` on non-GET without a bearer. |
 | `hubctl import`: "pass --all or --item kind:name" | Import needs a selection. |
 | `hermes-deliver.sh`: `stage dir missing` / `refusing: no SKILL.md` / `refusing: symlink inside` / `hermes does not list skill <n>` / `FAILED for <client>` | Apply the Hermes client first; check the stage for symlinks; the last two mean the copy worked but the agent did not index it (wrong path or container not running). |
+| `dsh-deliver.sh`: `refusing: ...` / `volume ... not found` / `check failed: ...; rolling back` / `rollback FAILED` | Read the refusal: it names the entry and the rule (section 8c). A missing volume is never created; check `DSH_VOLUME` and `DSH_DOCKER_CONTEXT`. A failed check means the copy worked but dsh does not list a staged skill from its agents home (wrong volume mounted, `DSH_AGENTS_HOME` points elsewhere, or a project skill of the same name shadows it); the previous tree is back. `rollback FAILED` names the `.hub-*` directories to inspect in the volume. |
+| apply blocked, `unsafe_path: artifact path 'AGENTS.md' (AGENTS.md) may only be written as managed instructions by an adapter that declares it` (a `deepseek-harness` or `hermes-agent` client) | Only `opencode` and `generic` may write an `AGENTS.md`. Turn the client's instructions off in the Matrix (or `manage.instructions: false`), commit, plan again. |
 | `503 evaluator_missing` "SkillEvaluator is not installed (neither skillevaluator-local nor skillevaluator is on the hub's PATH or in ~/.local/bin)" | Install it (section 4d) as the user the hub runs as; a launcher outside `PATH` and `~/.local/bin` is not found. |
 | `409 evaluation_running` "another skill evaluation is running; wait for it to finish, then try again" | `hubctl evaluate --wait` or `evaluate-skill` while the server (or another CLI) holds the evaluation lock. Wait, or use the queue route. |
 | `422 bad_tiers` / `400 invalid_subject` "invalid subject: expected hub:<skill> or <client>:<key>" / `422 subjects_or_select` / `422 too_many_subjects` | Tiers are `static`, `tier1`, `tier1+2`. Send exactly one of `subjects` or `select`; at most 5000 subjects. |

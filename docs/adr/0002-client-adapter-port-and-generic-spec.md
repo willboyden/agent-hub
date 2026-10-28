@@ -1,6 +1,7 @@
 # ADR-0002: One ClientAdapter per client, plus a declarative generic adapter
 
-Status: accepted (decision 2). Implemented.
+Status: accepted (decision 2). Implemented. Amended by ADR-0012: since 0.3.0 the port is a Rust trait (`adapters/base.rs`) and a coded adapter is one
+Rust file.
 
 ## Context
 
@@ -21,7 +22,7 @@ each adapter maps.
 * Adding a client is a spec file or one module; caps grey out unsupported concerns in the UI; lossy mappings emit
   diagnostics (errors when the client is `strict`).
 * Pure `render` makes plans deterministic and unit-testable offline.
-* Cost: the spec language is deliberately small (no `str.format`, no eval, no shell); clients needing logic need Python.
+* Cost: the spec language is deliberately small (no `str.format`, no eval, no shell); clients needing logic need code (a Rust adapter since 0.3.0, Python before).
 * Cost: adapters encode assumptions about each client's format (opencode skills directory, `{env:VAR}` MCP syntax, `type: remote`,
   bash glob matching order, `mcp__*` in Claude Code agent `tools`, Hermes skill indexing) that depend on the client version.
 * Defaults: adapters document recommended `manage` defaults in `default_config()`; the resolver now honours them

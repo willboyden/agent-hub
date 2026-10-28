@@ -1,0 +1,64 @@
+# cargo-deny policy, adapted from the harness2-workbench project's. Run: cargo deny check (in backend/).
+# Changing an allow-list here is a supply-chain decision: say why in the commit.
+
+[graph]
+targets = ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"]
+all-features = true
+
+[output]
+feature-depth = 1
+
+[advisories]
+# Every RustSec advisory (vulnerability, unsound, unmaintained, yanked) fails the check unless listed here with a reason
+# and a review date.
+ignore = [
+    # All four are reachable ONLY through agent-knowledge's `lance` feature (lance =12.0.0 must match Python lancedb 0.39.0,
+    # see PORTING.md R-LANCE-ADVISORIES). zstd 0.13 is pinned by arrow-ipc 58 and lance-encoding 12; the fixes need zstd
+    # 0.14 / zstd-safe 8.2. The decompressed data are Lance files the service itself wrote under its 0700 data dir.
+    # Re-check when lance moves to arrow >= 59 (lance 13). Review: 2027-01-31.
+    { id = "RUSTSEC-2026-0391", reason = "zstd 0.13 pinned by arrow-ipc 58 / lance 12; local trusted Lance files only; review 2027-01-31" },
+    { id = "RUSTSEC-2026-0398", reason = "zstd-safe 7 pinned via zstd 0.13 (arrow-ipc 58 / lance 12); local trusted Lance files only; review 2027-01-31" },
+    { id = "RUSTSEC-2026-0403", reason = "zstd-safe 7 pinned via zstd 0.13 (arrow-ipc 58 / lance 12); local trusted Lance files only; review 2027-01-31" },
+    # Archived-as-finished proc-macro pulled in by lance-bitpacking. Compile time only, no vulnerability. Review 2027-01-31.
+    { id = "RUSTSEC-2024-0436", reason = "compile-time macro via lance-bitpacking; no vulnerability; review 2027-01-31" },
+]
+
+[licenses]
+# Permissive licences compatible with distributing the binaries (harness2-workbench's list).
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSL-1.0",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+    "MPL-2.0",
+]
+confidence-threshold = 0.9
+exceptions = []
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+deny = [
+    { crate = "openssl-sys", reason = "rustls only; no system OpenSSL dependency" },
+    { crate = "native-tls", reason = "rustls only" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

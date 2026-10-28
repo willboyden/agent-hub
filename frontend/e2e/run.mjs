@@ -5,7 +5,8 @@
 //
 //   node frontend/e2e/run.mjs          (or `make e2e` from the repo root)
 //
-// Needs: backend/.venv (make setup) and a Chrome: $CHROME_BIN (`make e2e` also reads `git config agent-hub.chrome`), else
+// Needs: the backend binaries (`make build`, i.e. `cargo build` in backend/: backend/target/debug/{agent-hub,hubctl}, or
+// $E2E_RUST_BIN_DIR) and a Chrome: $CHROME_BIN (`make e2e` also reads `git config agent-hub.chrome`), else
 // google-chrome / chromium / chrome-headless-shell on PATH. The hub is set up the way a person sets it up: `hubctl init`
 // in a throwaway HOME and data dir, then the server with that state. A few items are created through the API (a skill,
 // an agent, a collection and a Claude Code client whose project is a temp dir) so the detail pages and the plan have
@@ -27,8 +28,10 @@ import { fileURLToPath } from 'node:url';
 
 const FRONTEND = dirname(dirname(fileURLToPath(import.meta.url)));
 const BACKEND = join(FRONTEND, '..', 'backend');
-const PY = join(BACKEND, '.venv', 'bin', 'python');
-const HUBCTL = join(BACKEND, '.venv', 'bin', 'hubctl');
+// The Rust backend (0.3.0+): backend/target/debug by default, or E2E_RUST_BIN_DIR (e.g. backend/target/release).
+const BIN_DIR = process.env.E2E_RUST_BIN_DIR || join(BACKEND, 'target', 'debug');
+const SERVER = join(BIN_DIR, 'agent-hub');
+const HUBCTL = join(BIN_DIR, 'hubctl');
 const SETTLE_MS = 400;          // the page must stay free of skeletons for this long to count as rendered
 const PAGE_TIMEOUT_MS = 20000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -85,7 +88,7 @@ export class Cdp {
 
 /** `hubctl init` + the server, in a throwaway HOME and data dir, loopback not trusted. */
 export async function startBackend(tmp, { port } = {}) {
-  if (!existsSync(PY) || !existsSync(HUBCTL)) throw new Error(`${PY} missing: run \`make setup\` first`);
+  if (!existsSync(SERVER) || !existsSync(HUBCTL)) throw new Error(`${SERVER} missing: run \`make build\` first`);
   port ||= await freePort();
   const home = join(tmp, 'home'); const data = join(tmp, 'data');
   for (const d of [home, data]) mkdirSync(d, { recursive: true });
@@ -96,7 +99,7 @@ export async function startBackend(tmp, { port } = {}) {
   };
   const init = spawnSync(HUBCTL, ['init'], { cwd: BACKEND, env, encoding: 'utf8' });
   if (init.status !== 0) throw new Error(`hubctl init failed (${init.status}):\n${(init.stdout + init.stderr).slice(-2000)}`);
-  const proc = spawn(PY, ['-I', '-m', 'agent_hub.main'], { cwd: BACKEND, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  const proc = spawn(SERVER, [], { cwd: BACKEND, env, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = ''; proc.stdout.on('data', (d) => { log += d; }); proc.stderr.on('data', (d) => { log += d; });
   const base = `http://127.0.0.1:${port}`;
   let up = false;

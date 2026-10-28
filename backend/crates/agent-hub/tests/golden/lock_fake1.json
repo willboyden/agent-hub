@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "client": "fake1",
+  "applied_at": 1761600000.25,
+  "content_hash": "abc",
+  "files": {
+    "home:CLAUDE.md": {
+      "root": "home",
+      "path": "CLAUDE.md",
+      "kind": "instruction",
+      "sha256": "s1",
+      "slice_sha256": "s2",
+      "merge": "block",
+      "managed_keys": [],
+      "created": true,
+      "source_ids": [
+        "style"
+      ],
+      "mode": 420
+    }
+  },
+  "adopted_at": 0.0,
+  "plan_id": "plan_0123456789ab",
+  "verified_at": 1761600001.5,
+  "verified_ok": true
+}

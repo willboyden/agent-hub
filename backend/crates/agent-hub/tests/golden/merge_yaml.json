@@ -1,0 +1,1246 @@
+{
+"cases": [
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": null,
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCg==",
+"slice_live": null,
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": null,
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": null,
+"slice_live": null,
+"slice_new": null,
+"unparseable": "",
+"empty_after": true,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": null,
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOgogICAgLSAtdgogICAgLSB4IHkK",
+"slice_live": null,
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": null,
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCg==",
+"slice_live": null,
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": null,
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": null,
+"slice_live": null,
+"slice_new": null,
+"unparseable": "",
+"empty_after": true,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": null,
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOgogICAgLSAtdgogICAgLSB4IHkK",
+"slice_live": null,
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCg==",
+"slice_live": null,
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "e30K",
+"slice_live": null,
+"slice_new": null,
+"unparseable": "",
+"empty_after": true,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOgogICAgLSAtdgogICAgLSB4IHkK",
+"slice_live": null,
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCg==",
+"slice_live": null,
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "e30K",
+"slice_live": null,
+"slice_new": null,
+"unparseable": "",
+"empty_after": true,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOgogICAgLSAtdgogICAgLSB4IHkK",
+"slice_live": null,
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "dGhlbWU6IGRhcmsKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtvbGRdCiAgb3RoZXI6IDEK",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "dGhlbWU6IGRhcmsKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCiAgb3RoZXI6IDEK",
+"slice_live": "65b5fe948b26a265d1f958fef04fa011f415a1f24be30d5eb6d8f3e92cffe203",
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "dGhlbWU6IGRhcmsKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtvbGRdCiAgb3RoZXI6IDEK",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "dGhlbWU6IGRhcmsKYWdlbnQ6CiAgb3RoZXI6IDEK",
+"slice_live": "65b5fe948b26a265d1f958fef04fa011f415a1f24be30d5eb6d8f3e92cffe203",
+"slice_new": null,
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "dGhlbWU6IGRhcmsKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtvbGRdCiAgb3RoZXI6IDEK",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "dGhlbWU6IGRhcmsKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBvbGQKICBvdGhlcjogMQptY3Bfc2VydmVyczoKICBzcnY6CiAgICBjb21tYW5kOiBzcnYKICAgIGFyZ3M6CiAgICAtIC12CiAgICAtIHggeQo=",
+"slice_live": null,
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "dGhlbWU6IGRhcmsKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtvbGRdCiAgb3RoZXI6IDEK",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "dGhlbWU6IGRhcmsKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCiAgb3RoZXI6IDEK",
+"slice_live": "65b5fe948b26a265d1f958fef04fa011f415a1f24be30d5eb6d8f3e92cffe203",
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "dGhlbWU6IGRhcmsKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtvbGRdCiAgb3RoZXI6IDEK",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "dGhlbWU6IGRhcmsKYWdlbnQ6CiAgb3RoZXI6IDEK",
+"slice_live": "65b5fe948b26a265d1f958fef04fa011f415a1f24be30d5eb6d8f3e92cffe203",
+"slice_new": null,
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "dGhlbWU6IGRhcmsKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtvbGRdCiAgb3RoZXI6IDEK",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "dGhlbWU6IGRhcmsKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBvbGQKICBvdGhlcjogMQptY3Bfc2VydmVyczoKICBzcnY6CiAgICBjb21tYW5kOiBzcnYKICAgIGFyZ3M6CiAgICAtIC12CiAgICAtIHggeQo=",
+"slice_live": null,
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "bWNwX3NlcnZlcnM6IHt9Cg==",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6IHt9CmFnZW50OgogIGRpc2FibGVkX3Rvb2xzZXRzOgogIC0gYnJvd3Nlcgo=",
+"slice_live": null,
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "bWNwX3NlcnZlcnM6IHt9Cg==",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6IHt9Cg==",
+"slice_live": null,
+"slice_new": null,
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "bWNwX3NlcnZlcnM6IHt9Cg==",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOgogICAgLSAtdgogICAgLSB4IHkK",
+"slice_live": "60d779689526ed0dcdae8c3428e622ac62f542a3333d449d0b585be10a3f7faf",
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "bWNwX3NlcnZlcnM6IHt9Cg==",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6IHt9CmFnZW50OgogIGRpc2FibGVkX3Rvb2xzZXRzOgogIC0gYnJvd3Nlcgo=",
+"slice_live": null,
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "bWNwX3NlcnZlcnM6IHt9Cg==",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6IHt9Cg==",
+"slice_live": null,
+"slice_new": null,
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "bWNwX3NlcnZlcnM6IHt9Cg==",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOgogICAgLSAtdgogICAgLSB4IHkK",
+"slice_live": "60d779689526ed0dcdae8c3428e622ac62f542a3333d449d0b585be10a3f7faf",
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "bWNwX3NlcnZlcnM6CiAgYToKICAgIGNvbW1hbmQ6IHgK",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgYToKICAgIGNvbW1hbmQ6IHgKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCg==",
+"slice_live": null,
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "bWNwX3NlcnZlcnM6CiAgYToKICAgIGNvbW1hbmQ6IHgK",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgYToKICAgIGNvbW1hbmQ6IHgK",
+"slice_live": null,
+"slice_new": null,
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "bWNwX3NlcnZlcnM6CiAgYToKICAgIGNvbW1hbmQ6IHgK",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOgogICAgLSAtdgogICAgLSB4IHkK",
+"slice_live": "7ce865b883528ebd968fec9cff8130177f21ad23819a53b531c134dc03f7e838",
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "bWNwX3NlcnZlcnM6CiAgYToKICAgIGNvbW1hbmQ6IHgK",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgYToKICAgIGNvbW1hbmQ6IHgKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCg==",
+"slice_live": null,
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "bWNwX3NlcnZlcnM6CiAgYToKICAgIGNvbW1hbmQ6IHgK",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgYToKICAgIGNvbW1hbmQ6IHgK",
+"slice_live": null,
+"slice_new": null,
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "bWNwX3NlcnZlcnM6CiAgYToKICAgIGNvbW1hbmQ6IHgK",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOgogICAgLSAtdgogICAgLSB4IHkK",
+"slice_live": "7ce865b883528ebd968fec9cff8130177f21ad23819a53b531c134dc03f7e838",
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "LSBsaXN0Cg==",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": null,
+"slice_live": null,
+"slice_new": null,
+"unparseable": "live file is not a mergeable yaml document (ValueError)",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "LSBsaXN0Cg==",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": null,
+"slice_live": null,
+"slice_new": null,
+"unparseable": "live file is not a mergeable yaml document (ValueError)",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "LSBsaXN0Cg==",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": null,
+"slice_live": null,
+"slice_new": null,
+"unparseable": "live file is not a mergeable yaml document (ValueError)",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "LSBsaXN0Cg==",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCg==",
+"slice_live": null,
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "LSBsaXN0Cg==",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "e30K",
+"slice_live": null,
+"slice_new": null,
+"unparseable": "",
+"empty_after": true,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "LSBsaXN0Cg==",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOgogICAgLSAtdgogICAgLSB4IHkK",
+"slice_live": null,
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "eDogJmEgMQp5OiAqYQo=",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": null,
+"slice_live": null,
+"slice_new": null,
+"unparseable": "live file is not a mergeable yaml document (YamlError)",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "eDogJmEgMQp5OiAqYQo=",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": null,
+"slice_live": null,
+"slice_new": null,
+"unparseable": "live file is not a mergeable yaml document (YamlError)",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "eDogJmEgMQp5OiAqYQo=",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": null,
+"slice_live": null,
+"slice_new": null,
+"unparseable": "live file is not a mergeable yaml document (YamlError)",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "eDogJmEgMQp5OiAqYQo=",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCg==",
+"slice_live": null,
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "eDogJmEgMQp5OiAqYQo=",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "e30K",
+"slice_live": null,
+"slice_new": null,
+"unparseable": "",
+"empty_after": true,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "eDogJmEgMQp5OiAqYQo=",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOgogICAgLSAtdgogICAgLSB4IHkK",
+"slice_live": null,
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "azogMjAyNC0wMS0wMgpkOiB7YTogMX0K",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "azogMjAyNC0wMS0wMgpkOgogIGE6IDEKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCg==",
+"slice_live": null,
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "azogMjAyNC0wMS0wMgpkOiB7YTogMX0K",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "azogMjAyNC0wMS0wMgpkOgogIGE6IDEK",
+"slice_live": null,
+"slice_new": null,
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "azogMjAyNC0wMS0wMgpkOiB7YTogMX0K",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "azogMjAyNC0wMS0wMgpkOgogIGE6IDEKbWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOgogICAgLSAtdgogICAgLSB4IHkK",
+"slice_live": null,
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "azogMjAyNC0wMS0wMgpkOiB7YTogMX0K",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "azogMjAyNC0wMS0wMgpkOgogIGE6IDEKYWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCg==",
+"slice_live": null,
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "azogMjAyNC0wMS0wMgpkOiB7YTogMX0K",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "azogMjAyNC0wMS0wMgpkOgogIGE6IDEK",
+"slice_live": null,
+"slice_new": null,
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "azogMjAyNC0wMS0wMgpkOiB7YTogMX0K",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "azogMjAyNC0wMS0wMgpkOgogIGE6IDEKbWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOgogICAgLSAtdgogICAgLSB4IHkK",
+"slice_live": null,
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtdCg==",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCg==",
+"slice_live": "0260c56eb5ffe64f566e2c2d3da20ca6d4dca5a81bcde6e7e2e3c2abbff88dc7",
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtdCg==",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "e30K",
+"slice_live": "0260c56eb5ffe64f566e2c2d3da20ca6d4dca5a81bcde6e7e2e3c2abbff88dc7",
+"slice_new": null,
+"unparseable": "",
+"empty_after": true,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": false,
+"live": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtdCg==",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtdCm1jcF9zZXJ2ZXJzOgogIHNydjoKICAgIGNvbW1hbmQ6IHNydgogICAgYXJnczoKICAgIC0gLXYKICAgIC0geCB5Cg==",
+"slice_live": null,
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtdCg==",
+"desired": [
+{
+"content": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFticm93c2VyXQo=",
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6CiAgLSBicm93c2VyCg==",
+"slice_live": "0260c56eb5ffe64f566e2c2d3da20ca6d4dca5a81bcde6e7e2e3c2abbff88dc7",
+"slice_new": "834d69343be4ea444806cb1f831c9b3ddc1fbcfb876149b64ae55ed513054dbf",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtdCg==",
+"desired": [
+{
+"content": null,
+"keys": [
+"agent.disabled_toolsets"
+]
+}
+],
+"result": {
+"new": "e30K",
+"slice_live": "0260c56eb5ffe64f566e2c2d3da20ca6d4dca5a81bcde6e7e2e3c2abbff88dc7",
+"slice_new": null,
+"unparseable": "",
+"empty_after": true,
+"block_style": "",
+"error": null
+}
+},
+{
+"merge": "yaml_keys",
+"path": "f",
+"adopt": true,
+"live": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtdCg==",
+"desired": [
+{
+"content": "bWNwX3NlcnZlcnM6CiAgc3J2OgogICAgY29tbWFuZDogc3J2CiAgICBhcmdzOiBbLXYsICd4IHknXQo=",
+"keys": [
+"mcp_servers"
+]
+}
+],
+"result": {
+"new": "YWdlbnQ6CiAgZGlzYWJsZWRfdG9vbHNldHM6IFtdCm1jcF9zZXJ2ZXJzOgogIHNydjoKICAgIGNvbW1hbmQ6IHNydgogICAgYXJnczoKICAgIC0gLXYKICAgIC0geCB5Cg==",
+"slice_live": null,
+"slice_new": "587f0bdc7c9355fdaa4a728b40c1e10e8f47ae5f132c6bf934bc00aa9daae1dc",
+"unparseable": "",
+"empty_after": false,
+"block_style": "",
+"error": null
+}
+}
+]
+}

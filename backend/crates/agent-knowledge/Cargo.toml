@@ -1,0 +1,61 @@
+[package]
+name = "agent-knowledge"
+description = "Agent Hub knowledge plane (scoped vector stores: LanceDB embedded / Qdrant REST) behind a hardened localhost API: Rust port"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "agent-knowledge"
+path = "src/main.rs"
+
+[features]
+default = ["lance"]
+# The embedded LanceDB backend (lance =12.0.0, the engine inside Python lancedb 0.39.0). Off: only Qdrant/memory stores
+# compile, for a fast build while working on the API layer.
+lance = ["dep:lance", "dep:lance-linalg"]
+
+[dependencies]
+anyhow.workspace = true
+async-stream.workspace = true
+axum.workspace = true
+bytes.workspace = true
+clap.workspace = true
+futures.workspace = true
+hex.workspace = true
+http.workspace = true
+http-body-util.workspace = true
+hub-core.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
+lance = { workspace = true, optional = true }
+lance-linalg = { workspace = true, optional = true }
+nix.workspace = true
+percent-encoding.workspace = true
+regex.workspace = true
+reqwest.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+subtle.workspace = true
+thiserror.workspace = true
+time.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[build-dependencies]
+# Only so that cargo downloads Google's protoc binaries before lance's build scripts run (tools/protoc execs them).
+protoc-bin-vendored.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+tempfile.workspace = true
+wiremock.workspace = true
+
+[lints]
+workspace = true

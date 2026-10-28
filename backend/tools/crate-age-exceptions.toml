@@ -1,0 +1,28 @@
+# Crate versions younger than the 14-day cooldown (backend/tools/crate-age.py), each allowed ONLY as the smallest release
+# that fixes a RustSec advisory affecting every older release of its semver class: security fixes bypass the cooldown,
+# as Dependabot's security updates do; version updates never do. `crate-age.py` reports an entry as stale once the
+# version is old enough or no longer locked: then delete it. Adding an entry needs the lead (PORTING.md addendum A-9).
+
+[[exception]]
+name = "rustls-webpki"
+version = "0.103.16"
+advisories = ["RUSTSEC-2026-0382"]
+reason = "0.103.15 may accept distrusted intermediates (patched: >=0.103.16); 0.103.16 published 2026-10-20"
+
+[[exception]]
+name = "webpki-root-certs"
+version = "1.0.10"
+advisories = ["RUSTSEC-2026-0383"]
+reason = "1.0.9 trusts distrusted emSign intermediates (patched: >=1.0.10); 1.0.10 published 2026-10-19"
+
+[[exception]]
+name = "ctutils"
+version = "0.4.4"
+advisories = ["RUSTSEC-2026-0385"]
+reason = "0.4.3 has non-constant-time mask generation and u128 comparisons (patched: >=0.4.4); 0.4.4 published 2026-10-23"
+
+[[exception]]
+name = "zstd-sys"
+version = "2.1.2+zstd.1.5.7"
+advisories = ["RUSTSEC-2026-0410"]
+reason = "2.1.1 has a WebAssembly allocator shim that corrupts memory on allocation failure (patched: >=2.1.2); 2.1.2 published 2026-10-16"

@@ -1,0 +1,17 @@
+#!/bin/sh
+# Vendored protoc for lance's build scripts. protoc is not installed on this host and there is no sudo, so the binary
+# comes from the `protoc-bin-vendored` crate (Google's release binaries, pinned =3.3.0 in agent-knowledge's
+# build-dependencies, so `cargo fetch`/`cargo build` downloads it before any build script runs).
+# .cargo/config.toml points PROTOC here. No network access of its own.
+set -eu
+home="${CARGO_HOME:-$HOME/.cargo}"
+case "$(uname -m)" in
+  x86_64) arch=x86_64 ;;
+  aarch64|arm64) arch=aarch_64 ;;
+  *) echo "protoc wrapper: unsupported architecture $(uname -m)" >&2; exit 1 ;;
+esac
+for p in "$home"/registry/src/*/protoc-bin-vendored-linux-"$arch"-3.3.0/bin/protoc; do
+  if [ -x "$p" ]; then exec "$p" "$@"; fi
+done
+echo "protoc wrapper: protoc-bin-vendored-linux-$arch 3.3.0 is not in $home/registry; run 'cargo fetch' in backend/" >&2
+exit 1

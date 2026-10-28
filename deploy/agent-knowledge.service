@@ -6,7 +6,7 @@
 #   1. Edit every line marked CHANGEME.
 #   2. mkdir -p ~/.local/share/agent-knowledge ~/.config/agent-knowledge
 #      Every ReadWritePaths entry must EXIST or the unit fails to start (status=226).
-#   3. Write ~/.config/agent-knowledge/config.yaml (keys: knowledge/src/agent_knowledge/config.py; unknown keys are rejected).
+#   3. Write ~/.config/agent-knowledge/config.yaml (keys: backend/crates/agent-knowledge/src/config.rs; unknown keys are rejected).
 #      Put lance_dir on an SSD path, never tmpfs. Set ingest_roots only to directories you want indexable.
 #   4. Write ~/.config/agent-knowledge/env, mode 0600, KEY=value lines (names below are the config defaults):
 #        KNOWLEDGE_EMBED_API_KEY=<an embeddings-only router VIRTUAL key, never the router master key>
@@ -23,12 +23,12 @@ After=network.target
 
 [Service]
 Type=simple
-# CHANGEME: <checkout>/knowledge
-WorkingDirectory=%h/CHANGEME/agent-hub/knowledge
-# The venv's own entry point (no uv cache or venv writes needed; run `make setup-knowledge` first). The service refuses a
-# non-loopback host unless --allow-bind-any is passed; do not pass it here.
-# CHANGEME: path to the venv entry point
-ExecStart=%h/CHANGEME/agent-hub/knowledge/.venv/bin/agent-knowledge --config %h/.config/agent-knowledge/config.yaml
+# CHANGEME: the checkout
+WorkingDirectory=%h/CHANGEME/agent-hub
+# The release binary (`make release`; it writes nothing next to itself). The service refuses a non-loopback host unless
+# --allow-bind-any is passed; do not pass it here.
+# CHANGEME: path to the release binary
+ExecStart=%h/CHANGEME/agent-hub/backend/target/release/agent-knowledge --config %h/.config/agent-knowledge/config.yaml
 # Secrets stay out of the unit (the config refers to env var NAMES only). Leading dash: optional file.
 EnvironmentFile=-%h/.config/agent-knowledge/env
 Restart=on-failure
@@ -64,7 +64,8 @@ CapabilityBoundingSet=
 SystemCallFilter=@system-service
 SystemCallFilter=~@privileged
 SystemCallArchitectures=native
-# MemoryDenyWriteExecute is intentionally NOT set: lancedb/pyarrow native wheels may need W+X mappings.
+# MemoryDenyWriteExecute is not set: the Rust binary (with the Lance engine compiled in) has no JIT and is expected to run
+# with it, but that is UNVERIFIED here; add MemoryDenyWriteExecute=yes after a test start.
 # Bound host RAM for the LanceDB page cache and search buffers (RAM is scarce on this host); tune to your corpus.
 MemoryHigh=3G
 MemoryMax=4G

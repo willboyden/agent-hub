@@ -4,12 +4,15 @@ One place to organise and control what your agent clients know and may do: share
 rules, memories, MCP servers, permissions and egress**, rendered into each client's native format, plus a separate
 **knowledge plane** (vector stores, shared indexes) reached through scoped tokens and broker sidecars.
 
-Supported clients out of the box: **Claude Code**, **opencode**, **Hermes Agent**, **Turnstone**, and anything file-based through a
-declarative `generic` adapter (a YAML spec; no code). License: MIT (`LICENSE`). Architecture contract:
+Supported clients out of the box: **Claude Code**, **opencode**, **Hermes Agent**, **Turnstone**, **DeepSeek Harness** (dsh),
+and anything file-based through a declarative `generic` adapter (a YAML spec; no code). License: MIT (`LICENSE`). Architecture contract:
 `docs/ARCHITECTURE.md`. Per-feature status: `docs/FEATURES.md`. Reporting a vulnerability: `SECURITY.md`.
 
-Status: **0.2.0** (what changed: `CHANGELOG.md`). Developed and used on Linux by one operator; every feature's status is in
-`docs/FEATURES.md`, and the browser suite (`make e2e`) gates every push.
+Status: **0.3.0** (what changed: `CHANGELOG.md`). Since 0.3.0 the hub, `hubctl` and the knowledge service are written in
+Rust, behaviour-compatible with the Python 0.2.x line: a differential harness (`backend/parity/`) runs the same requests
+against both and compares responses and the files each writes; the deliberate differences are listed in `CHANGELOG.md`
+and `backend/PORTING.md`. Developed and used on Linux by one operator; every feature's status is in `docs/FEATURES.md`,
+and the browser suite (`make e2e`) gates every push.
 
 Security: read `docs/SECURITY.md`, including its residual risks. The hub cannot protect you from an unsandboxed client
 that runs as your own OS user; run `hubctl doctor` to see what is exposed on your host.
@@ -30,16 +33,20 @@ Shared content drifts, and nothing shows what a client is allowed to do. The hub
 
 ## Quickstart
 
-Prerequisites: `uv`, `git`, Python 3.13 (`uv` fetches it). No Node is needed to run anything (the UI is zero-build; Node is
-only for the frontend tests).
+Prerequisites: `git`, `rustup` (it installs the exact toolchain pinned in `backend/rust-toolchain.toml`) and a C linker
+(`cc`). protoc, which the knowledge service's Lance engine needs at build time, is vendored; nothing else is installed.
+No Node is needed to run anything (the UI is zero-build; Node is only for the frontend tests and the browser suite), and
+no Python (only the optional delivery scripts use `python3`: `deploy/turnstone-deliver.py`, and `deploy/dsh-deliver.sh`
+to read dsh's answer when `DSH_CONTAINER` is set).
 
 ```bash
-make setup                      # backend venv from uv.lock (uv venv --python 3.13 && uv sync --frozen)
-cd backend
+make release                    # backend/target/release/{agent-hub,hubctl,agent-knowledge}; the first build takes
+                                # several minutes (the knowledge service compiles the Lance engine)
+export PATH="$PWD/backend/target/release:$PATH"   # or call the binaries by their path
 
-uv run hubctl init              # creates the content repo (default ~/.local/share/agent-hub/content), seeds it,
+hubctl init                     # creates the content repo (default ~/.local/share/agent-hub/content), seeds it,
                                 # first commit, and writes the bootstrap admin key (0600). Prints both paths.
-uv run hubctl adapters          # lists the installed adapter ids
+hubctl adapters                 # lists the installed adapter ids
 ```
 
 **Register clients.** A client is a file `clients/<id>.yaml` in the content repo. Add it in the UI (Clients, add-client
@@ -51,20 +58,24 @@ wizard) or write the file. Example ids and roots:
 | `opencode` | `opencode` | `project: ~/work/my-project` |
 | `hermes` | `hermes-agent` | `stage: <checkout>/hub/out/hermes` |
 | `turnstone` | `turnstone` | `stage: <checkout>/out/turnstone` |
+| `deepseek-harness` | `deepseek-harness` | `stage: <checkout>/out/deepseek-harness` |
 
 The Hermes root is a hub-owned **stage** directory (gitignored), not the container volume: applying writes the stage, and a
 delivery script you run by hand copies it into your container. Turnstone works the same way, except that its delivery
-script pushes the stage through Turnstone's admin API (`docs/OPERATIONS.md` section 8b). Create a stage directory before
-the first apply: the hub never creates a client root.
+script pushes the stage through Turnstone's admin API (`docs/OPERATIONS.md` section 8b). DeepSeek Harness too: its
+delivery script copies the stage into the docker volume dsh reads as its agents home, through a throwaway container with
+no network, and rolls back unless dsh lists every staged skill (section 8c). For now keep `instructions` off for a dsh
+client: the hub lets only `opencode` and `generic` write an `AGENTS.md`, so a staged one blocks the apply
+(`docs/ADDING-A-CLIENT.md`). Create a stage directory before the first apply: the hub never creates a client root.
 
 ```bash
-uv run hubctl import --client claude-code --all     # into the content WORKING TREE; nothing touches the client
-uv run hubctl import --client opencode --all        # identical items are linked, differing ones skipped (reported)
-uv run hubctl status                                # pending (uncommitted) content changes
-uv run hubctl validate
-uv run hubctl commit -m "import my clients"         # the content approval
-uv run hubctl plan                                  # exit 2 if any client is blocked; writes nothing
-uv run hubctl serve                                 # http://127.0.0.1:8792 (API + UI)
+hubctl import --client claude-code --all     # into the content WORKING TREE; nothing touches the client
+hubctl import --client opencode --all        # identical items are linked, differing ones skipped (reported)
+hubctl status                                # pending (uncommitted) content changes
+hubctl validate
+hubctl commit -m "import my clients"         # the content approval
+hubctl plan                                  # exit 2 if any client is blocked; writes nothing
+hubctl serve                                 # http://127.0.0.1:8792 (API + UI); `agent-hub` serves the same app
 ```
 
 Open http://127.0.0.1:8792. To use another port set `HUB_PORT` or pass `hubctl serve --port N`. The UI asks for the API
@@ -125,15 +136,20 @@ Follow the first-apply checklist in `docs/OPERATIONS.md`. In short: a project-ro
 ## Adding a client
 
 Two ways, neither needs a change to the core or the UI (`docs/ADDING-A-CLIENT.md`): a declarative `generic` spec (a YAML
-file, validated live in the wizard), or a Python module in `backend/src/agent_hub/adapters/` exposing `ADAPTER`. The example
-specs under `examples/clients/` are examples; adjust them to your client's current config format.
+file, validated live in the wizard), or one Rust file in `backend/crates/agent-hub/src/adapters/` exposing
+`pub fn adapter()`; the build discovers it, nothing else is edited. The example specs under `examples/clients/` are
+examples; adjust them to your client's current config format.
 
 ## Repository map
 
 ```
-backend/    FastAPI app + hubctl (Python 3.13, uv): services/, api/, adapters/, domain/
+backend/    the Rust workspace (toolchain pinned in rust-toolchain.toml):
+            crates/hub-core        Python-compatible primitives (JSON, YAML = a PyYAML port, pydantic-style
+                                   validation), domain models, path safety
+            crates/agent-hub       the hub server (`agent-hub`, also `open`/`stop`), `hubctl`, services/, api/, adapters/
+            crates/agent-knowledge agent-knowledge: separate service, Lance (embedded) + Qdrant backends
+            parity/                differential harness against the last Python backend; TEST-MAP.md, PORTING.md
 frontend/   zero-build SPA (ES modules + web components), dev/mock-server.mjs
-knowledge/  agent-knowledge: separate service, LanceDB + Qdrant backends
 policy/     floor.yaml (app repo, not content)
 deploy/     opt-in systemd --user templates, knowledge compose/Dockerfile/broker templates
 docs/       ARCHITECTURE, ADDING-A-CLIENT, KNOWLEDGE-PLANE, SECURITY, OPERATIONS, FEATURES, DESIGN-DECISIONS, adr/, diagrams/
@@ -145,11 +161,16 @@ optionally `~/.config/agent-hub/env`. Ports: hub 8792, knowledge service 8795. D
 
 ## Developer commands
 
-`make help` lists them: `setup`, `hooks`, `test`, `lint`, `typecheck`, `frontend-test`, `knowledge-test`, `e2e`, `mock`,
-`all`. `make install-desktop` adds an app-menu launcher (Linux); see `docs/OPERATIONS.md` section 2.
-CI (`.github/workflows/ci.yml`) runs lint, `mypy --strict`, tests and a dependency audit per project, and the browser suite.
+`make help` lists them: `setup`, `build`, `release`, `hooks`, `test`, `lint` (rustfmt + clippy), `typecheck` (clippy),
+`deny`, `audit`, `crate-age`, `test-map`, `parity`, `frontend-test`, `knowledge-test`, `e2e`, `mock`, `all`.
+`make install-desktop` adds an app-menu launcher (Linux, after `make release`); see `docs/OPERATIONS.md` section 2.
+CI (`.github/workflows/ci.yml`) runs rustfmt, clippy, the tests, the test-map check, cargo-deny and cargo-audit, the
+14-day dependency cooldown (`crate-age`, which queries the crates.io API), the frontend tests and the browser suite.
+`make parity` replays the differential corpus against the last Python backend (it prepares that version's venvs with
+`uv` under `backend/target/`).
 
-`make e2e` (part of `make all`) is a browser end-to-end check: `hubctl init` and the real server in a throwaway HOME,
+`make e2e` (part of `make all`) builds the backend, then runs a browser end-to-end check: `hubctl init` and the real
+server in a throwaway HOME,
 signed in with the bootstrap key, a few items created through the API, then every page, detail route and tab in a
 headless Chrome over the DevTools protocol (no npm), before and after a commit. It fails on an error or not-found state,
 a dialog that opened by itself, an uncaught exception, a console error, an API 5xx (except the knowledge proxy's

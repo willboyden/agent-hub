@@ -1,0 +1,10 @@
+#!/bin/sh
+# Parity harness fake of SkillSpector: `scan PATH --format json --no-llm --output FILE` writes a complete analysis.
+set -eu
+out=""
+while [ $# -gt 0 ]; do
+  if [ "$1" = "--output" ]; then shift; out="$1"; fi
+  shift
+done
+[ -n "$out" ] || exit 2
+printf '{"analysis_completeness": {"status": "complete", "reasons": []}, "findings": []}\n' > "$out"

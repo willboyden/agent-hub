@@ -1,0 +1,926 @@
+{
+ "generated_by": "backend/parity/gen/dump_routes.py",
+ "meta": {
+  "app": "agent-knowledge",
+  "prefix": "",
+  "middleware": "agent_knowledge.security:SecurityMiddleware"
+ },
+ "routes": [
+  {
+   "order": 0,
+   "path": "/namespaces",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_ns",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.list_ns",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/namespaces$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 1,
+   "path": "/namespaces",
+   "methods": [
+    "POST"
+   ],
+   "name": "create_ns",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.create_ns",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 201,
+   "path_regex": "^/namespaces$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_knowledge.api.NsCreate'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "name": {
+       "title": "Name",
+       "type": "string"
+      },
+      "backend": {
+       "enum": [
+        "qdrant",
+        "lancedb"
+       ],
+       "title": "Backend",
+       "type": "string"
+      },
+      "embedding_model": {
+       "anyOf": [
+        {
+         "maxLength": 128,
+         "pattern": "^[A-Za-z0-9._:/-]+$",
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Embedding Model"
+      },
+      "dim": {
+       "title": "Dim",
+       "type": "integer"
+      },
+      "description": {
+       "default": "",
+       "maxLength": 500,
+       "title": "Description",
+       "type": "string"
+      }
+     },
+     "required": [
+      "name",
+      "backend",
+      "dim"
+     ],
+     "title": "NsCreate",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:admin_only",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 2,
+   "path": "/namespaces/{ns}",
+   "methods": [
+    "GET"
+   ],
+   "name": "get_ns",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.get_ns",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/namespaces/(?P<ns>[^/]+)$",
+   "is_async": true,
+   "path_params": [
+    {
+     "name": "ns",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:scoped.<locals>.dep",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 3,
+   "path": "/namespaces/{ns}",
+   "methods": [
+    "PUT"
+   ],
+   "name": "put_ns",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.put_ns",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/namespaces/(?P<ns>[^/]+)$",
+   "is_async": true,
+   "path_params": [
+    {
+     "name": "ns",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_knowledge.api.NsUpdate'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "description": {
+       "anyOf": [
+        {
+         "maxLength": 500,
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Description"
+      },
+      "backend": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Backend"
+      },
+      "embedding_model": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Embedding Model"
+      },
+      "dim": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Dim"
+      }
+     },
+     "title": "NsUpdate",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:admin_only",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 4,
+   "path": "/namespaces/{ns}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "del_ns",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.del_ns",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 204,
+   "path_regex": "^/namespaces/(?P<ns>[^/]+)$",
+   "is_async": true,
+   "path_params": [
+    {
+     "name": "ns",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:admin_only",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 5,
+   "path": "/namespaces/{ns}/ingest",
+   "methods": [
+    "POST"
+   ],
+   "name": "ingest",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.ingest",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 202,
+   "path_regex": "^/namespaces/(?P<ns>[^/]+)/ingest$",
+   "is_async": true,
+   "path_params": [
+    {
+     "name": "ns",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_knowledge.api.IngestReq'>",
+    "required": true,
+    "schema": {
+     "$defs": {
+      "DocIn": {
+       "additionalProperties": false,
+       "properties": {
+        "id": {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "null"
+          }
+         ],
+         "default": null,
+         "title": "Id"
+        },
+        "text": {
+         "title": "Text",
+         "type": "string"
+        },
+        "metadata": {
+         "additionalProperties": true,
+         "title": "Metadata",
+         "type": "object"
+        }
+       },
+       "required": [
+        "text"
+       ],
+       "title": "DocIn",
+       "type": "object"
+      }
+     },
+     "additionalProperties": false,
+     "properties": {
+      "documents": {
+       "anyOf": [
+        {
+         "items": {
+          "$ref": "#/$defs/DocIn"
+         },
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Documents"
+      },
+      "path": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Path"
+      },
+      "glob": {
+       "default": "**/*",
+       "title": "Glob",
+       "type": "string"
+      },
+      "chunk_size": {
+       "default": 1000,
+       "maximum": 8000,
+       "minimum": 50,
+       "title": "Chunk Size",
+       "type": "integer"
+      },
+      "chunk_overlap": {
+       "default": 200,
+       "maximum": 4000,
+       "minimum": 0,
+       "title": "Chunk Overlap",
+       "type": "integer"
+      }
+     },
+     "title": "IngestReq",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:scoped.<locals>.dep",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 6,
+   "path": "/namespaces/{ns}/query",
+   "methods": [
+    "POST"
+   ],
+   "name": "query",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.query",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/namespaces/(?P<ns>[^/]+)/query$",
+   "is_async": true,
+   "path_params": [
+    {
+     "name": "ns",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_knowledge.api.QueryReq'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "text": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Text"
+      },
+      "vector": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "number"
+         },
+         "maxItems": 8192,
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Vector"
+      },
+      "k": {
+       "default": 5,
+       "title": "K",
+       "type": "integer"
+      },
+      "filter": {
+       "anyOf": [
+        {
+         "additionalProperties": true,
+         "type": "object"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Filter"
+      },
+      "min_score": {
+       "anyOf": [
+        {
+         "type": "number"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Min Score"
+      },
+      "embedding_model": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Embedding Model"
+      }
+     },
+     "title": "QueryReq",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:scoped.<locals>.dep",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 7,
+   "path": "/namespaces/{ns}/documents/{doc_id:path}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "del_doc",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.del_doc",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/namespaces/(?P<ns>[^/]+)/documents/(?P<doc_id>.*)$",
+   "is_async": true,
+   "path_params": [
+    {
+     "name": "ns",
+     "type": "<class 'str'>"
+    },
+    {
+     "name": "doc_id",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:scoped.<locals>.dep",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 8,
+   "path": "/jobs",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_jobs",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.list_jobs",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/jobs$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 9,
+   "path": "/jobs/{jid}",
+   "methods": [
+    "GET"
+   ],
+   "name": "job",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.job",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/jobs/(?P<jid>[^/]+)$",
+   "is_async": true,
+   "path_params": [
+    {
+     "name": "jid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 10,
+   "path": "/jobs/{jid}/stream",
+   "methods": [
+    "GET"
+   ],
+   "name": "job_stream",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.job_stream",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/jobs/(?P<jid>[^/]+)/stream$",
+   "is_async": true,
+   "path_params": [
+    {
+     "name": "jid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 11,
+   "path": "/tokens",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_tokens",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.list_tokens",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/tokens$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:admin_only",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 12,
+   "path": "/tokens",
+   "methods": [
+    "POST"
+   ],
+   "name": "create_token",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.create_token",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 201,
+   "path_regex": "^/tokens$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_knowledge.api.TokenCreate'>",
+    "required": true,
+    "schema": {
+     "$defs": {
+      "ScopeIn": {
+       "additionalProperties": false,
+       "properties": {
+        "ns": {
+         "title": "Ns",
+         "type": "string"
+        },
+        "mode": {
+         "default": "read",
+         "enum": [
+          "read",
+          "write"
+         ],
+         "title": "Mode",
+         "type": "string"
+        }
+       },
+       "required": [
+        "ns"
+       ],
+       "title": "ScopeIn",
+       "type": "object"
+      }
+     },
+     "additionalProperties": false,
+     "properties": {
+      "client": {
+       "title": "Client",
+       "type": "string"
+      },
+      "scopes": {
+       "items": {
+        "$ref": "#/$defs/ScopeIn"
+       },
+       "maxItems": 64,
+       "title": "Scopes",
+       "type": "array"
+      },
+      "rate_per_min": {
+       "anyOf": [
+        {
+         "maximum": 6000,
+         "minimum": 1,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Rate Per Min"
+      },
+      "daily_queries": {
+       "anyOf": [
+        {
+         "maximum": 1000000,
+         "minimum": 0,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Daily Queries"
+      },
+      "daily_writes": {
+       "anyOf": [
+        {
+         "maximum": 10000000,
+         "minimum": 0,
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Daily Writes"
+      }
+     },
+     "required": [
+      "client",
+      "scopes"
+     ],
+     "title": "TokenCreate",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:admin_only",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 13,
+   "path": "/tokens/{tid}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "delete_token",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.delete_token",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 204,
+   "path_regex": "^/tokens/(?P<tid>[^/]+)$",
+   "is_async": true,
+   "path_params": [
+    {
+     "name": "tid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:admin_only",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 14,
+   "path": "/indexes",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_idx",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.list_idx",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/indexes$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:admin_only",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 15,
+   "path": "/indexes",
+   "methods": [
+    "POST"
+   ],
+   "name": "add_idx",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.add_idx",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 201,
+   "path_regex": "^/indexes$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_knowledge.api.IndexIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "name": {
+       "title": "Name",
+       "type": "string"
+      },
+      "kind": {
+       "enum": [
+        "graphify",
+        "serena"
+       ],
+       "title": "Kind",
+       "type": "string"
+      },
+      "path": {
+       "title": "Path",
+       "type": "string"
+      },
+      "project": {
+       "default": "",
+       "maxLength": 128,
+       "title": "Project",
+       "type": "string"
+      }
+     },
+     "required": [
+      "name",
+      "kind",
+      "path"
+     ],
+     "title": "IndexIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:admin_only",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 16,
+   "path": "/indexes/{name}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "del_idx",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.del_idx",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 204,
+   "path_regex": "^/indexes/(?P<name>[^/]+)$",
+   "is_async": true,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:admin_only",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 17,
+   "path": "/backends",
+   "methods": [
+    "GET"
+   ],
+   "name": "backends",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.backends",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/backends$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:admin_only",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 18,
+   "path": "/metrics",
+   "methods": [
+    "GET"
+   ],
+   "name": "metrics",
+   "endpoint": "agent_knowledge.api:build_routers.<locals>.metrics",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/metrics$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:admin_only",
+    "agent_knowledge.api:authenticate",
+    "agent_knowledge.api:authenticate"
+   ]
+  },
+  {
+   "order": 19,
+   "path": "/health",
+   "methods": [
+    "GET"
+   ],
+   "name": "health",
+   "endpoint": "agent_knowledge.app:create_app.<locals>.health",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/health$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": []
+  }
+ ]
+}

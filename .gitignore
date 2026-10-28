@@ -1,14 +1,9 @@
-# virtualenvs, caches, coverage
+# Rust build output (backend/target; it also holds the parity harness's Python-release environments and caches)
+backend/target/
+# Python virtualenvs and caches (the parity generators and deploy/turnstone-deliver.py are the only Python left)
 .venv/
-backend/.venv/
-knowledge/.venv/
 __pycache__/
 *.pyc
-.mypy_cache/
-.ruff_cache/
-.pytest_cache/
-.coverage
-backend/.coverage
 node_modules/
 
 # state, secrets and data that must never be committed
@@ -23,8 +18,9 @@ content/
 # generated delivery stage trees (rebuilt by hubctl apply)
 out/
 # knowledge service local data
-knowledge/data/
 *.lance/
+# ... except the small Lance table the Python knowledge service wrote, kept as a compatibility fixture
+!backend/crates/agent-knowledge/tests/fixtures/**/*.lance/
 
 # private maintainer notes (not published)
 TODO-CIRCLE-BACK.md

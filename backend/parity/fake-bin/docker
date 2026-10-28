@@ -1,0 +1,6 @@
+#!/bin/sh
+# Parity harness fake of docker: no containers run (`ps` prints nothing), every other call fails. Never a real daemon.
+case "$*" in
+  *" ps "*|"ps "*) exit 0 ;;
+  *) echo "fake docker: $*" >&2; exit 1 ;;
+esac

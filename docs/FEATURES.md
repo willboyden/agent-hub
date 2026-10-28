@@ -63,10 +63,12 @@ work).
 |---|---|---|
 | `claude-code` adapter (Claude Code, sandboxed or not): skills, agents, `CLAUDE.md` block; `.mcp.json` and `.claude/settings.json` advisory | Implemented |  |
 | `opencode` adapter: agents, `AGENTS.md` (own or block), `opencode.json` advisory | Implemented |  |
-| `hermes-agent` (and variants that reuse it): stage tree with skills, `AGENTS.md`, config fragments | Implemented |  |
+| `hermes-agent` (and variants that reuse it): stage tree with skills, `AGENTS.md`, config fragments | Partial | Skills and config fragments apply. The rendered `AGENTS.md` is blocked at apply, as in 0.2.x: the hub lets only `opencode` and `generic` write a file named `AGENTS.md` (a security rule, kept in 0.3.0), so keep this client's `instructions` off. Pinned by `targets_only_opencode_and_generic_may_write_agents_md`. |
 | Hermes delivery `deploy/hermes-deliver.sh` (+ `hermes skills list` check) | Implemented |  |
 | `turnstone` adapter: stage tree with skills, `instructions.md`, `mcp.json` | Implemented |  |
 | Turnstone delivery `deploy/turnstone-deliver.py` (admin API; hub-owned, never auto-approved skills; console check in verify) | Implemented |  |
+| `deepseek-harness` adapter (DeepSeek Harness, dsh): stage tree with skills, `AGENTS.md`, `hub.cordis.patch.yml`; skills dsh would load unsafely refused | Partial | Skills apply; a staged `AGENTS.md` is blocked at apply (the hub lets only `opencode` and `generic` write one), so keep `instructions` off. The MCP patch's rendering is golden-tested; applying it has not been exercised end to end. Verify needs the image's `/opt/lab/list-skills.mjs` helper. |
+| dsh delivery `deploy/dsh-deliver.sh` (throwaway container into the agents-home volume; `.hub-prev` rollback; list-skills check) | Implemented | Tested with a fake `docker`; not run against a real dsh image. |
 | `generic` spec adapter (skills, agents, instructions, MCP, permissions, memory; json/yaml/toml) and live spec validation + dry render | Implemented |  |
 | Cursor / Codex CLI / Gemini CLI example specs | Partial | Example specs; adjust to your client's current config format. |
 | Capability vocabulary (`read write edit shell web_fetch web_search mcp subagent browser notebook todo image`), model tiers `fast/standard/deep` | Implemented |  |
@@ -78,7 +80,7 @@ work).
 | Feature | Status | Notes |
 |---|---|---|
 | Namespaces bound to a backend, embedding model and dimension (immutable) | Implemented |  |
-| LanceDB backend (embedded, flat scan, Python-side filter to id prefilter) | Implemented |  |
+| LanceDB backend (embedded Lance engine, flat scan, in-service filter to id prefilter) | Implemented | Reads and writes the tables the Python 0.2.x service wrote (a fixture test; both directions were checked when the port was made). |
 | Qdrant backend (REST, on-disk HNSW and vectors) | Implemented |  |
 | Ingest inline documents or allowlisted `{path, glob}` as a job, with SSE progress | Implemented |  |
 | Query by text or vector, filter grammar (AST, never string-built) | Implemented |  |
@@ -112,10 +114,12 @@ work).
 | Feature | Status | Notes |
 |---|---|---|
 | `hubctl` (init, validate, plan, apply, verify, drift, audit, import, status, commit, rollback, applies, migrate-content, attest-mcp, retire-bootstrap-key, doctor, adapters, serve, observe, evaluate, evaluate-skill(s), import-observed), exit codes 0/1/2, `--json` | Implemented |  |
-| Opt-in systemd `--user` units for the hub and knowledge service (narrow `ReadWritePaths`, venv entry points) | Implemented |  |
+| Opt-in systemd `--user` units for the hub and knowledge service (narrow `ReadWritePaths`, release binaries) | Implemented | Templates; not started by this repo's tests. |
 | Zero-build UI served by the backend; contract mock (`frontend/dev/mock-server.mjs`) | Implemented |  |
-| Frontend files revalidated on every load (`Cache-Control: no-cache`, ETag/304), so an update never pairs a new view with a stale module | Implemented | Backend test; checked on every page by the browser suite. |
+| Frontend files revalidated on every load (`Cache-Control: no-cache`, ETag/304, and Range requests like Starlette), so an update never pairs a new view with a stale module | Implemented | Backend test; checked on every page by the browser suite. |
 | Browser end-to-end suite (`make e2e`, CI job `e2e`) and a pre-push hook that refuses code it has not passed on | Implemented | Real backend after `hubctl init`, headless Chrome; every page, detail route and tab, before and after a commit. |
+| Backend in Rust (hub, `hubctl`, knowledge service), behaviour-compatible with the Python 0.2.x line | Implemented | Since 0.3.0. Verified by every Python test's Rust counterpart (`backend/TEST-MAP.md`: 1152 mapped, 58 N/A, including the never-released Python DeepSeek Harness adapter's tests), the differential harness against the last Python backend (hub: 431 cases, 0 differences; 6 differ only by deliberate extra security headers, and the 22 DeepSeek Harness cases the reference cannot answer are checked against Rust answers recorded from a run against a Python tree with that adapter, where all 431 agree but the same 6; knowledge: 114 cases, 0 differences, one of them, an over-cap upload, allowed because the Python side's own answer varies between runs) and the browser suite. Deliberate differences: `CHANGELOG.md`, `backend/PORTING.md`. |
+| Differential harness against a Python release (`make parity`, `node backend/parity/run.mjs --a python@<ref>`) | Implemented | Needs uv and Python 3.13 for the Python side. `--a python@/abs/tree` compares against a Python tree on disk; `--write-rust-expect` records Rust's `dsh.*` answers (`backend/parity/expect/rust-dsh.json`) only from a run where that tree agrees on all of them. |
 | Windows or cgroup-only hosts | Not planned | Developed and used on Linux; other platforms are not supported. |
 
 ## How the UX compares (facts only)

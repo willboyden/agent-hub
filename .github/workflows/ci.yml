@@ -16,8 +16,38 @@ defaults:
   run:
     shell: bash
 
+# The backend is one Rust workspace in backend/ (hub, hubctl, knowledge service). The toolchain comes from
+# backend/rust-toolchain.toml (rustup is on the runner image). protoc for lance's build scripts is vendored
+# (backend/tools/protoc + backend/.cargo/config.toml): no system package is installed.
 jobs:
-  backend:
+  rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: backend
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy (warnings are errors)
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+      - name: "Tests (offline: fakes, temp dirs, the embedded Lance store)"
+        run: cargo test --locked --workspace
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Every pytest id of the Python backend is mapped (TEST-MAP.md)
+        run: node parity/check-test-map.mjs
+
+  supply-chain:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -28,44 +58,26 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
-      - name: Install (frozen lockfile)
-        run: uv sync --frozen --python 3.13
-      - name: Lint
-        run: uv run --frozen ruff check src tests
-      - name: Type check (strict)
-        run: uv run --frozen mypy src
-      - name: Tests (offline, fakes and temp dirs)
-        run: uv run --frozen pytest -q
-      - name: Dependency audit
-        run: |
-          uv export --frozen --no-hashes --no-emit-project > "$RUNNER_TEMP/backend-req.txt"
-          uvx pip-audit --strict --disable-pip --no-deps -r "$RUNNER_TEMP/backend-req.txt"
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: taiki-e/install-action@ab6895351a88b908e96a4697860d4ffea5e57dbe # v2.87.27
+        with:
+          tool: cargo-deny@0.20.2,cargo-audit@0.22.2
+      - name: cargo-deny (advisories, licenses, bans, sources)
+        run: cargo deny --locked check
+      - name: cargo-audit (RustSec; ignores with reasons in .cargo/audit.toml)
+        run: cargo audit
 
-  knowledge:
+  crate-age:
+    # NETWORK: queries the crates.io API for every locked package's publication date (the 14-day cooldown; security
+    # fixes are the only exceptions, listed with their advisories in backend/tools/crate-age-exceptions.toml).
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    defaults:
-      run:
-        shell: bash
-        working-directory: knowledge
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
-      - name: Install (frozen lockfile)
-        run: uv sync --frozen --python 3.13
-      - name: Lint
-        run: uv run --frozen ruff check src tests
-      - name: Type check (strict)
-        run: uv run --frozen mypy src
-      - name: Tests (live-marked tests are skipped without AK_LIVE=1)
-        run: uv run --frozen pytest -q
-      - name: Dependency audit
-        run: |
-          uv export --frozen --no-hashes --no-emit-project > "$RUNNER_TEMP/knowledge-req.txt"
-          uvx pip-audit --strict --disable-pip --no-deps -r "$RUNNER_TEMP/knowledge-req.txt"
+      - name: Dependency cooldown (stdlib Python, no installs)
+        run: python3 -I backend/tools/crate-age.py
 
   frontend:
     runs-on: ubuntu-latest
@@ -85,10 +97,11 @@ jobs:
         run: npm test
 
   e2e:
-    # Every page, detail route and tab in a real headless Chrome against the real backend (frontend/e2e/run.mjs).
+    # Every page, detail route and tab in a real headless Chrome against the real backend (frontend/e2e/run.mjs):
+    # hermetic (throwaway HOME and data dir, loopback not trusted, minimal PATH, no knowledge service).
     # Unit tests cannot see a view that fails, or that opens a dialog by itself, in the browser; this job can.
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     defaults:
       run:
         shell: bash
@@ -96,12 +109,16 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+      - run: rustup show active-toolchain || rustup toolchain install
+        working-directory: backend
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: backend
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-      - name: Install backend (frozen lockfile)
+      - name: Build the hub and hubctl (debug)
         working-directory: backend
-        run: uv venv --python 3.13 && uv sync --frozen
+        run: cargo build --locked -p agent-hub --bins
       - name: Browser end-to-end (google-chrome from the runner image)
         run: node frontend/e2e/run.mjs

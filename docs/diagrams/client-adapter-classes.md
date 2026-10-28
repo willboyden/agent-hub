@@ -1,32 +1,34 @@
 # Client adapter classes
 
-Mermaid. Names are from `backend/src/agent_hub/adapters/`; a variant module is a tiny
-subclass exposing its own id.
+Mermaid. Names are from `backend/crates/agent-hub/src/adapters/` (Rust since 0.3.0): `ClientAdapter` is a trait with a
+default `observe`, each adapter file exposes `adapter()`, and the build registers every file.
 
 ```mermaid
 classDiagram
   class ClientAdapter {
-    <<abstract>>
-    +str id
-    +str display_name
+    <<trait>>
+    +id() str
+    +display_name() str
+    +docs() str
     +caps() AdapterCaps
     +default_config() ClientConfig
     +render(ctx RenderContext) RenderResult
     +discover(cfg, fs FileSystem) DiscoveredContent
-    +verify(cfg, expected, fs, run CommandRunner) list~Check~
+    +verify(cfg, expected, fs, run CommandRunner) Vec~Check~
+    +observe(cfg, fs, run) Observation
   }
   class ClaudeCodeAdapter
   class OpenCodeAdapter
   class HermesAdapter
-  class HermesComfyAdapter
+  class TurnstoneAdapter
   class GenericSpecAdapter {
-    +validate_spec(spec) list~Diag~
+    +validate_spec(spec) Vec~Diag~
     +dry_render(spec, sample) RenderResult
   }
   ClientAdapter <|-- ClaudeCodeAdapter
   ClientAdapter <|-- OpenCodeAdapter
   ClientAdapter <|-- HermesAdapter
-  HermesAdapter <|-- HermesComfyAdapter
+  ClientAdapter <|-- TurnstoneAdapter
   ClientAdapter <|-- GenericSpecAdapter
 
   class FileSystem {

@@ -1,0 +1,3896 @@
+{
+ "generated_by": "backend/parity/gen/dump_routes.py",
+ "meta": {
+  "app": "agent-hub",
+  "prefix": "/api/v1",
+  "middleware": "agent_hub.api.security:SecurityMiddleware"
+ },
+ "routes": [
+  {
+   "order": 0,
+   "path": "/api/v1/openapi.json",
+   "methods": [
+    "GET",
+    "HEAD"
+   ],
+   "name": "openapi",
+   "endpoint": "fastapi.applications:FastAPI.setup.<locals>.openapi",
+   "kind": "Route",
+   "include_in_schema": false,
+   "status_code": null,
+   "path_regex": "^/api/v1/openapi\\.json$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": []
+  },
+  {
+   "order": 1,
+   "path": "/api/v1/memory/inbox",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_inbox",
+   "endpoint": "agent_hub.api.routers.content:list_inbox",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/memory/inbox$",
+   "is_async": false,
+   "path_params": [],
+   "query": [
+    {
+     "name": "client",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 2,
+   "path": "/api/v1/memory/inbox",
+   "methods": [
+    "POST"
+   ],
+   "name": "add_inbox",
+   "endpoint": "agent_hub.api.routers.content:add_inbox",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 201,
+   "path_regex": "^/api/v1/memory/inbox$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.content.InboxIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "client": {
+       "title": "Client",
+       "type": "string"
+      },
+      "title": {
+       "title": "Title",
+       "type": "string"
+      },
+      "body": {
+       "title": "Body",
+       "type": "string"
+      },
+      "type": {
+       "default": "reference",
+       "title": "Type",
+       "type": "string"
+      }
+     },
+     "required": [
+      "client",
+      "title",
+      "body"
+     ],
+     "title": "InboxIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 3,
+   "path": "/api/v1/memory/inbox/{iid}/promote",
+   "methods": [
+    "POST"
+   ],
+   "name": "promote",
+   "endpoint": "agent_hub.api.routers.content:promote",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/memory/inbox/(?P<iid>[^/]+)/promote$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "iid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any] | None",
+    "required": false,
+    "schema": {
+     "anyOf": [
+      {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 4,
+   "path": "/api/v1/memory/inbox/{iid}/reject",
+   "methods": [
+    "POST"
+   ],
+   "name": "reject",
+   "endpoint": "agent_hub.api.routers.content:reject",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/memory/inbox/(?P<iid>[^/]+)/reject$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "iid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 5,
+   "path": "/api/v1/health",
+   "methods": [
+    "GET"
+   ],
+   "name": "health",
+   "endpoint": "agent_hub.api.routers.system:health",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/health$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 6,
+   "path": "/api/v1/adapters",
+   "methods": [
+    "GET"
+   ],
+   "name": "adapters",
+   "endpoint": "agent_hub.api.routers.system:adapters",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/adapters$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 7,
+   "path": "/api/v1/adapters/{adapter_id}",
+   "methods": [
+    "GET"
+   ],
+   "name": "adapter",
+   "endpoint": "agent_hub.api.routers.system:adapter",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/adapters/(?P<adapter_id>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "adapter_id",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 8,
+   "path": "/api/v1/policy/floor",
+   "methods": [
+    "GET"
+   ],
+   "name": "floor",
+   "endpoint": "agent_hub.api.routers.system:floor",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/policy/floor$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 9,
+   "path": "/api/v1/policy/check",
+   "methods": [
+    "POST"
+   ],
+   "name": "policy_check",
+   "endpoint": "agent_hub.api.routers.system:policy_check",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/policy/check$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 10,
+   "path": "/api/v1/audit",
+   "methods": [
+    "GET"
+   ],
+   "name": "audit",
+   "endpoint": "agent_hub.api.routers.system:audit",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/audit$",
+   "is_async": false,
+   "path_params": [],
+   "query": [
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 100,
+     "constraints": [
+      "Ge(ge=1)",
+      "Le(le=500)"
+     ]
+    },
+    {
+     "name": "cursor",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 11,
+   "path": "/api/v1/settings",
+   "methods": [
+    "GET"
+   ],
+   "name": "get_settings",
+   "endpoint": "agent_hub.api.routers.system:get_settings",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/settings$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 12,
+   "path": "/api/v1/settings",
+   "methods": [
+    "PUT"
+   ],
+   "name": "put_settings",
+   "endpoint": "agent_hub.api.routers.system:put_settings",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/settings$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 13,
+   "path": "/api/v1/keys",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_keys",
+   "endpoint": "agent_hub.api.routers.system:list_keys",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/keys$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 14,
+   "path": "/api/v1/keys",
+   "methods": [
+    "POST"
+   ],
+   "name": "create_key",
+   "endpoint": "agent_hub.api.routers.system:create_key",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 201,
+   "path_regex": "^/api/v1/keys$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.system.KeyIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "name": {
+       "title": "Name",
+       "type": "string"
+      },
+      "role": {
+       "default": "viewer",
+       "title": "Role",
+       "type": "string"
+      },
+      "client": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Client"
+      },
+      "scopes": {
+       "default": [],
+       "items": {
+        "type": "string"
+       },
+       "title": "Scopes",
+       "type": "array"
+      }
+     },
+     "required": [
+      "name"
+     ],
+     "title": "KeyIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 15,
+   "path": "/api/v1/keys/{key_id}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "delete_key",
+   "endpoint": "agent_hub.api.routers.system:delete_key",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 204,
+   "path_regex": "^/api/v1/keys/(?P<key_id>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "key_id",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 16,
+   "path": "/api/v1/doctor",
+   "methods": [
+    "GET"
+   ],
+   "name": "doctor",
+   "endpoint": "agent_hub.api.routers.system:doctor",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/doctor$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 17,
+   "path": "/api/v1/doctor/summary",
+   "methods": [
+    "GET"
+   ],
+   "name": "doctor_summary",
+   "endpoint": "agent_hub.api.routers.system:doctor_summary",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/doctor/summary$",
+   "is_async": true,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 18,
+   "path": "/api/v1/content/validate",
+   "methods": [
+    "GET"
+   ],
+   "name": "validate",
+   "endpoint": "agent_hub.api.routers.system:validate",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/content/validate$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 19,
+   "path": "/api/v1/clients",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_clients",
+   "endpoint": "agent_hub.api.routers.clients:list_clients",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients$",
+   "is_async": false,
+   "path_params": [],
+   "query": [
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 100,
+     "constraints": []
+    },
+    {
+     "name": "cursor",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 20,
+   "path": "/api/v1/clients",
+   "methods": [
+    "POST"
+   ],
+   "name": "create_client",
+   "endpoint": "agent_hub.api.routers.clients:create_client",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 201,
+   "path_regex": "^/api/v1/clients$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 21,
+   "path": "/api/v1/clients/validate-spec",
+   "methods": [
+    "POST"
+   ],
+   "name": "validate_spec",
+   "endpoint": "agent_hub.api.routers.clients:validate_spec",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/validate\\-spec$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 22,
+   "path": "/api/v1/clients/{cid}",
+   "methods": [
+    "GET"
+   ],
+   "name": "get_client",
+   "endpoint": "agent_hub.api.routers.clients:get_client",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 23,
+   "path": "/api/v1/clients/{cid}",
+   "methods": [
+    "PUT"
+   ],
+   "name": "put_client",
+   "endpoint": "agent_hub.api.routers.clients:put_client",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 24,
+   "path": "/api/v1/clients/{cid}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "delete_client",
+   "endpoint": "agent_hub.api.routers.clients:delete_client",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 204,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 25,
+   "path": "/api/v1/clients/{cid}/discover",
+   "methods": [
+    "POST"
+   ],
+   "name": "discover",
+   "endpoint": "agent_hub.api.routers.clients:discover",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)/discover$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 26,
+   "path": "/api/v1/clients/{cid}/observe",
+   "methods": [
+    "POST"
+   ],
+   "name": "observe",
+   "endpoint": "agent_hub.api.routers.clients:observe",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)/observe$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 27,
+   "path": "/api/v1/clients/{cid}/observed",
+   "methods": [
+    "GET"
+   ],
+   "name": "observed",
+   "endpoint": "agent_hub.api.routers.clients:observed",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)/observed$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [
+    {
+     "name": "origin",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "hub_status",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "q",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 100,
+     "constraints": []
+    },
+    {
+     "name": "cursor",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 28,
+   "path": "/api/v1/clients/{cid}/observed/import",
+   "methods": [
+    "POST"
+   ],
+   "name": "observed_import",
+   "endpoint": "agent_hub.api.routers.clients:observed_import",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)/observed/import$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.clients.ObservedImportIn'>",
+    "required": true,
+    "schema": {
+     "$defs": {
+      "ObservedItem": {
+       "additionalProperties": false,
+       "properties": {
+        "key": {
+         "title": "Key",
+         "type": "string"
+        },
+        "name": {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "null"
+          }
+         ],
+         "default": null,
+         "title": "Name"
+        }
+       },
+       "required": [
+        "key"
+       ],
+       "title": "ObservedItem",
+       "type": "object"
+      }
+     },
+     "additionalProperties": false,
+     "properties": {
+      "items": {
+       "items": {
+        "$ref": "#/$defs/ObservedItem"
+       },
+       "title": "Items",
+       "type": "array"
+      },
+      "on_conflict": {
+       "default": "skip",
+       "enum": [
+        "skip",
+        "rename",
+        "replace",
+        "link"
+       ],
+       "title": "On Conflict",
+       "type": "string"
+      },
+      "enable": {
+       "default": false,
+       "title": "Enable",
+       "type": "boolean"
+      },
+      "override_reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Override Reason"
+      }
+     },
+     "required": [
+      "items"
+     ],
+     "title": "ObservedImportIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 29,
+   "path": "/api/v1/import",
+   "methods": [
+    "POST"
+   ],
+   "name": "do_import",
+   "endpoint": "agent_hub.api.routers.clients:do_import",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/import$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.clients.ImportIn'>",
+    "required": true,
+    "schema": {
+     "$defs": {
+      "ImportItem": {
+       "additionalProperties": false,
+       "properties": {
+        "kind": {
+         "title": "Kind",
+         "type": "string"
+        },
+        "name": {
+         "title": "Name",
+         "type": "string"
+        },
+        "on_conflict": {
+         "anyOf": [
+          {
+           "type": "string"
+          },
+          {
+           "type": "null"
+          }
+         ],
+         "default": null,
+         "title": "On Conflict"
+        }
+       },
+       "required": [
+        "kind",
+        "name"
+       ],
+       "title": "ImportItem",
+       "type": "object"
+      }
+     },
+     "additionalProperties": false,
+     "properties": {
+      "client": {
+       "title": "Client",
+       "type": "string"
+      },
+      "items": {
+       "anyOf": [
+        {
+         "items": {
+          "$ref": "#/$defs/ImportItem"
+         },
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Items"
+      },
+      "on_conflict": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "On Conflict"
+      },
+      "enable": {
+       "default": true,
+       "title": "Enable",
+       "type": "boolean"
+      },
+      "override_reason": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Override Reason"
+      }
+     },
+     "required": [
+      "client"
+     ],
+     "title": "ImportIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 30,
+   "path": "/api/v1/clients/{cid}/rendered",
+   "methods": [
+    "GET"
+   ],
+   "name": "rendered",
+   "endpoint": "agent_hub.api.routers.clients:rendered",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)/rendered$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [
+    {
+     "name": "kind",
+     "type": "<class 'str'>",
+     "required": true,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "name",
+     "type": "<class 'str'>",
+     "required": true,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "source",
+     "type": "<class 'str'>",
+     "required": false,
+     "default": "committed",
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 31,
+   "path": "/api/v1/clients/{cid}/applies",
+   "methods": [
+    "GET"
+   ],
+   "name": "applies",
+   "endpoint": "agent_hub.api.routers.clients:applies",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)/applies$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 32,
+   "path": "/api/v1/clients/{cid}/rollback",
+   "methods": [
+    "POST"
+   ],
+   "name": "rollback",
+   "endpoint": "agent_hub.api.routers.clients:rollback",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)/rollback$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.clients.RollbackIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "apply_id": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Apply Id"
+      },
+      "confirm": {
+       "default": false,
+       "title": "Confirm",
+       "type": "boolean"
+      },
+      "dry_run": {
+       "default": false,
+       "title": "Dry Run",
+       "type": "boolean"
+      },
+      "force_paths": {
+       "default": [],
+       "items": {
+        "type": "string"
+       },
+       "title": "Force Paths",
+       "type": "array"
+      }
+     },
+     "title": "RollbackIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 33,
+   "path": "/api/v1/clients/{cid}/effective",
+   "methods": [
+    "GET"
+   ],
+   "name": "effective",
+   "endpoint": "agent_hub.api.routers.clients:effective",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)/effective$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [
+    {
+     "name": "source",
+     "type": "<class 'str'>",
+     "required": false,
+     "default": "committed",
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 34,
+   "path": "/api/v1/clients/{cid}/verify",
+   "methods": [
+    "POST"
+   ],
+   "name": "verify",
+   "endpoint": "agent_hub.api.routers.clients:verify",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)/verify$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 35,
+   "path": "/api/v1/clients/{cid}/drift",
+   "methods": [
+    "GET"
+   ],
+   "name": "drift",
+   "endpoint": "agent_hub.api.routers.clients:drift",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)/drift$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 36,
+   "path": "/api/v1/clients/{cid}/audit",
+   "methods": [
+    "GET"
+   ],
+   "name": "audit_client",
+   "endpoint": "agent_hub.api.routers.clients:audit_client",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/clients/(?P<cid>[^/]+)/audit$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 37,
+   "path": "/api/v1/skills",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_skills",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.list_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/skills$",
+   "is_async": false,
+   "path_params": [],
+   "query": [
+    {
+     "name": "q",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "group",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "tag",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "client",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "enabled",
+     "type": "bool | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "source",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "issues",
+     "type": "bool | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "sort",
+     "type": "<class 'str'>",
+     "required": false,
+     "default": "name",
+     "constraints": []
+    },
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 100,
+     "constraints": [
+      "Ge(ge=1)",
+      "Le(le=500)"
+     ]
+    },
+    {
+     "name": "cursor",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 38,
+   "path": "/api/v1/skills/{name}",
+   "methods": [
+    "GET"
+   ],
+   "name": "get_skill",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.get_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/skills/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 39,
+   "path": "/api/v1/skills/{name}",
+   "methods": [
+    "PUT"
+   ],
+   "name": "put_skill",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.put_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/skills/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 40,
+   "path": "/api/v1/skills/{name}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "delete_skill",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.delete_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 204,
+   "path_regex": "^/api/v1/skills/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 41,
+   "path": "/api/v1/agents",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_agents",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.list_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/agents$",
+   "is_async": false,
+   "path_params": [],
+   "query": [
+    {
+     "name": "q",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "group",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "tag",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "client",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "enabled",
+     "type": "bool | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "source",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "issues",
+     "type": "bool | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "sort",
+     "type": "<class 'str'>",
+     "required": false,
+     "default": "name",
+     "constraints": []
+    },
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 100,
+     "constraints": [
+      "Ge(ge=1)",
+      "Le(le=500)"
+     ]
+    },
+    {
+     "name": "cursor",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 42,
+   "path": "/api/v1/agents/{name}",
+   "methods": [
+    "GET"
+   ],
+   "name": "get_agent",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.get_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/agents/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 43,
+   "path": "/api/v1/agents/{name}",
+   "methods": [
+    "PUT"
+   ],
+   "name": "put_agent",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.put_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/agents/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 44,
+   "path": "/api/v1/agents/{name}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "delete_agent",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.delete_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 204,
+   "path_regex": "^/api/v1/agents/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 45,
+   "path": "/api/v1/instructions",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_instructions",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.list_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/instructions$",
+   "is_async": false,
+   "path_params": [],
+   "query": [
+    {
+     "name": "q",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "group",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "tag",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "client",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "enabled",
+     "type": "bool | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "source",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "issues",
+     "type": "bool | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "sort",
+     "type": "<class 'str'>",
+     "required": false,
+     "default": "name",
+     "constraints": []
+    },
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 100,
+     "constraints": [
+      "Ge(ge=1)",
+      "Le(le=500)"
+     ]
+    },
+    {
+     "name": "cursor",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 46,
+   "path": "/api/v1/instructions/{name}",
+   "methods": [
+    "GET"
+   ],
+   "name": "get_instruction",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.get_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/instructions/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 47,
+   "path": "/api/v1/instructions/{name}",
+   "methods": [
+    "PUT"
+   ],
+   "name": "put_instruction",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.put_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/instructions/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 48,
+   "path": "/api/v1/instructions/{name}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "delete_instruction",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.delete_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 204,
+   "path_regex": "^/api/v1/instructions/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 49,
+   "path": "/api/v1/mcp",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_mcp",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.list_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/mcp$",
+   "is_async": false,
+   "path_params": [],
+   "query": [
+    {
+     "name": "q",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "group",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "tag",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "client",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "enabled",
+     "type": "bool | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "source",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "issues",
+     "type": "bool | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "sort",
+     "type": "<class 'str'>",
+     "required": false,
+     "default": "name",
+     "constraints": []
+    },
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 100,
+     "constraints": [
+      "Ge(ge=1)",
+      "Le(le=500)"
+     ]
+    },
+    {
+     "name": "cursor",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 50,
+   "path": "/api/v1/mcp/{name}",
+   "methods": [
+    "GET"
+   ],
+   "name": "get_mcp",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.get_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/mcp/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 51,
+   "path": "/api/v1/mcp/{name}",
+   "methods": [
+    "PUT"
+   ],
+   "name": "put_mcp",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.put_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/mcp/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 52,
+   "path": "/api/v1/mcp/{name}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "delete_mcp",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.delete_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 204,
+   "path_regex": "^/api/v1/mcp/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 53,
+   "path": "/api/v1/rules",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_rules",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.list_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/rules$",
+   "is_async": false,
+   "path_params": [],
+   "query": [
+    {
+     "name": "q",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "group",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "tag",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "client",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "enabled",
+     "type": "bool | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "source",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "issues",
+     "type": "bool | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "sort",
+     "type": "<class 'str'>",
+     "required": false,
+     "default": "name",
+     "constraints": []
+    },
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 100,
+     "constraints": [
+      "Ge(ge=1)",
+      "Le(le=500)"
+     ]
+    },
+    {
+     "name": "cursor",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 54,
+   "path": "/api/v1/rules/{name}",
+   "methods": [
+    "GET"
+   ],
+   "name": "get_rule",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.get_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/rules/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 55,
+   "path": "/api/v1/rules/{name}",
+   "methods": [
+    "PUT"
+   ],
+   "name": "put_rule",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.put_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/rules/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 56,
+   "path": "/api/v1/rules/{name}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "delete_rule",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.delete_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 204,
+   "path_regex": "^/api/v1/rules/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 57,
+   "path": "/api/v1/memory",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_memory",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.list_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/memory$",
+   "is_async": false,
+   "path_params": [],
+   "query": [
+    {
+     "name": "q",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "group",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "tag",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "client",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "enabled",
+     "type": "bool | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "source",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "issues",
+     "type": "bool | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "sort",
+     "type": "<class 'str'>",
+     "required": false,
+     "default": "name",
+     "constraints": []
+    },
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 100,
+     "constraints": [
+      "Ge(ge=1)",
+      "Le(le=500)"
+     ]
+    },
+    {
+     "name": "cursor",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 58,
+   "path": "/api/v1/memory/{name}",
+   "methods": [
+    "GET"
+   ],
+   "name": "get_memory",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.get_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/memory/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 59,
+   "path": "/api/v1/memory/{name}",
+   "methods": [
+    "PUT"
+   ],
+   "name": "put_memory",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.put_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/memory/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 60,
+   "path": "/api/v1/memory/{name}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "delete_memory",
+   "endpoint": "agent_hub.api.routers.content:_register.<locals>.delete_",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 204,
+   "path_regex": "^/api/v1/memory/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 61,
+   "path": "/api/v1/skills/{name}/duplicate",
+   "methods": [
+    "POST"
+   ],
+   "name": "duplicate",
+   "endpoint": "agent_hub.api.routers.content:duplicate",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 201,
+   "path_regex": "^/api/v1/skills/(?P<name>[^/]+)/duplicate$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.content.DuplicateIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "new_name": {
+       "title": "New Name",
+       "type": "string"
+      }
+     },
+     "required": [
+      "new_name"
+     ],
+     "title": "DuplicateIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 62,
+   "path": "/api/v1/collections",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_collections",
+   "endpoint": "agent_hub.api.routers.organize:list_collections",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/collections$",
+   "is_async": false,
+   "path_params": [],
+   "query": [
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 100,
+     "constraints": []
+    },
+    {
+     "name": "cursor",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 63,
+   "path": "/api/v1/collections/suggestions",
+   "methods": [
+    "GET"
+   ],
+   "name": "suggestions",
+   "endpoint": "agent_hub.api.routers.organize:suggestions",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/collections/suggestions$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 64,
+   "path": "/api/v1/collections/suggestions/accept",
+   "methods": [
+    "POST"
+   ],
+   "name": "accept_suggestions",
+   "endpoint": "agent_hub.api.routers.organize:accept_suggestions",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 201,
+   "path_regex": "^/api/v1/collections/suggestions/accept$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.organize.AcceptIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "ids": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Ids",
+       "type": "array"
+      },
+      "overrides": {
+       "additionalProperties": {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       "default": {},
+       "title": "Overrides",
+       "type": "object"
+      }
+     },
+     "required": [
+      "ids"
+     ],
+     "title": "AcceptIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 65,
+   "path": "/api/v1/collections",
+   "methods": [
+    "POST"
+   ],
+   "name": "create_collection",
+   "endpoint": "agent_hub.api.routers.organize:create_collection",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 201,
+   "path_regex": "^/api/v1/collections$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 66,
+   "path": "/api/v1/collections/reorder",
+   "methods": [
+    "POST"
+   ],
+   "name": "reorder",
+   "endpoint": "agent_hub.api.routers.organize:reorder",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/collections/reorder$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.organize.ReorderIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "ids": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Ids",
+       "type": "array"
+      }
+     },
+     "required": [
+      "ids"
+     ],
+     "title": "ReorderIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 67,
+   "path": "/api/v1/collections/{cid}",
+   "methods": [
+    "PUT"
+   ],
+   "name": "put_collection",
+   "endpoint": "agent_hub.api.routers.organize:put_collection",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/collections/(?P<cid>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 68,
+   "path": "/api/v1/collections/{cid}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "delete_collection",
+   "endpoint": "agent_hub.api.routers.organize:delete_collection",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 204,
+   "path_regex": "^/api/v1/collections/(?P<cid>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 69,
+   "path": "/api/v1/collections/{cid}/members",
+   "methods": [
+    "POST"
+   ],
+   "name": "add_members",
+   "endpoint": "agent_hub.api.routers.organize:add_members",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/collections/(?P<cid>[^/]+)/members$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.organize.MembersIn'>",
+    "required": true,
+    "schema": {
+     "$defs": {
+      "Member": {
+       "additionalProperties": false,
+       "properties": {
+        "kind": {
+         "enum": [
+          "skill",
+          "agent",
+          "instruction",
+          "mcp",
+          "rule",
+          "memory"
+         ],
+         "title": "Kind",
+         "type": "string"
+        },
+        "name": {
+         "title": "Name",
+         "type": "string"
+        }
+       },
+       "required": [
+        "kind",
+        "name"
+       ],
+       "title": "Member",
+       "type": "object"
+      }
+     },
+     "additionalProperties": false,
+     "properties": {
+      "members": {
+       "items": {
+        "$ref": "#/$defs/Member"
+       },
+       "title": "Members",
+       "type": "array"
+      }
+     },
+     "required": [
+      "members"
+     ],
+     "title": "MembersIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 70,
+   "path": "/api/v1/collections/{cid}/members/{kind}/{name}",
+   "methods": [
+    "DELETE"
+   ],
+   "name": "remove_member",
+   "endpoint": "agent_hub.api.routers.organize:remove_member",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/collections/(?P<cid>[^/]+)/members/(?P<kind>[^/]+)/(?P<name>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "cid",
+     "type": "<class 'str'>"
+    },
+    {
+     "name": "kind",
+     "type": "<class 'str'>"
+    },
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 71,
+   "path": "/api/v1/items/bulk",
+   "methods": [
+    "POST"
+   ],
+   "name": "bulk",
+   "endpoint": "agent_hub.api.routers.organize:bulk",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/items/bulk$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.organize.BulkIn'>",
+    "required": true,
+    "schema": {
+     "$defs": {
+      "Member": {
+       "additionalProperties": false,
+       "properties": {
+        "kind": {
+         "enum": [
+          "skill",
+          "agent",
+          "instruction",
+          "mcp",
+          "rule",
+          "memory"
+         ],
+         "title": "Kind",
+         "type": "string"
+        },
+        "name": {
+         "title": "Name",
+         "type": "string"
+        }
+       },
+       "required": [
+        "kind",
+        "name"
+       ],
+       "title": "Member",
+       "type": "object"
+      }
+     },
+     "additionalProperties": false,
+     "properties": {
+      "items": {
+       "items": {
+        "$ref": "#/$defs/Member"
+       },
+       "title": "Items",
+       "type": "array"
+      },
+      "add_to_collection": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Add To Collection"
+      },
+      "remove_from_collection": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Remove From Collection"
+      },
+      "add_tags": {
+       "default": [],
+       "items": {
+        "type": "string"
+       },
+       "title": "Add Tags",
+       "type": "array"
+      },
+      "remove_tags": {
+       "default": [],
+       "items": {
+        "type": "string"
+       },
+       "title": "Remove Tags",
+       "type": "array"
+      }
+     },
+     "required": [
+      "items"
+     ],
+     "title": "BulkIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 72,
+   "path": "/api/v1/profiles/{client}",
+   "methods": [
+    "GET"
+   ],
+   "name": "get_profile",
+   "endpoint": "agent_hub.api.routers.organize:get_profile",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/profiles/(?P<client>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "client",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 73,
+   "path": "/api/v1/profiles/{client}",
+   "methods": [
+    "PUT"
+   ],
+   "name": "put_profile",
+   "endpoint": "agent_hub.api.routers.organize:put_profile",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/profiles/(?P<client>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "client",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "dict[str, Any]",
+    "required": true,
+    "schema": {
+     "additionalProperties": true,
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 74,
+   "path": "/api/v1/matrix",
+   "methods": [
+    "GET"
+   ],
+   "name": "matrix",
+   "endpoint": "agent_hub.api.routers.organize:matrix",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/matrix$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 75,
+   "path": "/api/v1/matrix/toggle",
+   "methods": [
+    "POST"
+   ],
+   "name": "toggle",
+   "endpoint": "agent_hub.api.routers.organize:toggle",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/matrix/toggle$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.organize.ToggleIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "client": {
+       "title": "Client",
+       "type": "string"
+      },
+      "kind": {
+       "enum": [
+        "skill",
+        "agent",
+        "instruction",
+        "mcp",
+        "rule",
+        "memory"
+       ],
+       "title": "Kind",
+       "type": "string"
+      },
+      "name": {
+       "title": "Name",
+       "type": "string"
+      },
+      "enabled": {
+       "title": "Enabled",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "client",
+      "kind",
+      "name",
+      "enabled"
+     ],
+     "title": "ToggleIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 76,
+   "path": "/api/v1/matrix/bulk",
+   "methods": [
+    "POST"
+   ],
+   "name": "bulk_toggle",
+   "endpoint": "agent_hub.api.routers.organize:bulk_toggle",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/matrix/bulk$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.organize.BulkToggleIn'>",
+    "required": true,
+    "schema": {
+     "$defs": {
+      "Member": {
+       "additionalProperties": false,
+       "properties": {
+        "kind": {
+         "enum": [
+          "skill",
+          "agent",
+          "instruction",
+          "mcp",
+          "rule",
+          "memory"
+         ],
+         "title": "Kind",
+         "type": "string"
+        },
+        "name": {
+         "title": "Name",
+         "type": "string"
+        }
+       },
+       "required": [
+        "kind",
+        "name"
+       ],
+       "title": "Member",
+       "type": "object"
+      }
+     },
+     "additionalProperties": false,
+     "properties": {
+      "clients": {
+       "items": {
+        "type": "string"
+       },
+       "title": "Clients",
+       "type": "array"
+      },
+      "items": {
+       "items": {
+        "$ref": "#/$defs/Member"
+       },
+       "title": "Items",
+       "type": "array"
+      },
+      "enabled": {
+       "title": "Enabled",
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "clients",
+      "items",
+      "enabled"
+     ],
+     "title": "BulkToggleIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 77,
+   "path": "/api/v1/changes",
+   "methods": [
+    "GET"
+   ],
+   "name": "changes",
+   "endpoint": "agent_hub.api.routers.changes:changes",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/changes$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 78,
+   "path": "/api/v1/changes/commit",
+   "methods": [
+    "POST"
+   ],
+   "name": "commit",
+   "endpoint": "agent_hub.api.routers.changes:commit",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/changes/commit$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.changes.CommitIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "message": {
+       "title": "Message",
+       "type": "string"
+      }
+     },
+     "required": [
+      "message"
+     ],
+     "title": "CommitIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 79,
+   "path": "/api/v1/changes/discard",
+   "methods": [
+    "POST"
+   ],
+   "name": "discard",
+   "endpoint": "agent_hub.api.routers.changes:discard",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/changes/discard$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.changes.DiscardIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "paths": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Paths"
+      },
+      "confirm": {
+       "default": false,
+       "title": "Confirm",
+       "type": "boolean"
+      },
+      "dry_run": {
+       "default": false,
+       "title": "Dry Run",
+       "type": "boolean"
+      }
+     },
+     "title": "DiscardIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 80,
+   "path": "/api/v1/changes/history",
+   "methods": [
+    "GET"
+   ],
+   "name": "history",
+   "endpoint": "agent_hub.api.routers.changes:history",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/changes/history$",
+   "is_async": false,
+   "path_params": [],
+   "query": [
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 50,
+     "constraints": [
+      "Ge(ge=1)",
+      "Le(le=500)"
+     ]
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 81,
+   "path": "/api/v1/changes/revert",
+   "methods": [
+    "POST"
+   ],
+   "name": "revert",
+   "endpoint": "agent_hub.api.routers.changes:revert",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/changes/revert$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.changes.RevertIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "commit": {
+       "title": "Commit",
+       "type": "string"
+      }
+     },
+     "required": [
+      "commit"
+     ],
+     "title": "RevertIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 82,
+   "path": "/api/v1/plan",
+   "methods": [
+    "POST"
+   ],
+   "name": "make_plan",
+   "endpoint": "agent_hub.api.routers.changes:make_plan",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/plan$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.changes.PlanIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "clients": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Clients"
+      },
+      "source": {
+       "default": "committed",
+       "title": "Source",
+       "type": "string"
+      }
+     },
+     "title": "PlanIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 83,
+   "path": "/api/v1/plan/{plan_id}",
+   "methods": [
+    "GET"
+   ],
+   "name": "get_plan",
+   "endpoint": "agent_hub.api.routers.changes:get_plan",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/plan/(?P<plan_id>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "plan_id",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 84,
+   "path": "/api/v1/apply",
+   "methods": [
+    "POST"
+   ],
+   "name": "apply",
+   "endpoint": "agent_hub.api.routers.changes:apply",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/apply$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.changes.ApplyIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "plan_id": {
+       "title": "Plan Id",
+       "type": "string"
+      },
+      "confirm": {
+       "default": false,
+       "title": "Confirm",
+       "type": "boolean"
+      },
+      "adopt_paths": {
+       "default": [],
+       "items": {
+        "type": "string"
+       },
+       "title": "Adopt Paths",
+       "type": "array"
+      }
+     },
+     "required": [
+      "plan_id"
+     ],
+     "title": "ApplyIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 85,
+   "path": "/api/v1/knowledge/{path:path}",
+   "methods": [
+    "DELETE",
+    "GET",
+    "POST"
+   ],
+   "name": "proxy",
+   "endpoint": "agent_hub.api.routers.knowledge:proxy",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/knowledge/(?P<path>.*)$",
+   "is_async": true,
+   "path_params": [
+    {
+     "name": "path",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 86,
+   "path": "/api/v1/skill-evaluator",
+   "methods": [
+    "GET"
+   ],
+   "name": "evaluator_status",
+   "endpoint": "agent_hub.api.routers.skilleval:evaluator_status",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/skill\\-evaluator$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 87,
+   "path": "/api/v1/skill-evaluations",
+   "methods": [
+    "GET"
+   ],
+   "name": "list_evaluations",
+   "endpoint": "agent_hub.api.routers.skilleval:list_evaluations",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/skill\\-evaluations$",
+   "is_async": false,
+   "path_params": [],
+   "query": [
+    {
+     "name": "source",
+     "type": "<class 'str'>",
+     "required": false,
+     "default": "hub",
+     "constraints": []
+    },
+    {
+     "name": "state",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "verdict",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "origin",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "gate",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "q",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    },
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 100,
+     "constraints": [
+      "Ge(ge=1)",
+      "Le(le=500)"
+     ]
+    },
+    {
+     "name": "cursor",
+     "type": "str | None",
+     "required": false,
+     "default": null,
+     "constraints": []
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 88,
+   "path": "/api/v1/skill-evaluations/run",
+   "methods": [
+    "POST"
+   ],
+   "name": "run_evaluations",
+   "endpoint": "agent_hub.api.routers.skilleval:run_evaluations",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/skill\\-evaluations/run$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "<class 'agent_hub.api.routers.skilleval.RunIn'>",
+    "required": true,
+    "schema": {
+     "additionalProperties": false,
+     "properties": {
+      "subjects": {
+       "anyOf": [
+        {
+         "items": {
+          "type": "string"
+         },
+         "type": "array"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Subjects"
+      },
+      "select": {
+       "anyOf": [
+        {
+         "enum": [
+          "none_or_stale",
+          "all"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "default": null,
+       "title": "Select"
+      },
+      "source": {
+       "default": "hub",
+       "title": "Source",
+       "type": "string"
+      },
+      "tiers": {
+       "default": "static",
+       "enum": [
+        "static",
+        "tier1",
+        "tier1+2"
+       ],
+       "title": "Tiers",
+       "type": "string"
+      },
+      "force": {
+       "default": false,
+       "title": "Force",
+       "type": "boolean"
+      }
+     },
+     "title": "RunIn",
+     "type": "object"
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 89,
+   "path": "/api/v1/skill-evaluations/queue",
+   "methods": [
+    "GET"
+   ],
+   "name": "evaluation_queue",
+   "endpoint": "agent_hub.api.routers.skilleval:evaluation_queue",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/skill\\-evaluations/queue$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 90,
+   "path": "/api/v1/skill-evaluations/queue/cancel",
+   "methods": [
+    "POST"
+   ],
+   "name": "cancel_queue",
+   "endpoint": "agent_hub.api.routers.skilleval:cancel_queue",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/skill\\-evaluations/queue/cancel$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 91,
+   "path": "/api/v1/skill-evaluations/{subject}",
+   "methods": [
+    "GET"
+   ],
+   "name": "evaluation_detail",
+   "endpoint": "agent_hub.api.routers.skilleval:evaluation_detail",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/skill\\-evaluations/(?P<subject>[^/]+)$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "subject",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 92,
+   "path": "/api/v1/skill-evaluations/{subject}/runs/{run_id}/report",
+   "methods": [
+    "GET"
+   ],
+   "name": "subject_report",
+   "endpoint": "agent_hub.api.routers.skilleval:subject_report",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/skill\\-evaluations/(?P<subject>[^/]+)/runs/(?P<run_id>[^/]+)/report$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "subject",
+     "type": "<class 'str'>"
+    },
+    {
+     "name": "run_id",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 93,
+   "path": "/api/v1/skills/{name}/evaluations",
+   "methods": [
+    "GET"
+   ],
+   "name": "skill_evaluations",
+   "endpoint": "agent_hub.api.routers.skilleval:skill_evaluations",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/skills/(?P<name>[^/]+)/evaluations$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [
+    {
+     "name": "limit",
+     "type": "<class 'int'>",
+     "required": false,
+     "default": 20,
+     "constraints": [
+      "Ge(ge=1)",
+      "Le(le=100)"
+     ]
+    }
+   ],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 94,
+   "path": "/api/v1/skills/{name}/evaluations/{run_id}/report",
+   "methods": [
+    "GET"
+   ],
+   "name": "evaluation_report",
+   "endpoint": "agent_hub.api.routers.skilleval:evaluation_report",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": null,
+   "path_regex": "^/api/v1/skills/(?P<name>[^/]+)/evaluations/(?P<run_id>[^/]+)/report$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    },
+    {
+     "name": "run_id",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 95,
+   "path": "/api/v1/skills/{name}/evaluate",
+   "methods": [
+    "POST"
+   ],
+   "name": "evaluate",
+   "endpoint": "agent_hub.api.routers.skilleval:evaluate",
+   "kind": "APIRoute",
+   "include_in_schema": true,
+   "status_code": 202,
+   "path_regex": "^/api/v1/skills/(?P<name>[^/]+)/evaluate$",
+   "is_async": false,
+   "path_params": [
+    {
+     "name": "name",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": {
+    "name": "body",
+    "type": "agent_hub.api.routers.skilleval.EvaluateIn | None",
+    "required": false,
+    "schema": {
+     "$defs": {
+      "EvaluateIn": {
+       "additionalProperties": false,
+       "properties": {
+        "tiers": {
+         "default": "static",
+         "enum": [
+          "static",
+          "tier1",
+          "tier1+2"
+         ],
+         "title": "Tiers",
+         "type": "string"
+        }
+       },
+       "title": "EvaluateIn",
+       "type": "object"
+      }
+     },
+     "anyOf": [
+      {
+       "$ref": "#/$defs/EvaluateIn"
+      },
+      {
+       "type": "null"
+      }
+     ]
+    }
+   },
+   "dependencies": [
+    "agent_hub.api.deps:get_hub",
+    "agent_hub.api.deps:require_admin"
+   ]
+  },
+  {
+   "order": 96,
+   "path": "/metrics",
+   "methods": [
+    "GET"
+   ],
+   "name": "metrics",
+   "endpoint": "agent_hub.api.routers.system:metrics",
+   "kind": "APIRoute",
+   "include_in_schema": false,
+   "status_code": null,
+   "path_regex": "^/metrics$",
+   "is_async": false,
+   "path_params": [],
+   "query": [],
+   "body": null,
+   "dependencies": [
+    "agent_hub.api.deps:get_hub"
+   ]
+  },
+  {
+   "order": 97,
+   "path": "/{path:path}",
+   "methods": [
+    "GET"
+   ],
+   "name": "spa",
+   "endpoint": "agent_hub.main:_mount_frontend.<locals>.spa",
+   "kind": "APIRoute",
+   "include_in_schema": false,
+   "status_code": null,
+   "path_regex": "^/(?P<path>.*)$",
+   "is_async": true,
+   "path_params": [
+    {
+     "name": "path",
+     "type": "<class 'str'>"
+    }
+   ],
+   "query": [],
+   "body": null,
+   "dependencies": []
+  }
+ ]
+}

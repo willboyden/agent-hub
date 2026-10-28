@@ -46,10 +46,10 @@ services:
     restart: unless-stopped
 
   agent-knowledge:
-    # Build context is the hub/knowledge package; see the Dockerfile next to this file.
+    # Build context is the repository root (the Rust workspace in backend/); see the Dockerfile next to this file.
     build:
-      context: ../../knowledge
-      dockerfile: ../deploy/knowledge/Dockerfile
+      context: ../..
+      dockerfile: deploy/knowledge/Dockerfile
     command: ["agent-knowledge", "--config", "/etc/agent-knowledge/config.yaml", "--allow-bind-any"]
     # No published ports at all: reachable only from the broker over the internal network.
     volumes:

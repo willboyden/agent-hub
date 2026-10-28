@@ -1,6 +1,7 @@
 # ADR-0007: Host-run FastAPI on 127.0.0.1:8792, hardened loopback service, loopback trust off
 
-Status: accepted (decision 7). Implemented.
+Status: accepted (decision 7). Implemented. Amended by ADR-0012: since 0.3.0 the server is Rust (hyper) with the same
+security pipeline (`backend/crates/agent-hub/src/api/security.rs`); FastAPI was the 0.1/0.2 implementation.
 
 ## Context
 
@@ -13,7 +14,7 @@ the same host.
 Reuse the pattern (re-implemented from earlier local tools, nothing imported): a pure-ASGI middleware, roles enforced twice
 (middleware and a dependency on every router), a fixed viewer/client allowlist, body caps, SSE caps, append-only audit,
 no OpenAPI docs page (the CSP would forbid its CDN). The knowledge service is a separate process on 8795. **Unlike
-those earlier tools, `HUB_TRUST_LOOPBACK` defaults to false** (`config.py`), and `hubctl` also requires an admin key
+those earlier tools, `HUB_TRUST_LOOPBACK` defaults to false** (`config.py`; `config.rs` since 0.3.0), and `hubctl` also requires an admin key
 (`HUB_API_KEY` or the 0600 bootstrap file).
 
 ## Consequences

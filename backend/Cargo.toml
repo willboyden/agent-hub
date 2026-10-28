@@ -1,0 +1,101 @@
+# Rust port of Agent Hub (backend + hubctl) and its knowledge service. Contract: PORTING.md (LOCKED; numbered addenda only).
+[workspace]
+resolver = "3"
+members = ["crates/hub-core", "crates/agent-hub", "crates/agent-knowledge"]
+# agent-knowledge pulls in lance (~500 crates, ~4 min cold build): it is a member, but not a default one, so
+# `cargo build`/`cargo test` in a hub workstream stays fast. The gates run with --workspace.
+default-members = ["crates/hub-core", "crates/agent-hub"]
+
+[workspace.package]
+version = "0.3.0"
+edition = "2024"
+rust-version = "1.99"
+license = "MIT"
+publish = false
+
+# Direct dependency versions follow the project's 14-day cooldown (newest stable release public >= 14 days when
+# chosen, 2026-10-27; checked by tools/crate-age.py), preferring versions already proven in the maintainer's
+# harness2-workbench project, whose lock file seeded this one.
+[workspace.dependencies]
+hub-core = { path = "crates/hub-core" }
+agent-hub = { path = "crates/agent-hub" }
+
+anyhow = "1.0.104"
+async-stream = "0.3.6"
+axum = { version = "0.8.9", default-features = false, features = ["http1", "json", "query", "tokio", "matched-path", "original-uri"] }
+base64 = "0.23.1"
+bytes = "1.12.1"
+clap = { version = "4.6.7", features = ["derive", "env"] }
+form_urlencoded = "1.2.2"
+futures = "0.3.34"
+getrandom = "0.4.3"
+hex = "0.4.3"
+hmac = "0.13.0"
+http = "1.5.0"
+http-body-util = "0.1.5"
+httpdate = "1.0.3"
+hyper = { version = "1.12.0", features = ["http1", "server", "client"] }
+hyper-util = { version = "0.1.21", features = ["tokio", "server", "http1"] }
+indexmap = { version = "2.14.2", features = ["serde"] }
+md-5 = "0.11.0"
+nix = { version = "0.31.3", features = ["fs", "process", "signal", "user", "dir", "term", "sched"] }
+percent-encoding = "2.3.2"
+proptest = "1.11.0"
+regex = "1.13.1"
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "stream"] }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+serde = { version = "1.0.229", features = ["derive"] }
+# float_roundtrip: correctly rounded float parsing (Python's float()); preserve_order: Python dicts keep insertion
+# order, and several files the hub writes (apply logs, plans, locks) are dumped without sort_keys.
+serde_json = { version = "1.0.151", features = ["float_roundtrip", "preserve_order"] }
+sha2 = "0.11.0"
+subtle = "2.6.1"
+tempfile = "3.27.0"
+thiserror = "2.0.21"
+time = { version = "0.3.55", features = ["formatting", "parsing", "macros"] }
+tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "process", "signal", "fs", "io-util", "net", "sync", "time"] }
+tokio-stream = { version = "0.1.19", features = ["sync"] }
+toml = "1.1.8"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
+url = "2.5.8"
+wiremock = "0.6.5"
+# agent-knowledge only (LanceDB backend). lance =12.0.0 is the exact Lance engine inside Python lancedb 0.39.0
+# (knowledge/uv.lock), proven to read and write the Python service's tables both ways (PORTING.md "Knowledge: LanceDB").
+lance = { version = "=12.0.0", default-features = false }
+lance-linalg = "=12.0.0"
+protoc-bin-vendored = "=3.3.0"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+large_futures = "warn"
+needless_pass_by_value = "warn"
+redundant_clone = "warn"
+semicolon_if_nothing_returned = "warn"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+inefficient_to_string = "warn"
+manual_let_else = "warn"
+match_same_arms = "warn"
+explicit_iter_loop = "warn"
+implicit_clone = "warn"
+uninlined_format_args = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

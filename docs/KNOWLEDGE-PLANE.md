@@ -31,7 +31,7 @@ agent client --scoped token (read by default)--> [broker sidecar] --> agent-know
 |---|---|---|
 | Shape | separate container, REST | in-process library, files under `lance_dir` |
 | Index | HNSW, **on disk** (graph and vectors) as configured by the app | none built by this app: flat scan of the (SSD) table |
-| Filtering | native payload filters | `doc_id` equality uses a column predicate (no scan); any other filter evaluates the AST in Python over `(id, meta_json)` (refused with 422 `scan_cap` above `lance_max_scan_rows`, default 200k; result cap 50k), then an `id IN (...)` prefilter; ids match a strict regex so the clause cannot carry SQL |
+| Filtering | native payload filters | `doc_id` equality uses a column predicate (no scan); any other filter evaluates the AST in the service over `(id, meta_json)` (refused with 422 `scan_cap` above `lance_max_scan_rows`, default 200k; result cap 50k), then an `id IN (...)` prefilter; ids match a strict regex so the clause cannot carry SQL |
 | Good for | > ~1M chunks, concurrent readers, filtered search at scale, an isolated blast radius | small/medium corpora, zero extra service, one directory to back up, lowest idle RAM |
 | Costs | one more container, its page cache, an image to pin | search latency grows linearly with rows; broad filters are capped; single-process |
 
@@ -83,8 +83,8 @@ are parameters (`AGENT_CLIENT_NETWORK`, `AGENT_KNOWLEDGE_NETWORK`); create them 
 
 ## Tests and configuration notes
 
-* Tests that need a real LanceDB or Qdrant are marked `live` and skipped unless `AK_LIVE=1`:
-  `AK_LIVE=1 AK_LIVE_QDRANT_URL=http://127.0.0.1:<port> uv run pytest -m live` (use a throwaway Qdrant).
+* The embedded Lance half of `test_live` always runs (in a temp dir); its Qdrant half needs a real server and is skipped
+  unless `AK_LIVE=1`: `AK_LIVE_QDRANT_URL=http://127.0.0.1:<port> make knowledge-live` (use a throwaway Qdrant).
 * The embedding model alias and its dimension must match what your router returns (for example a 768-dimension model).
 * The compose files parse with `docker compose config`; the Dockerfile and broker are templates to adapt to your environment.
 * Not implemented: a LanceDB ANN index (IVF-PQ); add one if a table passes a few hundred thousand rows and latency matters.

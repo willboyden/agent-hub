@@ -6,7 +6,7 @@
 #   AGENT_KNOWLEDGE_QDRANT_ENV=~/.config/agent-knowledge/qdrant.env docker compose ... up -d
 #
 # Image qdrant/qdrant:v1.16.3.
-# Pinned, not frozen: bump only after re-running `AK_LIVE=1 AK_LIVE_QDRANT_URL=... uv run pytest -m live`.
+# Pinned, not frozen: bump only after re-running the live tests against it: `AK_LIVE_QDRANT_URL=... make knowledge-live`.
 #
 # To keep host RAM use low, collections are created with vectors and the HNSW graph ON DISK (the app does this) and
 # payloads on disk; put the storage volume on an SSD path (uncomment the bind below), never on tmpfs.

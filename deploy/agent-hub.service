@@ -5,7 +5,7 @@
 #   1. Edit every line marked CHANGEME (checkout location and the delivery paths).
 #   2. mkdir -p ~/.local/share/agent-hub ~/.config/agent-hub <checkout>/out
 #      Every ReadWritePaths entry must EXIST or the unit fails to start (systemd 'namespace' error, status=226).
-#   3. cd <checkout> && make setup && (cd backend && .venv/bin/hubctl init)   # content repo (default ~/.local/share/agent-hub/content), first commit, admin key
+#   3. cd <checkout> && make release && backend/target/release/hubctl init   # content repo (default ~/.local/share/agent-hub/content), first commit, admin key
 #   4. Put HUB_API_KEY (and HUB_KNOWLEDGE_ADMIN_KEY if you use the knowledge view) in ~/.config/agent-hub/env, mode 0600,
 #      then delete ~/.local/share/agent-hub/bootstrap-admin.key (see docs/SECURITY.md, M5).
 #   5. cp deploy/agent-hub.service ~/.config/systemd/user/
@@ -15,7 +15,7 @@
 # WHAT THE SANDBOX ALLOWS TO BE WRITTEN, and why it is narrow on purpose:
 #   * the hub state dir (DB, keys, locks, plans, backups) and the content repo: required, they are the app's own data;
 #   * ONLY the delivery directories you list below (skills, agents, the Hermes stage): NOT your whole project, NOT policy/,
-#     NOT backend/src, NOT any .git directory. The floor file and the code therefore cannot be rewritten by this process.
+#     NOT backend/ (the code and the built binary), NOT any .git directory. The floor file and the code therefore cannot be rewritten by this process.
 # CONSEQUENCE, stated honestly: the applier writes a temp file in the target's directory and renames it, so a root-level
 # file such as AGENTS.md or CLAUDE.md needs its DIRECTORY writable, which here would be the whole project root. Under this
 # unit, applying a client that manages those files fails (and rolls back, `status: failed`). Apply those from a shell with
@@ -27,12 +27,13 @@ After=network.target
 
 [Service]
 Type=simple
-# CHANGEME: <checkout>/backend (%h = your home directory)
-WorkingDirectory=%h/CHANGEME/agent-hub/backend
-# The venv's own entry point: no `uv run`, so no uv cache or venv write access is needed. Requires `make setup` first.
+# CHANGEME: the checkout (%h = your home directory). The binary finds policy/, frontend/ and deploy/ in the checkout
+# above its backend/target/ directory (or AGENT_HUB_APP_ROOT).
+WorkingDirectory=%h/CHANGEME/agent-hub
+# The release binary (`make release`); it writes nothing next to itself.
 # `agent-hub` (not `hubctl serve`) so the listen port and the Host allowlist both come from HUB_PORT.
-# CHANGEME: path to the venv entry point
-ExecStart=%h/CHANGEME/agent-hub/backend/.venv/bin/agent-hub
+# CHANGEME: path to the release binary
+ExecStart=%h/CHANGEME/agent-hub/backend/target/release/agent-hub
 Environment=HUB_HOST=127.0.0.1
 Environment=HUB_PORT=8792
 # The content repo lives OUTSIDE your project tree, under the state dir (re-audit N1: agents can write inside the project tree, and a planted
@@ -57,7 +58,7 @@ ProtectSystem=strict
 ReadWritePaths=%h/.local/share/agent-hub %h/CHANGEME/agent-hub/out %h/CHANGEME/my-project/.claude/skills %h/CHANGEME/my-project/.claude/agents %h/CHANGEME/my-project/.opencode/agent
 # Defence in depth: these stay read-only even if someone later widens ReadWritePaths. CHANGEME paths. The leading dash
 # ignores a path that does not exist.
-ReadOnlyPaths=-%h/CHANGEME/agent-hub/policy -%h/CHANGEME/agent-hub/backend/src -%h/CHANGEME/agent-hub/deploy -%h/CHANGEME/agent-hub/frontend -%h/CHANGEME/agent-hub/knowledge
+ReadOnlyPaths=-%h/CHANGEME/agent-hub/policy -%h/CHANGEME/agent-hub/backend -%h/CHANGEME/agent-hub/deploy -%h/CHANGEME/agent-hub/frontend
 # The process has no business seeing credential dirs at all (the floor also denies them, but only at plan time).
 InaccessiblePaths=-%h/.ssh -%h/.aws -%h/.gnupg -%h/.config/gcloud
 # Home is read-only except the entries above. TRADE-OFF: ProtectHome= also covers /run/user, where the rootless docker
@@ -93,8 +94,8 @@ SystemCallFilter=~@privileged
 SystemCallArchitectures=native
 # The hub is small; tune if the content repo grows large (plan snapshots are held in memory while rendering).
 MemoryMax=1G
-# MemoryDenyWriteExecute is intentionally NOT set: native wheels in the venv may need W+X mappings (a wrong guess would stop
-# the service from starting).
+# MemoryDenyWriteExecute is not set: the Rust binary has no JIT and is expected to run with it (UNVERIFIED: this unit has
+# not been started with the Rust binary in this repo's tests); add MemoryDenyWriteExecute=yes after a test start.
 
 [Install]
 WantedBy=default.target

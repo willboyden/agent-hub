@@ -6,17 +6,26 @@ plus a separate **knowledge plane** (vector stores, shared indexes) reached thro
 
 This is the contract for contributors. Changes are additive and recorded in an addendum at the end.
 
+**Implementation language (0.3.0).** Since 0.3.0 the hub, `hubctl` and the knowledge service are Rust (one workspace in
+`backend/`), a behaviour-compatible port of the Python 0.2.x code this contract was written against; `backend/PORTING.md`
+is the port's own contract and lists every deliberate difference. Module names in the sections and addenda below keep
+their Python form. They map one to one: `adapters/<m>.py` is `backend/crates/agent-hub/src/adapters/<m>.rs`;
+`services/<m>.py` is `.../agent-hub/src/services/<m>.rs` (the `Hub` facade is split into `services/hub/*.rs`);
+`api/...` and `main.py`, `config.py`, `cli.py`, `desktop.py` are `.../agent-hub/src/{api,server,config,cli,desktop}`;
+`domain/*.py` is `backend/crates/hub-core/src/*.rs`; `knowledge/src/agent_knowledge/<m>.py` is
+`backend/crates/agent-knowledge/src/<m>.rs`.
+
 ## 1. Decisions
 
 | # | Decision | Why |
 |---|---|---|
 | 1 | **Source of truth = a git repo of declarative files** (`content/`, its own nested repo). The hub is a *compiler + change-controlled control plane*, never a runtime service clients query. | Containerised clients (for example Hermes Agent) often cannot reach host services; GitOps gives history, review and rollback for free. |
-| 2 | **One `ClientAdapter` per client** (`adapters/base.py`, LOCKED) plus a **declarative `generic` adapter** driven by a YAML spec. | New clients (Cursor, Codex, Gemini CLI, ...) need a spec or a small adapter — no core/UI change. |
+| 2 | **One `ClientAdapter` per client** (`adapters/base.rs`; `adapters/base.py` before 0.3.0; LOCKED) plus a **declarative `generic` adapter** driven by a YAML spec. | New clients (Cursor, Codex, Gemini CLI, ...) need a spec or a small adapter — no core/UI change. |
 | 3 | **Edit → Plan → Apply**. UI/CLI edits change the content working tree (*pending changes*); a **commit** is the approval of content; **apply** renders and delivers to clients, only from a plan bound to the content hash. | Nothing takes effect live; every effect is diffable and auditable. |
 | 4 | **Policy floor** in the app repo (`policy/floor.yaml`, not editable via UI/API). Content may only be stricter. Plan fails on violation. | Sandbox posture cannot be weakened by a toggle. |
 | 5 | **Progressive adoption, no clobbering.** Per client, per concern (`skills, agents, instructions, mcp, permissions, memory`) a `manage` flag decides *managed* (hub writes) vs *advisory* (plan shows what would change; `audit` checks the live config against the floor). Defaults: skills/agents/instructions managed, mcp/permissions advisory for clients whose config another sync process owns. A lock manifest records the hash of every delivered file; apply refuses to overwrite a file whose current hash differs from the last applied one unless the path is explicitly adopted. | Existing sync scripts or tools that own a file stay authoritative until the operator opts in. |
 | 6 | **Secrets never live in the hub.** MCP items carry env var *names* only. API/plan/audit output is redacted. | Standard practice for a control plane. |
-| 7 | **Host-run FastAPI on 127.0.0.1:8792**, hardened loopback-service pattern (Host allowlist, same-origin Origin, `X-Agent-Hub: 1` CSRF header on non-GET, strict CSP, no CORS, role enforcement on every router, body caps, SSE caps). Knowledge service on 127.0.0.1:8795 (separate process). | Proven pattern; these controls came from two audits. |
+| 7 | **Host-run HTTP server on 127.0.0.1:8792** (Rust on hyper, since 0.3.0; FastAPI before), hardened loopback-service pattern (Host allowlist, same-origin Origin, `X-Agent-Hub: 1` CSRF header on non-GET, strict CSP, no CORS, role enforcement on every router, body caps, SSE caps). Knowledge service on 127.0.0.1:8795 (separate process). | Proven pattern; these controls came from two audits. |
 | 8 | **Zero-build, zero-npm frontend** (ES modules + web components, no CDN). | No supply-chain surface. |
 | 9 | **Knowledge plane is a separate component** with a `VectorStore` port and **two backends: Qdrant (service) and LanceDB (embedded)**. Untrusted agents reach it only through per-client scoped tokens / broker sidecars; default read-only. | Isolation; both are wanted: Qdrant for scale, LanceDB for zero-service use. |
 | 10 | **Curated memory**: agents write to a per-client *inbox*; only a human promotes to `content/memory/`. | Memory poisoning defence. |
@@ -27,15 +36,17 @@ This is the contract for contributors. Changes are additive and recorded in an a
 hub/
   README.md docs/ deploy/ Makefile          (docs/ARCHITECTURE.md is this file)
   policy/floor.yaml
-  backend/pyproject.toml
-  backend/src/agent_hub/
-    adapters/base.py                        LOCKED port
-    adapters/__init__.py                    registry: imports every module in this package; a module exposes ADAPTER = <class>
-    adapters/{claude_code,opencode,hermes,generic}.py  + adapters/_util.py
-    domain/ services/ api/ main.py config.py cli.py store...
-  backend/tests/core/  backend/tests/adapters/
+  backend/Cargo.toml                         the Rust workspace (toolchain: backend/rust-toolchain.toml)
+  backend/crates/hub-core/                   Python-compatible primitives, YAML (PyYAML port), validation, domain models
+  backend/crates/agent-hub/src/
+    adapters/base.rs                        LOCKED port
+    adapters/mod.rs + build.rs              registry: build.rs discovers every adapters/*.rs (except mod, base, _*);
+                                            a module exposes `pub fn adapter()`
+    adapters/{claude_code,opencode,hermes,turnstone,deepseek_harness,generic}.rs  + adapters/_util.rs
+    services/ api/ server.rs config.rs cli.rs desktop.rs
+  backend/crates/agent-hub/tests/  backend/crates/agent-knowledge/
+  backend/parity/                            differential harness against the last Python backend
   frontend/
-  knowledge/
   examples/clients/*.yaml  docs/ADDING-A-CLIENT.md
 content repo  (NOT in this tree by default: HUB_CONTENT_DIR, default <data_dir>/content, its own git repo; see Addendum E round 2)
 ```
@@ -155,18 +166,22 @@ No inline scripts/styles (CSS classes and CSSOM only), all strings via i18n, cha
 
 ## 9. Extension model (other clients)
 Add a client by (a) `content/clients/<id>.yaml` with `adapter: generic` and a `spec:` (skills root + layout + filename, agent format + frontmatter/tool map,
-instructions target + merge mode, mcp file + format + key path, permissions mapping, model tiers) — validated live in the UI — or (b) a Python module in
-`agent_hub/adapters/` exposing `ADAPTER`. `docs/ADDING-A-CLIENT.md` documents both with a worked example. Adapters declare `caps()`, so unsupported concerns are
+instructions target + merge mode, mcp file + format + key path, permissions mapping, model tiers) — validated live in the UI — or (b) one Rust file in
+`backend/crates/agent-hub/src/adapters/` exposing `pub fn adapter()` (the build discovers it; nothing else is edited). `docs/ADDING-A-CLIENT.md` documents both with a worked example. Adapters declare `caps()`, so unsupported concerns are
 greyed out, and lossy mappings emit diagnostics (error when the client is `strict`).
 
 ## 10. Quality bar (all agents)
-Python 3.13 via `uv`; `ruff` + `mypy --strict` clean; `pytest` green **offline** (fake filesystem, fake runner, fake embeddings, fake HTTP); coverage >= 85 % on the
-planner/applier, floor, path safety, and adapters. No `shell=True`, every subprocess has a timeout, safe YAML only, identifiers by `fullmatch`. No secret in
+Rust (toolchain pinned in `backend/rust-toolchain.toml`); `cargo fmt --check` and `cargo clippy -D warnings` clean (workspace lints:
+`unsafe` is forbidden; `unwrap`, `expect`, `panic!` and printing are errors except where a function explicitly allows them); `cargo test` green **offline** (fake filesystem, fake runner, fake embeddings, fake HTTP); every test of the
+Python backend has a mapped Rust counterpart (`backend/TEST-MAP.md`, checked by `make test-map`); cargo-deny, cargo-audit and the 14-day dependency
+cooldown pass. Line coverage is not measured for the Rust code (the Python bar was >= 85 % on the planner/applier, floor, path safety, and
+adapters). No `shell=True`, every subprocess has a timeout, safe YAML only, identifiers by `fullmatch`. No secret in
 logs/responses/plans. Comments explain why. Anything touching real files/Docker/git gets a self-test in a temp directory. Never write into a real client location during tests.
 
 ## Addendum A (core backend; additive only, nothing above changed)
 
-Recorded by the core-backend slice. Everything here is implemented in `backend/src/agent_hub/`.
+Recorded by the core-backend slice. Everything here is implemented in `backend/src/agent_hub/` (since 0.3.0 in the Rust crates; module map
+at the top).
 
 **Config.** `HUB_*` environment variables (`HUB_CONTENT_DIR`, `HUB_DATA_DIR`, `HUB_PORT`, `HUB_KNOWLEDGE_URL`, `HUB_KNOWLEDGE_TOKEN`, ...), optional
 `~/.config/agent-hub/env` (override with `AGENT_HUB_ENV_FILE`); the real environment wins. `HUB_TRUST_LOOPBACK` (default FALSE: every request needs a bearer key; turning it on lets any local process be admin, `/health` then warns; same trade-off as Engine

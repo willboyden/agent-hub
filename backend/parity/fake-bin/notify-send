@@ -1,0 +1,3 @@
+#!/bin/sh
+# Parity harness fake: never shows a notification.
+exit 0

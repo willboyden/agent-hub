@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # Ship gate for the browser end-to-end suite (frontend/e2e/run.mjs).
 #
-#   scripts/e2e-gate.sh run           run the suite; on a pass with a clean backend/, frontend/ and policy/, record it
+#   scripts/e2e-gate.sh run           build the backend, run the suite; on a pass with a clean backend/, frontend/ and
+#                                     policy/, record it
 #   scripts/e2e-gate.sh check <rev>   exit 0 only if the suite passed on exactly <rev>'s backend/, frontend/ and policy/
 #
-# The record is the git tree ids of backend/, frontend/ and policy/ (the floor the server loads), kept inside .git
-# (never committed). A docs-only commit after a pass needs no rerun; any change to the app does. The pre-push hook
-# (.githooks/pre-push, enabled by `make hooks`) calls `check` for every commit or tag being pushed. CI runs the suite
-# again on every push. No `set -e`: every failure below is handled and reported on purpose.
+# The record is the git tree ids of backend/ (the Rust workspace: hub, hubctl, knowledge service, parity harness),
+# frontend/ and policy/ (the floor the server loads), kept inside .git (never committed). A docs-only commit after a
+# pass needs no rerun; any change to the app does. The pre-push hook (.githooks/pre-push, enabled by `make hooks`) calls
+# `check` for every commit or tag being pushed. CI runs the suite again on every push. No `set -e`: every failure below
+# is handled and reported on purpose.
 set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 2
@@ -28,6 +30,8 @@ case "${1:-}" in
   run)
     # A Chrome that is not on PATH can be named once per checkout: git config agent-hub.chrome /path/to/chrome
     if [ -z "${CHROME_BIN:-}" ] && chrome=$(git config --get agent-hub.chrome); then export CHROME_BIN="$chrome"; fi
+    # the suite runs backend/target/debug/{agent-hub,hubctl}: build them from the working tree it is about to test
+    (cd backend && cargo build --locked -p agent-hub --bins) || { echo "e2e-gate: cargo build failed" >&2; exit 1; }
     node frontend/e2e/run.mjs || exit 1
     # The suite tested the working tree, so a pass only counts for a commit when the app directories match it.
     if [ -n "$(git status --porcelain -- "${DIRS[@]}")" ]; then

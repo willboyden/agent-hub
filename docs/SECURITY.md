@@ -53,7 +53,7 @@ B3 is the one the design leans on and the one it cannot enforce by itself: it de
 
 ## 4. Why loopback trust is off, and the residual risk
 
-`HUB_TRUST_LOOPBACK` defaults to **false** (`config.py`). Reason: an agent client that can run tools may run them on the
+`HUB_TRUST_LOOPBACK` defaults to **false** (`backend/crates/agent-hub/src/config.rs`). Reason: an agent client that can run tools may run them on the
 same host, and any agent with an unsandboxed shell can open a socket to `127.0.0.1:8792`. With loopback trust on, that agent
 would be admin: it could edit its own profile, enable an MCP server, commit and apply. So a bearer key is required for every
 API call and for `hubctl`. `GET /api/v1/health` reports `trust_loopback` and a warning when it is on, and `hubctl serve`
@@ -123,7 +123,7 @@ against the live config.
 
 ## 6. Delivery safety: paths, locks, conflicts
 
-* **Path safety** (`domain/pathsafe.py`): every artifact path is relative with no `..`, empty or `.` segment, no NUL, no
+* **Path safety** (`backend/crates/hub-core/src/pathsafe.rs`): every artifact path is relative with no `..`, empty or `.` segment, no NUL, no
   backslash, no control characters, at most 512 characters; the resolved target must stay under the named root; no
   component below the root may be a symlink (the root itself may be). Client roots must be absolute (or `~`) and free of
   `..`. Targets that are directories, symlinks or too large are conflicts that **cannot be adopted**.
@@ -197,6 +197,10 @@ implemented.**
   edit, and a model-planted skill stays live until someone looks. Do not run a blanket `--adopt`.
 * **Hermes volumes are model-writable.** `deploy/hermes-deliver.sh` wipes and rewrites `/opt/data/skills/hub` when *you*
   run it; between runs the agent can change those files, and nothing re-renders at container launch.
+* **dsh's agents home is read-only only if you mount it so.** `deploy/dsh-deliver.sh` writes the volume through a throwaway
+  container and leaves it root-owned and not group/world-writable, but the hub cannot see how the dsh container mounts it.
+  Its `<skill_...>` and YAML-tag checks are text rules: they stop the framing and tag tricks named in `docs/ADDING-A-CLIENT.md`,
+  not a malicious skill in general.
 * **Import reads live client files**, including anything a model wrote there, into the content working tree. Review the
   import diff before committing; the floor and the commit gate are the defence.
 * A client with no sandbox (see section 4) can also edit its own delivered files, and its delivery root is a working tree you edit too.
@@ -246,6 +250,32 @@ The subcommands and defaults named here are present in the code (`hubctl --help`
 | (knowledge) | | Knowledge service hardening | Per-namespace service lock; capacity limits on path ingest; the service refuses an **unauthenticated Qdrant** unless `KNOWLEDGE_ALLOW_UNAUTH_QDRANT=1`; embeddings-key name checks.  |
 | (rollback) | | No way back from a bad apply | Every apply is recorded; `hubctl rollback` / `POST /clients/{id}/rollback` restore files only while the live hash still equals the post-apply hash (edited files are reported as conflicts and skipped).  |
 
+### Found during the Rust rewrite (0.3.0)
+
+Reading every line of the Python backend for the port (0.3.0) found these. The Python 0.2.x line has them; 0.3.0 does not.
+
+| Id | Severity | Problem in 0.2.x | 0.3.0 |
+|---|---|---|---|
+| SB-1 | High | `hubctl migrate-content --yes`, the step the doctor recommends for a content repo with unsafe git metadata, cleaned that metadata by following symbolic links. A planted link could make it delete or overwrite files outside the content repo. | The clean-up never writes or deletes through a symbolic link: the link itself is removed and reported. |
+| SB-2 | Medium | The content-repo check read a `.git/config` that was a symbolic link and quoted the beginnings of up to six lines of the link's target in its error message, which could expose part of a private file. | A symbolic-link `.git/config` is refused without being read. |
+| SB-3 | Medium | The memory-inbox listing used the `client` query value as a path component without checking it, so any key holder (a viewer too) could list the `*.md` file names of another directory. | A `client` that is not a valid id lists nothing. |
+| P-3 | Medium (local denial of service) | The applier opened a delivery target in blocking mode; a FIFO placed at a target stalled the apply while it held the hub's lock. | Targets are opened non-blocking; such a target is refused at once. |
+| P-1 | Low (local denial of service) | `agent-hub open` bounded its health probe only while reading the body, so a local process squatting the hub's port could hold the launcher for a long time. | The probe's 2 s deadline covers the whole exchange. |
+| P-5 | Low (audit gap) | A mutating request whose JSON body was nested beyond the decoder's recursion limit was refused (400) but left no audit row. | It is audited. |
+
+An independent review of the Rust code before release (rated nothing critical or high) led to these changes in 0.3.0:
+
+| Area | Before | 0.3.0 |
+|---|---|---|
+| Special files (Medium) | Discovery, verify, the plan, rollback and the doctor opened paths in blocking mode; a FIFO in a skills folder or at a delivered path stalled the hub while it held its lock. | One reader for every such path: opened non-blocking, never through a link it did not ask for, checked to be a regular file on the open descriptor, size-capped. Content migration refuses special files. |
+| Command output (Medium-low) | Output of verify commands (for example `docker exec` into the Hermes container) was read in full before being truncated. | Both streams are capped while they are read. |
+| Turnstone interpreter (Low-medium) | Turnstone verify ran the first `python3` on `PATH`, which can be a directory the user writes. | `HUB_PYTHON` (absolute) or `/usr/bin/python3`, `/bin/python3`. |
+| Hermes verify (Low) | Names from the client file and from `docker ps` reached the docker command line unchecked in verify (observe checked them). | The same plain-name rules as observe. |
+| Bind address (Low) | Any host starting with `127.` counted as loopback. | `localhost` or a loopback IP address only. |
+| Delivery targets (Low) | Login-shell files, git, Docker, Kubernetes and package-registry configs were not on the target denylist. | Refused like `.bashrc`; the floor also denies reading their credentials. |
+| HTTP server (Low) | No header, idle or body deadline and no connection cap; a body that broke off was handed on as a shorter one; a handler panic dropped the connection. | 30 s header/idle timeout, at most 256 connections, a 60 s body deadline (408), a broken body is a 400, a panic is a 500 with an audit row. Knowledge calls have a total deadline; a stream slot is released when the client leaves early. The knowledge service's server has the same limits and body rules. |
+| Release binaries (publication) | Built-in paths of the build machine. | The app root is found from the binary's location; `make release` rewrites source paths and checks that none remains. |
+
 `attest.key` sits in the state dir and has the same same-user-readable limit as the admin key (M5): whoever can read it can
 forge an attestation.
 
@@ -263,6 +293,10 @@ forge an attestation.
    project-root client means the applier can write `AGENTS.md`, `CLAUDE.md` and `.claude/` there by design.
 3. A **tiny window remains** between the compare-and-swap read and the rename. An attacker who wins that race can still
    have their bytes replaced or replace ours; it needs local write access to the client root.
+4. The **MCP scan attestation** covers a server's command, arguments, URL, pinned ref and transport, not its
+   `env_names`, `sandbox_profile` or `egress_hosts`: those can change while the server stays `clean`. Such a change is
+   still a content commit reviewed in the plan, and the floor still enforces explicit egress. Widening the attestation
+   invalidates every existing one; it is planned for a release after 0.3.0.
 
 ## 13. Residual risks, summary
 
@@ -304,7 +338,7 @@ forge an attestation.
 * The audit trail and git history are not tamper-evident against a same-user attacker, and commits share one identity.
 * The desktop launcher (`agent-hub open`) refuses a port held by another user, but a same-user process that binds the
   hub's port first and copies its health answer gets the key you paste into that tab.
-* The hub runs from its checkout: `make run`, `hubctl` and the desktop launcher all execute the code and virtualenv in that
+* The hub runs from its checkout: `make run`, `hubctl` and the desktop launcher all execute the binaries built in that
   directory as your user. A client whose sandbox may write there (for example, one whose writable area is a parent
   project directory that contains the checkout) can change the hub's code, and the next start runs that change with
   access to everything the hub protects. The trusted desktop icon makes such starts routine. Keep the checkout outside

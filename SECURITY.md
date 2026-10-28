@@ -11,8 +11,8 @@ guaranteed response time.
 
 ## Scope
 
-In scope: the hub backend and `hubctl`, the web UI, the policy floor logic, path and delivery safety, the knowledge service
-and its broker addon, and the deploy templates.
+In scope: the hub backend and `hubctl` (Rust since 0.3.0), the web UI, the policy floor logic, path and delivery safety,
+the knowledge service and its broker addon, and the deploy templates.
 
 Out of scope, by design: a process running as the **same OS user** as the hub (it can read whatever that user can), an
 unsandboxed agent client running as that user, and host-level hardening choices. These are described honestly in
@@ -21,7 +21,8 @@ vulnerabilities.
 
 ## Supported versions
 
-Only the latest release (currently 0.1.x) receives fixes. The project is pre-1.0; interfaces and the content schema may change.
+Only the latest release (currently 0.3.x) receives fixes; the Python 0.2.x line does not (0.3.0 fixes three security
+problems it has: `CHANGELOG.md`). The project is pre-1.0; interfaces and the content schema may change.
 
 ## Threat model
 

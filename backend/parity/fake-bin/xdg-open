@@ -1,0 +1,3 @@
+#!/bin/sh
+# Parity harness fake: never opens a browser.
+exit 0

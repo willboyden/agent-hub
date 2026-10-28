@@ -1,0 +1,23 @@
+#!/bin/sh
+# Parity harness fake of NVIDIA SkillEvaluator 0.5.0 (bare-name launcher on PATH). Deterministic: `--version`, and
+# `tier1 PATH ... -o DIR` / `tier2 PATH ... -o DIR` write a minimal passed report. No network, no model calls.
+set -eu
+case "${1:-}" in
+  --version) echo "skillevaluator, version 0.5.0"; exit 0 ;;
+  tier1|tier2)
+    tier="$1"; out=""
+    while [ $# -gt 0 ]; do
+      if [ "$1" = "-o" ]; then shift; out="$1"; fi
+      shift
+    done
+    [ -n "$out" ] || exit 2
+    mkdir -p "$out"
+    if [ "$tier" = tier1 ]; then
+      printf '{"overall_status": "passed", "quality_score": 90.0, "grade": "A", "summary": {"errors": 0, "warnings": 0}, "validators": []}\n' > "$out/skillevaluator-tier1.json"
+      printf '# SkillEvaluator report (parity fake)\n' > "$out/skillevaluator-tier1.md"
+    else
+      printf '{"overall_status": "passed"}\n' > "$out/skillevaluator-tier2.json"
+    fi
+    exit 0 ;;
+  *) echo "fake skillevaluator: unsupported ${1:-}" >&2; exit 2 ;;
+esac

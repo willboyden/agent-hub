@@ -1,0 +1,9 @@
+# lance (agent-knowledge's LanceDB backend) runs prost-build in its build scripts, which needs protoc. The wrapper execs
+# the vendored binary from the protoc-bin-vendored crate (see tools/protoc). Nothing else in the workspace uses it.
+[env]
+PROTOC = { value = "tools/protoc", relative = true }
+
+[build]
+# A bounded number of parallel compile jobs: the Lance engine's build is large and memory-hungry. Raise it (or set
+# CARGO_BUILD_JOBS) on a machine with memory to spare.
+jobs = 8

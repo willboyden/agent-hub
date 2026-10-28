@@ -1,6 +1,6 @@
 # Design decisions (narrative)
 
-The numbered decisions are in `ARCHITECTURE.md` section 1 and recorded one per file in `adr/` (ADR-0001..0010). This
+The numbered decisions are in `ARCHITECTURE.md` section 1 and recorded one per file in `adr/` (ADR-0001..0012; ADR-0012 is the Rust rewrite). This
 page explains the choices a newcomer asks about first, with the trade-offs. Where an "alternative" was not recorded at the time, it is a reconstruction of why it was not chosen.
 
 | Question | Short answer | ADR |

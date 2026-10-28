@@ -1,6 +1,127 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
+
+Upgrading from 0.2.x: the hub, `hubctl` and the knowledge service are now Rust. Stop the 0.2.x hub (a hub that the 0.2.x
+desktop launcher started is not stopped by the new one), pull, `make release`, point systemd units and the desktop
+launcher at `backend/target/release/` (`make install-desktop` again; `docs/OPERATIONS.md` sections 6 and 7), start it and
+run `hubctl validate && hubctl plan`. The state dir, the content repo, `~/.config/agent-hub/env` and every `HUB_*`
+variable are read unchanged; no migration is needed. Back up the state dir first. The old virtualenvs (`backend/.venv`,
+`knowledge/.venv`) are no longer used.
+
+Also on upgrading: the floor denies reading a few more credential files and the hub refuses to deliver into more shell
+and tool config files (Security, below), so the first plan after the upgrade shows new deny entries in every client's
+rendered permissions; review and apply it as usual. The binaries find `policy/` and `frontend/` from their own location
+in the checkout (`backend/target/release/`); a binary copied elsewhere needs `AGENT_HUB_APP_ROOT=<checkout>`. Turnstone
+verify runs `/usr/bin/python3` (or `/bin/python3`); set `HUB_PYTHON` to an absolute path to use another interpreter.
+
+### Added
+- `deepseek-harness` adapter for DeepSeek Harness (dsh). A Python version was written after 0.2.0 and never released;
+  the Rust adapter renders the same bytes (`backend/PORTING.md` A-15). It renders a stage tree (`skills/`, `AGENTS.md`,
+  and `hub.cordis.patch.yml` with MCP servers as `@deepseek-ai/dsh-mcp-client` rows). dsh inserts `SKILL.md` verbatim
+  into the prompt between its own `<skill_...>` tags, so the plan refuses (error, not staged) a skill holding such a tag,
+  a `SKILL.md` over 64 KiB, a skill folder over 4 MiB, a name dsh rejects or a frontmatter name that differs, and a
+  description that is missing, over 1024 characters or holds control characters; `allowed-tools` is a warning. The patch
+  is written by the safe YAML dumper and a server whose values would put `!!`, `!<` or a `%` line into it is refused (a
+  YAML tag in a dsh patch can execute JavaScript). Agents, memory and permission rules are not rendered. `verify` asks
+  the running container through dsh's own discovery (`node /opt/lab/list-skills.mjs`, a helper the image provides) and
+  needs every staged skill listed with source `user-agents`; the container and docker context params must be plain
+  names, or nothing runs. Known limit: the hub lets only `opencode` and `generic` write an `AGENTS.md`, so applying a dsh
+  client with an instruction enabled is blocked (`unsafe_path`); keep `instructions` off for now.
+- `deploy/dsh-deliver.sh` (opt-in, never run by the hub): copies `skills/`, `AGENTS.md` and `hub.cordis.patch.yml` from the
+  stage into the docker volume dsh reads as `DSH_AGENTS_HOME`, through a throwaway pinned `alpine` container with no
+  network, root-owned and world-readable; refuses symlinks, hard links, special files, the skills above and a tagged
+  patch; swaps with `mv`, keeps the previous tree for `rollback`, and with `DSH_CONTAINER` set rolls back unless dsh lists
+  every staged skill. See `docs/OPERATIONS.md` section 8c.
+
+### Changed
+- **The backend is rewritten in Rust** (one workspace in `backend/`: `hub-core`, `agent-hub` with `hubctl`,
+  `agent-knowledge`), behaviour-compatible with 0.2.x. The HTTP API, the files written to clients and to the content repo
+  (byte for byte; YAML through a port of PyYAML 6.0.3's safe loader and dumper), the state on disk and the subprocess
+  argv are the same. Proof: every test of the Python backend has a Rust counterpart (`backend/TEST-MAP.md`), and a
+  differential harness (`make parity`) sends the same requests to the last Python backend and to the Rust one in the
+  same temporary layout and compares responses and the files each wrote. Why: ADR-0012.
+- Building needs `rustup` (the toolchain is pinned in `backend/rust-toolchain.toml`) and a C linker; protoc for the
+  Lance engine is vendored. Running needs no interpreter; only the opt-in delivery scripts use `python3`
+  (`deploy/turnstone-deliver.py`, and `deploy/dsh-deliver.sh` for its check).
+- `make` targets: `release`, `build`, `clippy` (`typecheck` is clippy), `deny`, `audit`, `crate-age`, `test-map`,
+  `parity`; the Python targets (`setup-knowledge`, ruff, mypy, pytest) are gone. CI runs rustfmt, clippy, the tests,
+  cargo-deny, cargo-audit, the 14-day dependency cooldown (`crate-age`, which needs the crates.io API), the frontend
+  tests and the browser suite.
+- Static frontend files answer `Range` requests the way Starlette did (206, multipart ranges, 416).
+
+### Security
+Three problems in 0.2.x were found while porting; 0.3.0 does not have them. 0.2.x will not get fixes.
+- **High:** `hubctl migrate-content --yes`, which the doctor recommends for a content repo with unsafe git metadata,
+  followed symbolic links while cleaning that metadata, so a planted link could make it delete or overwrite files
+  outside the content repo. It now removes such links instead of following them (SB-1).
+- **Medium:** the content-repo check read a `.git/config` that was a symbolic link and quoted parts of its target in the
+  error message, which could expose part of a private file. A linked `.git/config` is now refused without being read
+  (SB-2).
+- **Medium:** the memory-inbox listing used the `client` query value as a path without checking it, so a key holder
+  could list the `*.md` file names of another directory. A value that is not a valid client id now lists nothing (SB-3).
+- Also fixed: a FIFO placed at a delivery target stalled an apply while it held the hub's lock (targets are now opened
+  non-blocking and such a target is refused); a local process holding the hub's port could keep `agent-hub open`
+  waiting for a long time (its probe deadline now covers the whole exchange); a mutating request with a JSON body nested
+  beyond the decoder's limit left no audit row (it is now audited).
+- From an independent review of the new code before release:
+  - Every file the hub reads from a place someone else can write (discovery, verify, plan, rollback, doctor, the
+    content repo's untracked files, content migration) is opened without blocking and must be a regular file: a FIFO
+    planted in a skills folder or at a delivered path could otherwise stall the hub while it held its lock.
+  - Output of commands the hub runs to verify a client (such as `docker exec` into the Hermes container) is capped
+    while it is read, stderr included, so a misbehaving container cannot exhaust the hub's memory.
+  - Turnstone verify no longer looks `python3` up on `PATH`, where a directory you can write such as `~/.local/bin`
+    often comes first: it runs `HUB_PYTHON` or the system Python.
+  - Hermes verify checks the compose project, service, docker context, user, `hermes_bin` and container name with the
+    same plain-name rules as observe before any of them reaches a docker command line.
+  - A host name that merely starts with `127.` is no longer accepted as a loopback bind address.
+  - The hub refuses to deliver into `.bash_profile`, `.bash_login`, `.zprofile`, `.zshenv`, `~/.config/fish`,
+    `~/.config/environment.d`, `~/.config/git`, `.gitconfig`, `.git-credentials`, `~/.docker`, `~/.kube`, `.npmrc` and
+    `.pypirc`; the floor denies agents reading `~/.docker`, `~/.kube`, `~/.git-credentials`, `~/.config/gh` and
+    `~/.npmrc`.
+  - The HTTP server closes connections that do not send their headers within 30 s or stay idle that long, serves at
+    most 256 connections at once, answers 408 to a request body that does not arrive within 60 s and 400 to one that
+    breaks off (it was handed on as a shorter body), and answers 500 (with an audit row) if a handler panics. A call to
+    the knowledge service has a total deadline, and a knowledge stream's slot is released when the browser goes away
+    early. The knowledge service's own server has the same connection limits and body rules.
+  - Release binaries contain no file path of the machine that built them.
+
+### Python bugs: kept or fixed
+- Kept, for compatibility: a failure to write an evaluation's `run.json` skips the clean-up after it, as before; the
+  generic adapter still accepts a flat-skill or memory `filename` template with `..` when a spec is validated and
+  refuses it only when rendering.
+- Fixed: the three security problems and the three smaller ones above.
+
+### Known limitations
+- The MCP scan attestation (`scan_digest`) covers a server's command, arguments, URL, pinned ref and transport, but not
+  its `env_names`, `sandbox_profile` or `egress_hosts`; changing those keeps a `clean` status. The change is still a
+  content commit you review in the plan, and the floor still checks egress. Widening the attestation would invalidate
+  every existing one, so it is planned for a later release.
+
+### Deliberate differences from 0.2.x
+The full list, with reasons, is in `backend/PORTING.md` (section 18 and its addenda). The ones you may notice:
+- Unexpected-error 500 responses carry the same security headers and `Cache-Control: no-store` as every other response.
+- A request body nested deeper than 256 levels is refused with 400 "There was an error parsing the body" (0.2.x decoded
+  up to about 9,991 levels). `NaN`/`Infinity` in a request body reach the handlers as `null`, and integers beyond 64 bits
+  as floats.
+- The desktop launcher starts the hub in its own process group rather than its own session, and `agent-hub stop` does
+  not stop a hub that the 0.2.x launcher started.
+- Turnstone verification runs `HUB_PYTHON`, else `/usr/bin/python3` or `/bin/python3`, to call
+  `deploy/turnstone-deliver.py` (0.2.x used its own interpreter).
+- `HUB_HOST` must be `localhost` or a loopback IP address unless `HUB_ALLOW_NONLOOPBACK=1`; a name starting with `127.`
+  no longer counts as loopback.
+- A request body that breaks off is a 400 (`body_incomplete`) and one slower than 60 s a 408 (`body_timeout`).
+- `hubctl` help and usage-error text comes from a different argument parser; exit codes are unchanged. `hubctl import
+  --item x` without `kind:` prints an error (0.2.x crashed; both exit 1).
+- A knowledge-proxy stream whose upstream fails answers with an error response instead of starting the stream and
+  aborting it.
+- YAML edge cases: `!!omap`/`!!pairs` items are lists, a recursive alias is refused, a lone surrogate escape becomes
+  U+FFFD, and an integer of more than 4300 digits is refused when loaded rather than when used.
+- An evaluation report containing `NaN`, `Infinity` or nesting deeper than 128 levels is read as an `error` verdict.
+- Lowercasing (hostnames, git config keys) uses newer Unicode tables than Python 3.13: 55 code points added in Unicode
+  16 and later lower differently.
+- Knowledge service: transport errors are named after the closest httpx class; the offline hash embedder may tokenise
+  exotic text differently; a startup failure prints the final error line without a Python traceback.
 
 ### Fixed
 - A signed-out tab no longer polls forever. Views refresh on timers, and after the hub's 401 the UI asked for a key but

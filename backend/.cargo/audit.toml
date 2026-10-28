@@ -1,0 +1,9 @@
+# cargo audit configuration: the same advisory ignores as deny.toml [advisories], with the same reasons
+# (PORTING.md R-LANCE-ADVISORIES). Review again by 2027-01-31 or when lance moves past 12.x.
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0391", # zstd 0.13: pinned by arrow-ipc 58 / lance 12; only local Lance files the service wrote itself
+    "RUSTSEC-2026-0398", # zstd-safe 7: same dependency path and reasoning
+    "RUSTSEC-2026-0403", # zstd-safe 7: same dependency path and reasoning
+    "RUSTSEC-2024-0436", # paste (unmaintained), via lance-bitpacking; compile-time macro only
+]

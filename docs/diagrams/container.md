@@ -6,9 +6,9 @@ host processes. The containers shown belong to the opt-in broker template.
 ```mermaid
 flowchart TB
   subgraph host["Workstation, host processes"]
-    subgraph hubp["agent-hub (uvicorn, 127.0.0.1:8792)"]
+    subgraph hubp["agent-hub (Rust, hyper, 127.0.0.1:8792)"]
       mw["SecurityMiddleware<br/>Host, Origin, CSRF, auth, caps, audit"]
-      api["FastAPI routers<br/>content, clients, organize, changes, system, knowledge proxy"]
+      api["API routes<br/>content, clients, organize, changes, system, knowledge proxy"]
       svc["services<br/>Hub, ContentStore, Resolver, Planner, Applier, Inbox, KnowledgeProxy"]
       reg["adapter registry<br/>claude-code, opencode, hermes, generic"]
       ui["static UI<br/>index.html, css, js, i18n"]

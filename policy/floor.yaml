@@ -24,6 +24,11 @@ deny_path_read:
   - "~/snap/firefox/**"
   - "~/snap/chromium/**"
   - "~/.local/share/keyrings/**"
+  - "~/.docker/**"                      # registry credentials (config.json)
+  - "~/.kube/**"                        # cluster credentials
+  - "~/.git-credentials"
+  - "~/.config/gh/**"                   # GitHub CLI token
+  - "~/.npmrc"                          # registry tokens
   - "~/.config/agent-hub/**"
   - "~/.local/share/agent-hub/**"       # hub state: keys, DB, backups, locks, plans (data_dir is added at runtime too)
   - "~/.config/agent-knowledge/**"

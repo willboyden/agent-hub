@@ -1,0 +1,5 @@
+# One exact toolchain, so every build and CI run uses the same compiler and lints.
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

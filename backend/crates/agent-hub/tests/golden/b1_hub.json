@@ -1,0 +1,5966 @@
+{
+ "generator": "backend/parity/gen/gen_hub_golden.py",
+ "scenarios": [
+  {
+   "name": "clients",
+   "steps": [
+    {
+     "op": "list_clients",
+     "args": {},
+     "expect": {
+      "ok": []
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "fake1",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "ok": {
+       "id": "fake1",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {},
+       "strict": true,
+       "manage": {},
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false,
+       "observed_summary": null,
+       "adopted_at": null,
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "fake1",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Conflict",
+      "status": 409,
+      "code": "already_exists",
+      "detail": "client already exists",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "ghost",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       }
+      },
+      "create": false
+     },
+     "expect": {
+      "error": "NotFound",
+      "status": 404,
+      "code": "not_found",
+      "detail": "no such client: ghost",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "hub",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "reserved_client_id",
+      "detail": "the client id `hub` is reserved (it names the hub's own skills in evaluation subjects), and an id cannot contain `:`",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "a:b",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "reserved_client_id",
+      "detail": "the client id `hub` is reserved (it names the hub's own skills in evaluation subjects), and an id cannot contain `:`",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "Bad",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "validation_error",
+      "detail": "client failed validation",
+      "extra": {
+       "errors": [
+        {
+         "path": "id",
+         "message": "Value error, must match ^[a-z0-9][a-z0-9._-]{0,63}$",
+         "fix_hint": null
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "nope",
+      "payload": {
+       "adapter": "nope",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "unknown_adapter",
+      "detail": "adapter 'nope' is not installed",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "rootless",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "/"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "root_not_allowed",
+      "detail": "invalid roots: root / is the filesystem root or the home directory (or an ancestor of it)",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "relroot",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "relative/path"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "validation_error",
+      "detail": "invalid roots: root must be absolute (or start with ~)",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "dotdot",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "/tmp/../etc"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "validation_error",
+      "detail": "invalid roots: root must not contain '..'",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "incontent",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/content/skills"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "root_not_allowed",
+      "detail": "invalid roots: root <base>/content/skills is inside the protected path <base>/content",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "invalid",
+      "payload": {
+       "adapter": "fake"
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "validation_error",
+      "detail": "client failed validation",
+      "extra": {
+       "errors": [
+        {
+         "path": "display_name",
+         "message": "Field required",
+         "fix_hint": null
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "extra",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "surprise": 1,
+       "manage": {
+        "bogus": true
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "validation_error",
+      "detail": "client failed validation",
+      "extra": {
+       "errors": [
+        {
+         "path": "manage",
+         "message": "Value error, unknown concern name(s); allowed: ['skills', 'agents', 'instructions', 'mcp', 'permissions', 'memory']",
+         "fix_hint": null
+        },
+        {
+         "path": "surprise",
+         "message": "Extra inputs are not permitted",
+         "fix_hint": null
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "sy1",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "spec_yaml": "a: [\n"
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "invalid_yaml",
+      "detail": "spec_yaml: invalid YAML: while parsing a flow node",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "sy2",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "spec_yaml": "- x\n"
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "validation_error",
+      "detail": "spec_yaml must be a mapping",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "sy3",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "spec_yaml": 5
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "validation_error",
+      "detail": "`spec_yaml` must be a string",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "sy4",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "spec_yaml": "a: 1\n",
+       "spec": {
+        "b": 2
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "validation_error",
+      "detail": "send either `spec` or `spec_yaml`, not both",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "sy5",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "spec_yaml": "a: &x 1\nb: *x\n"
+      },
+      "create": true
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "invalid_yaml",
+      "detail": "spec_yaml: YAML anchors are not allowed",
+      "extra": {}
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "sy6",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "spec_yaml": "when: 2024-01-02\nlist: [1, 2.5]\n"
+      },
+      "create": true
+     },
+     "expect": {
+      "ok": {
+       "id": "sy6",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {},
+       "spec": {
+        "when": "2024-01-02",
+        "list": [
+         1,
+         2.5
+        ]
+       },
+       "strict": true,
+       "manage": {},
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false,
+       "observed_summary": null,
+       "adopted_at": null,
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "fake2",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home2/"
+       },
+       "manage": {
+        "mcp": true
+       },
+       "params": {
+        "manage": {
+         "memory": true,
+         "skills": "yes"
+        },
+        "x": [
+         1,
+         null
+        ]
+       },
+       "icon": "star",
+       "color": null,
+       "description": "two"
+      },
+      "create": true
+     },
+     "expect": {
+      "ok": {
+       "id": "fake2",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "two",
+       "roots": {
+        "home": "<base>/client-home2/"
+       },
+       "params": {
+        "manage": {
+         "memory": true,
+         "skills": "yes"
+        },
+        "x": [
+         1,
+         null
+        ]
+       },
+       "strict": true,
+       "icon": "star",
+       "manage": {
+        "mcp": true
+       },
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": false,
+        "memory": true
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false,
+       "observed_summary": null,
+       "adopted_at": null,
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "fake1",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake One",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "strict": false
+      },
+      "create": false
+     },
+     "expect": {
+      "ok": {
+       "id": "fake1",
+       "adapter": "fake",
+       "display_name": "Fake One",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {},
+       "strict": false,
+       "manage": {},
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false,
+       "observed_summary": null,
+       "adopted_at": null,
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "client_view",
+     "args": {
+      "cid": "fake1"
+     },
+     "expect": {
+      "ok": {
+       "id": "fake1",
+       "adapter": "fake",
+       "display_name": "Fake One",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {},
+       "strict": false,
+       "manage": {},
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false,
+       "observed_summary": null,
+       "adopted_at": null,
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "client_view",
+     "args": {
+      "cid": "fake2"
+     },
+     "expect": {
+      "ok": {
+       "id": "fake2",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "two",
+       "roots": {
+        "home": "<base>/client-home2/"
+       },
+       "params": {
+        "manage": {
+         "memory": true,
+         "skills": "yes"
+        },
+        "x": [
+         1,
+         null
+        ]
+       },
+       "strict": true,
+       "icon": "star",
+       "manage": {
+        "mcp": true
+       },
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": false,
+        "memory": true
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false,
+       "observed_summary": null,
+       "adopted_at": null,
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "client_view",
+     "args": {
+      "cid": "ghost"
+     },
+     "expect": {
+      "error": "NotFound",
+      "status": 404,
+      "code": "not_found",
+      "detail": "no such client: ghost",
+      "extra": {}
+     }
+    },
+    {
+     "op": "client_view",
+     "args": {
+      "cid": "Bad"
+     },
+     "expect": {
+      "error": "BadRequest",
+      "status": 400,
+      "code": "invalid_id",
+      "detail": "invalid id",
+      "extra": {}
+     }
+    },
+    {
+     "op": "list_clients",
+     "args": {},
+     "expect": {
+      "ok": [
+       {
+        "id": "fake1",
+        "adapter": "fake",
+        "display_name": "Fake One",
+        "description": "",
+        "roots": {
+         "home": "<base>/client-home"
+        },
+        "params": {},
+        "strict": false,
+        "manage": {},
+        "manage_effective": {
+         "skills": true,
+         "agents": true,
+         "instructions": true,
+         "mcp": false,
+         "permissions": false,
+         "memory": false
+        },
+        "adapter_installed": true,
+        "caps": {
+         "skills": true,
+         "agents": true,
+         "instructions": true,
+         "mcp": true,
+         "permissions": true,
+         "egress": true,
+         "memory": false,
+         "tool_map": {
+          "read": "Read",
+          "shell": "Bash",
+          "browser": null
+         },
+         "model_tiers": {},
+         "notes": "fake"
+        },
+        "status": "never_applied",
+        "drift": {
+         "edited_outside": [],
+         "pending_changes": 0
+        },
+        "committed": false,
+        "observed_summary": null,
+        "adopted_at": null,
+        "last_applied_at": null,
+        "last_applied_plan": null,
+        "last_verified_at": null,
+        "last_verified_ok": null
+       },
+       {
+        "id": "fake2",
+        "adapter": "fake",
+        "display_name": "Fake 1",
+        "description": "two",
+        "roots": {
+         "home": "<base>/client-home2/"
+        },
+        "params": {
+         "manage": {
+          "memory": true,
+          "skills": "yes"
+         },
+         "x": [
+          1,
+          null
+         ]
+        },
+        "strict": true,
+        "icon": "star",
+        "manage": {
+         "mcp": true
+        },
+        "manage_effective": {
+         "skills": true,
+         "agents": true,
+         "instructions": true,
+         "mcp": true,
+         "permissions": false,
+         "memory": true
+        },
+        "adapter_installed": true,
+        "caps": {
+         "skills": true,
+         "agents": true,
+         "instructions": true,
+         "mcp": true,
+         "permissions": true,
+         "egress": true,
+         "memory": false,
+         "tool_map": {
+          "read": "Read",
+          "shell": "Bash",
+          "browser": null
+         },
+         "model_tiers": {},
+         "notes": "fake"
+        },
+        "status": "never_applied",
+        "drift": {
+         "edited_outside": [],
+         "pending_changes": 0
+        },
+        "committed": false,
+        "observed_summary": null,
+        "adopted_at": null,
+        "last_applied_at": null,
+        "last_applied_plan": null,
+        "last_verified_at": null,
+        "last_verified_ok": null
+       },
+       {
+        "id": "sy6",
+        "adapter": "fake",
+        "display_name": "Fake 1",
+        "description": "",
+        "roots": {
+         "home": "<base>/client-home"
+        },
+        "params": {},
+        "spec": {
+         "when": "2024-01-02",
+         "list": [
+          1,
+          2.5
+         ]
+        },
+        "strict": true,
+        "manage": {},
+        "manage_effective": {
+         "skills": true,
+         "agents": true,
+         "instructions": true,
+         "mcp": false,
+         "permissions": false,
+         "memory": false
+        },
+        "adapter_installed": true,
+        "caps": {
+         "skills": true,
+         "agents": true,
+         "instructions": true,
+         "mcp": true,
+         "permissions": true,
+         "egress": true,
+         "memory": false,
+         "tool_map": {
+          "read": "Read",
+          "shell": "Bash",
+          "browser": null
+         },
+         "model_tiers": {},
+         "notes": "fake"
+        },
+        "status": "never_applied",
+        "drift": {
+         "edited_outside": [],
+         "pending_changes": 0
+        },
+        "committed": false,
+        "observed_summary": null,
+        "adopted_at": null,
+        "last_applied_at": null,
+        "last_applied_plan": null,
+        "last_verified_at": null,
+        "last_verified_ok": null
+       }
+      ]
+     }
+    },
+    {
+     "op": "get_client",
+     "args": {
+      "cid": "sy6"
+     },
+     "expect": {
+      "ok": {
+       "id": "sy6",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {},
+       "spec": {
+        "when": "2024-01-02",
+        "list": [
+         1,
+         2.5
+        ]
+       },
+       "strict": true,
+       "manage": {}
+      }
+     }
+    },
+    {
+     "op": "client_status",
+     "args": {
+      "cid": "fake1"
+     },
+     "expect": {
+      "ok": {
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false
+      }
+     }
+    },
+    {
+     "op": "validate_spec",
+     "args": {
+      "body": {
+       "spec": {}
+      }
+     },
+     "expect": {
+      "error": "Unavailable",
+      "status": 503,
+      "code": "adapter_missing",
+      "detail": "the generic adapter is not installed",
+      "extra": {}
+     }
+    },
+    {
+     "op": "validate_spec",
+     "args": {
+      "body": {
+       "spec_yaml": "a: ["
+      }
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "invalid_yaml",
+      "detail": "spec_yaml: invalid YAML: while parsing a flow node",
+      "extra": {}
+     }
+    },
+    {
+     "op": "delete_client",
+     "args": {
+      "cid": "fake2"
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "delete_client",
+     "args": {
+      "cid": "fake2"
+     },
+     "expect": {
+      "error": "NotFound",
+      "status": 404,
+      "code": "not_found",
+      "detail": "no such client: fake2",
+      "extra": {}
+     }
+    },
+    {
+     "op": "list_clients",
+     "args": {},
+     "expect": {
+      "ok": [
+       {
+        "id": "fake1",
+        "adapter": "fake",
+        "display_name": "Fake One",
+        "description": "",
+        "roots": {
+         "home": "<base>/client-home"
+        },
+        "params": {},
+        "strict": false,
+        "manage": {},
+        "manage_effective": {
+         "skills": true,
+         "agents": true,
+         "instructions": true,
+         "mcp": false,
+         "permissions": false,
+         "memory": false
+        },
+        "adapter_installed": true,
+        "caps": {
+         "skills": true,
+         "agents": true,
+         "instructions": true,
+         "mcp": true,
+         "permissions": true,
+         "egress": true,
+         "memory": false,
+         "tool_map": {
+          "read": "Read",
+          "shell": "Bash",
+          "browser": null
+         },
+         "model_tiers": {},
+         "notes": "fake"
+        },
+        "status": "never_applied",
+        "drift": {
+         "edited_outside": [],
+         "pending_changes": 0
+        },
+        "committed": false,
+        "observed_summary": null,
+        "adopted_at": null,
+        "last_applied_at": null,
+        "last_applied_plan": null,
+        "last_verified_at": null,
+        "last_verified_ok": null
+       },
+       {
+        "id": "sy6",
+        "adapter": "fake",
+        "display_name": "Fake 1",
+        "description": "",
+        "roots": {
+         "home": "<base>/client-home"
+        },
+        "params": {},
+        "spec": {
+         "when": "2024-01-02",
+         "list": [
+          1,
+          2.5
+         ]
+        },
+        "strict": true,
+        "manage": {},
+        "manage_effective": {
+         "skills": true,
+         "agents": true,
+         "instructions": true,
+         "mcp": false,
+         "permissions": false,
+         "memory": false
+        },
+        "adapter_installed": true,
+        "caps": {
+         "skills": true,
+         "agents": true,
+         "instructions": true,
+         "mcp": true,
+         "permissions": true,
+         "egress": true,
+         "memory": false,
+         "tool_map": {
+          "read": "Read",
+          "shell": "Bash",
+          "browser": null
+         },
+         "model_tiers": {},
+         "notes": "fake"
+        },
+        "status": "never_applied",
+        "drift": {
+         "edited_outside": [],
+         "pending_changes": 0
+        },
+        "committed": false,
+        "observed_summary": null,
+        "adopted_at": null,
+        "last_applied_at": null,
+        "last_applied_plan": null,
+        "last_verified_at": null,
+        "last_verified_ok": null
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "name": "listing",
+   "steps": [
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "fake1",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "ok": {
+       "id": "fake1",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {},
+       "strict": true,
+       "manage": {},
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false,
+       "observed_summary": null,
+       "adopted_at": null,
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "skill",
+      "name": "alpha",
+      "payload": {
+       "description": "Alpha skill",
+       "body": "Do alpha.\n",
+       "files": {
+        "ref/notes.md": "notes"
+       },
+       "tags": [
+        "core"
+       ]
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "agent",
+      "name": "reviewer",
+      "payload": {
+       "description": "Reviews code",
+       "capabilities": [
+        "read",
+        "browser"
+       ],
+       "body": "Review carefully.\n"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "instruction",
+      "name": "style",
+      "payload": {
+       "title": "Style",
+       "order": 10,
+       "body": "Be concise.\n"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "rule",
+      "name": "no-web",
+      "payload": {
+       "title": "No web",
+       "kind": "tool",
+       "match": "web_fetch",
+       "decision": "deny"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "memory",
+      "name": "fact1",
+      "payload": {
+       "type": "reference",
+       "title": "A fact",
+       "body": "The sky is blue.\n"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "skill",
+      "name": "beta",
+      "payload": {
+       "description": "Beta",
+       "body": "b\n",
+       "source": "import:x"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "mcp",
+      "name": "dirty",
+      "payload": {
+       "transport": "stdio",
+       "command": "x",
+       "scan_status": "unscanned"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "mcp",
+      "name": "clean",
+      "payload": {
+       "transport": "stdio",
+       "command": "c",
+       "sandbox_profile": "srt",
+       "scan_status": "clean"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "instruction",
+      "name": "only-other",
+      "payload": {
+       "title": "O",
+       "applies_to": [
+        "someone-else"
+       ],
+       "body": "x"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put_collection",
+     "args": {
+      "cid": "core",
+      "payload": {
+       "id": "core",
+       "title": "Core",
+       "members": [
+        {
+         "kind": "skill",
+         "name": "alpha"
+        },
+        {
+         "kind": "instruction",
+         "name": "style"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "ok": {
+       "id": "core",
+       "title": "Core",
+       "description": "",
+       "icon": "",
+       "color": "",
+       "order": 100,
+       "members": [
+        {
+         "kind": "skill",
+         "name": "alpha"
+        },
+        {
+         "kind": "instruction",
+         "name": "style"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "work_put_collection",
+     "args": {
+      "cid": "extra",
+      "payload": {
+       "id": "extra",
+       "title": "Extra",
+       "order": 5,
+       "members": [
+        {
+         "kind": "mcp",
+         "name": "clean"
+        },
+        {
+         "kind": "skill",
+         "name": "ghost"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "ok": {
+       "id": "extra",
+       "title": "Extra",
+       "description": "",
+       "icon": "",
+       "color": "",
+       "order": 5,
+       "members": [
+        {
+         "kind": "mcp",
+         "name": "clean"
+        },
+        {
+         "kind": "skill",
+         "name": "ghost"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "work_put_profile",
+     "args": {
+      "cid": "fake1",
+      "payload": {
+       "collections": [
+        "core",
+        "missing-coll"
+       ],
+       "enable": {
+        "agents": [
+         "reviewer"
+        ],
+        "rules": [
+         "no-web"
+        ],
+        "skills": [
+         "nope"
+        ],
+        "memory": [
+         "fact1"
+        ],
+        "mcp": [
+         "dirty"
+        ]
+       }
+      }
+     },
+     "expect": {
+      "ok": {
+       "collections": [
+        "core",
+        "missing-coll"
+       ],
+       "enable": {
+        "skills": [
+         "nope"
+        ],
+        "agents": [
+         "reviewer"
+        ],
+        "mcp": [
+         "dirty"
+        ],
+        "instructions": [],
+        "rules": [
+         "no-web"
+        ],
+        "memory": [
+         "fact1"
+        ]
+       },
+       "disable": {
+        "skills": [],
+        "agents": [],
+        "mcp": [],
+        "instructions": [],
+        "rules": [],
+        "memory": []
+       }
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill"
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "alpha",
+         "title": "Alpha skill",
+         "description": "Alpha skill",
+         "tags": [
+          "core"
+         ],
+         "groups": [],
+         "collections": [
+          "core"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        },
+        {
+         "kind": "skill",
+         "name": "beta",
+         "title": "Beta",
+         "description": "Beta",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "import:x",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": []
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "q": "ALP"
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "alpha",
+         "title": "Alpha skill",
+         "description": "Alpha skill",
+         "tags": [
+          "core"
+         ],
+         "groups": [],
+         "collections": [
+          "core"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "q": "core"
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "alpha",
+         "title": "Alpha skill",
+         "description": "Alpha skill",
+         "tags": [
+          "core"
+         ],
+         "groups": [],
+         "collections": [
+          "core"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "tag": "core"
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "alpha",
+         "title": "Alpha skill",
+         "description": "Alpha skill",
+         "tags": [
+          "core"
+         ],
+         "groups": [],
+         "collections": [
+          "core"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "group": "core"
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "alpha",
+         "title": "Alpha skill",
+         "description": "Alpha skill",
+         "tags": [
+          "core"
+         ],
+         "groups": [],
+         "collections": [
+          "core"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "client": "fake1",
+       "enabled": true
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "alpha",
+         "title": "Alpha skill",
+         "description": "Alpha skill",
+         "tags": [
+          "core"
+         ],
+         "groups": [],
+         "collections": [
+          "core"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "client": "fake1",
+       "enabled": false
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "beta",
+         "title": "Beta",
+         "description": "Beta",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "import:x",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": []
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "client": "fake1"
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "alpha",
+         "title": "Alpha skill",
+         "description": "Alpha skill",
+         "tags": [
+          "core"
+         ],
+         "groups": [],
+         "collections": [
+          "core"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        },
+        {
+         "kind": "skill",
+         "name": "beta",
+         "title": "Beta",
+         "description": "Beta",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "import:x",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": []
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "enabled": true
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "alpha",
+         "title": "Alpha skill",
+         "description": "Alpha skill",
+         "tags": [
+          "core"
+         ],
+         "groups": [],
+         "collections": [
+          "core"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "enabled": false
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "beta",
+         "title": "Beta",
+         "description": "Beta",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "import:x",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": []
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "issues": false
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "alpha",
+         "title": "Alpha skill",
+         "description": "Alpha skill",
+         "tags": [
+          "core"
+         ],
+         "groups": [],
+         "collections": [
+          "core"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        },
+        {
+         "kind": "skill",
+         "name": "beta",
+         "title": "Beta",
+         "description": "Beta",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "import:x",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": []
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "source": "import:"
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "beta",
+         "title": "Beta",
+         "description": "Beta",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "import:x",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": []
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "sort": "title"
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "alpha",
+         "title": "Alpha skill",
+         "description": "Alpha skill",
+         "tags": [
+          "core"
+         ],
+         "groups": [],
+         "collections": [
+          "core"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        },
+        {
+         "kind": "skill",
+         "name": "beta",
+         "title": "Beta",
+         "description": "Beta",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "import:x",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": []
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "sort": "nonsense"
+      }
+     },
+     "expect": {
+      "error": "BadRequest",
+      "status": 400,
+      "code": "bad_request",
+      "detail": "sort must be name, title or updated",
+      "extra": {}
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "client": "ghost"
+      }
+     },
+     "expect": {
+      "error": "NotFound",
+      "status": 404,
+      "code": "not_found",
+      "detail": "no such client: ghost",
+      "extra": {}
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "limit": 1
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "alpha",
+         "title": "Alpha skill",
+         "description": "Alpha skill",
+         "tags": [
+          "core"
+         ],
+         "groups": [],
+         "collections": [
+          "core"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        }
+       ],
+       "next_cursor": "1"
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "skill",
+      "filters": {
+       "limit": 1,
+       "cursor": "1"
+      }
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "skill",
+         "name": "beta",
+         "title": "Beta",
+         "description": "Beta",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "import:x",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": []
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "agent"
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "agent",
+         "name": "reviewer",
+         "title": "Reviews code",
+         "description": "Reviews code",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "instruction"
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "instruction",
+         "name": "only-other",
+         "title": "O",
+         "description": "O",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": []
+        },
+        {
+         "kind": "instruction",
+         "name": "style",
+         "title": "Style",
+         "description": "Style",
+         "tags": [],
+         "groups": [],
+         "collections": [
+          "core"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "mcp"
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "mcp",
+         "name": "clean",
+         "title": "clean",
+         "description": "",
+         "tags": [],
+         "groups": [],
+         "collections": [
+          "extra"
+         ],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": []
+        },
+        {
+         "kind": "mcp",
+         "name": "dirty",
+         "title": "dirty",
+         "description": "",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "rule"
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "rule",
+         "name": "no-web",
+         "title": "No web",
+         "description": "No web",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "list_items",
+     "args": {
+      "kind": "memory"
+     },
+     "expect": {
+      "ok": {
+       "items": [
+        {
+         "kind": "memory",
+         "name": "fact1",
+         "title": "A fact",
+         "description": "A fact",
+         "tags": [],
+         "groups": [],
+         "collections": [],
+         "source": "",
+         "valid": true,
+         "issues": [],
+         "updated": "<time>",
+         "enabled_for": [
+          "fake1"
+         ]
+        }
+       ],
+       "next_cursor": null
+      }
+     }
+    },
+    {
+     "op": "item_detail",
+     "args": {
+      "kind": "skill",
+      "name": "alpha"
+     },
+     "expect": {
+      "ok": {
+       "kind": "skill",
+       "name": "alpha",
+       "title": "Alpha skill",
+       "description": "Alpha skill",
+       "tags": [
+        "core"
+       ],
+       "groups": [],
+       "collections": [
+        "core"
+       ],
+       "source": "",
+       "valid": true,
+       "issues": [],
+       "updated": "<time>",
+       "enabled_for": [
+        "fake1"
+       ],
+       "meta": {
+        "name": "alpha",
+        "description": "Alpha skill"
+       },
+       "body": "Do alpha.\n",
+       "file_list": [
+        {
+         "path": "SKILL.md",
+         "size": 55,
+         "binary": false
+        },
+        {
+         "path": "ref/notes.md",
+         "size": 5,
+         "binary": false
+        }
+       ],
+       "files": {
+        "SKILL.md": "---\nname: alpha\ndescription: Alpha skill\n---\nDo alpha.\n",
+        "ref/notes.md": "notes"
+       },
+       "sidecar": {
+        "groups": [],
+        "tags": [
+         "core"
+        ],
+        "notes": "",
+        "source": "",
+        "provenance": {}
+       }
+      }
+     }
+    },
+    {
+     "op": "item_detail",
+     "args": {
+      "kind": "agent",
+      "name": "reviewer"
+     },
+     "expect": {
+      "ok": {
+       "kind": "agent",
+       "name": "reviewer",
+       "title": "Reviews code",
+       "description": "Reviews code",
+       "tags": [],
+       "groups": [],
+       "collections": [],
+       "source": "",
+       "valid": true,
+       "issues": [],
+       "updated": "<time>",
+       "enabled_for": [
+        "fake1"
+       ],
+       "meta": {
+        "name": "reviewer",
+        "description": "Reviews code",
+        "capabilities": [
+         "read",
+         "browser"
+        ],
+        "mode": "subagent",
+        "read_only": false,
+        "tags": []
+       },
+       "body": "Review carefully.\n"
+      }
+     }
+    },
+    {
+     "op": "item_detail",
+     "args": {
+      "kind": "mcp",
+      "name": "clean"
+     },
+     "expect": {
+      "ok": {
+       "kind": "mcp",
+       "name": "clean",
+       "title": "clean",
+       "description": "",
+       "tags": [],
+       "groups": [],
+       "collections": [
+        "extra"
+       ],
+       "source": "",
+       "valid": true,
+       "issues": [],
+       "updated": "<time>",
+       "enabled_for": [],
+       "meta": {
+        "name": "clean",
+        "transport": "stdio",
+        "command": "c",
+        "args": [],
+        "env_names": [],
+        "sandbox_profile": "srt",
+        "egress_hosts": [],
+        "scan_status": "clean",
+        "scan_digest": "<digest>",
+        "groups": [],
+        "tags": [],
+        "notes": ""
+       },
+       "body": ""
+      }
+     }
+    },
+    {
+     "op": "item_detail",
+     "args": {
+      "kind": "skill",
+      "name": "ghost"
+     },
+     "expect": {
+      "error": "NotFound",
+      "status": 404,
+      "code": "not_found",
+      "detail": "no such skill: ghost",
+      "extra": {}
+     }
+    },
+    {
+     "op": "item_detail",
+     "args": {
+      "kind": "skill",
+      "name": "Bad"
+     },
+     "expect": {
+      "error": "BadRequest",
+      "status": 400,
+      "code": "invalid_id",
+      "detail": "invalid name",
+      "extra": {}
+     }
+    },
+    {
+     "op": "validate_content",
+     "args": {},
+     "expect": {
+      "ok": {
+       "ok": true,
+       "problems": []
+      }
+     }
+    },
+    {
+     "op": "matrix",
+     "args": {},
+     "expect": {
+      "ok": {
+       "clients": [
+        {
+         "id": "fake1",
+         "display_name": "Fake 1",
+         "adapter": "fake",
+         "adapter_installed": true
+        }
+       ],
+       "groups": [
+        {
+         "id": "extra",
+         "title": "Extra",
+         "icon": "",
+         "color": "",
+         "rows": [
+          {
+           "kind": "mcp",
+           "name": "clean",
+           "title": "clean",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "off",
+             "via": []
+            }
+           }
+          }
+         ]
+        },
+        {
+         "id": "core",
+         "title": "Core",
+         "icon": "",
+         "color": "",
+         "rows": [
+          {
+           "kind": "skill",
+           "name": "alpha",
+           "title": "Alpha skill",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "via_collection",
+             "via": [
+              "collection:core"
+             ]
+            }
+           }
+          },
+          {
+           "kind": "instruction",
+           "name": "style",
+           "title": "Style",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "via_collection",
+             "via": [
+              "collection:core"
+             ]
+            }
+           }
+          }
+         ]
+        },
+        {
+         "id": null,
+         "title": "Uncollected",
+         "icon": "",
+         "color": "",
+         "rows": [
+          {
+           "kind": "agent",
+           "name": "reviewer",
+           "title": "Reviews code",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "on",
+             "via": [
+              "direct"
+             ]
+            }
+           }
+          },
+          {
+           "kind": "instruction",
+           "name": "only-other",
+           "title": "O",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "blocked",
+             "reason": "applies_to limits it to someone-else",
+             "via": []
+            }
+           }
+          },
+          {
+           "kind": "mcp",
+           "name": "dirty",
+           "title": "dirty",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "blocked",
+             "reason": "MCP server 'dirty' has scan_status='unscanned'; it must be 'clean' (run your MCP scanner yourself, then `hubctl attest-mcp NAME`; edits to command/args/url/pinned_ref/transport, or a missing/foreign attestation, reset it)",
+             "via": [
+              "direct"
+             ]
+            }
+           }
+          },
+          {
+           "kind": "memory",
+           "name": "fact1",
+           "title": "A fact",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "unsupported",
+             "reason": "fake cannot consume memory"
+            }
+           }
+          },
+          {
+           "kind": "rule",
+           "name": "no-web",
+           "title": "No web",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "on",
+             "via": [
+              "direct"
+             ]
+            }
+           }
+          },
+          {
+           "kind": "skill",
+           "name": "beta",
+           "title": "Beta",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "off",
+             "via": []
+            }
+           }
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "effective",
+     "args": {
+      "cid": "fake1",
+      "source": "working"
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "source": "working",
+       "adapter": "fake",
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "manage": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "items": {
+        "agents": [
+         {
+          "name": "reviewer",
+          "via": [
+           "direct"
+          ]
+         }
+        ],
+        "instructions": [
+         {
+          "name": "style",
+          "via": [
+           "collection:core"
+          ]
+         }
+        ],
+        "mcp": [
+         {
+          "name": "dirty",
+          "via": [
+           "direct"
+          ]
+         }
+        ],
+        "rules": [
+         {
+          "name": "no-web",
+          "via": [
+           "direct"
+          ]
+         }
+        ],
+        "skills": [
+         {
+          "name": "alpha",
+          "via": [
+           "collection:core"
+          ]
+         }
+        ]
+       },
+       "rules": [
+        {
+         "kind": "path_read",
+         "match": "~/.ssh/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.aws/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/gcloud/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.gnupg/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.netrc",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/google-chrome/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/chromium/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/BraveSoftware/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.mozilla/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/snap/firefox/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/snap/chromium/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.local/share/keyrings/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.docker/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.kube/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.git-credentials",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/gh/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.npmrc",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/agent-hub/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.local/share/agent-hub/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/agent-knowledge/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.local/share/agent-knowledge/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "**/bootstrap-admin.key",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "**/admin.key",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "**/.env",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "<base>/state/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.ssh/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.aws/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.config/gcloud/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.gnupg/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.netrc",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.config/agent-hub/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.local/share/agent-hub/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.config/agent-knowledge/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.local/share/agent-knowledge/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "**/bootstrap-admin.key",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "**/admin.key",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "<base>/state/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "tool",
+         "match": "web_search",
+         "decision": "deny",
+         "reason": "floor default",
+         "source": "floor"
+        },
+        {
+         "kind": "tool",
+         "match": "web_fetch",
+         "decision": "deny",
+         "reason": null,
+         "source": "profile"
+        }
+       ],
+       "default_tool_decision": "ask",
+       "network_default": "deny",
+       "mcp": [],
+       "egress": {
+        "default": "deny",
+        "allow_hosts": []
+       },
+       "findings": [
+        {
+         "code": "mcp_not_clean",
+         "severity": "error",
+         "message": "MCP server 'dirty' has scan_status='unscanned'; it must be 'clean' (run your MCP scanner yourself, then `hubctl attest-mcp NAME`; edits to command/args/url/pinned_ref/transport, or a missing/foreign attestation, reset it)",
+         "item": "dirty",
+         "concern": "mcp",
+         "rule": null
+        },
+        {
+         "code": "mcp_no_sandbox",
+         "severity": "error",
+         "message": "stdio MCP server 'dirty' has no sandbox_profile (each MCP server runs in its own sandbox)",
+         "item": "dirty",
+         "concern": "mcp",
+         "rule": null
+        }
+       ],
+       "diagnostics": [
+        {
+         "severity": "error",
+         "code": "concern_unsupported",
+         "message": "fake cannot consume memory",
+         "item": "memory:fact1"
+        }
+       ],
+       "warnings": [
+        "profile references missing collection 'missing-coll'",
+        "skill 'nope' is enabled but does not exist"
+       ]
+      }
+     }
+    },
+    {
+     "op": "effective",
+     "args": {
+      "cid": "fake1",
+      "source": "bogus"
+     },
+     "expect": {
+      "error": "BadRequest",
+      "status": 400,
+      "code": "bad_request",
+      "detail": "source must be committed or working",
+      "extra": {}
+     }
+    },
+    {
+     "op": "effective",
+     "args": {
+      "cid": "ghost",
+      "source": "working"
+     },
+     "expect": {
+      "error": "NotFound",
+      "status": 404,
+      "code": "not_found",
+      "detail": "no such client: ghost",
+      "extra": {}
+     }
+    },
+    {
+     "op": "effective",
+     "args": {
+      "cid": "fake1",
+      "source": "committed"
+     },
+     "expect": {
+      "error": "Conflict",
+      "status": 409,
+      "code": "client_not_committed",
+      "detail": "client is not in committed content yet; commit it first",
+      "extra": {}
+     }
+    },
+    {
+     "op": "commit",
+     "args": {
+      "message": "base"
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "effective",
+     "args": {
+      "cid": "fake1",
+      "source": "committed"
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "source": "committed",
+       "adapter": "fake",
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "manage": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "items": {
+        "agents": [
+         {
+          "name": "reviewer",
+          "via": [
+           "direct"
+          ]
+         }
+        ],
+        "instructions": [
+         {
+          "name": "style",
+          "via": [
+           "collection:core"
+          ]
+         }
+        ],
+        "mcp": [
+         {
+          "name": "dirty",
+          "via": [
+           "direct"
+          ]
+         }
+        ],
+        "rules": [
+         {
+          "name": "no-web",
+          "via": [
+           "direct"
+          ]
+         }
+        ],
+        "skills": [
+         {
+          "name": "alpha",
+          "via": [
+           "collection:core"
+          ]
+         }
+        ]
+       },
+       "rules": [
+        {
+         "kind": "path_read",
+         "match": "~/.ssh/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.aws/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/gcloud/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.gnupg/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.netrc",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/google-chrome/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/chromium/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/BraveSoftware/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.mozilla/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/snap/firefox/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/snap/chromium/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.local/share/keyrings/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.docker/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.kube/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.git-credentials",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/gh/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.npmrc",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/agent-hub/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.local/share/agent-hub/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/agent-knowledge/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.local/share/agent-knowledge/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "**/bootstrap-admin.key",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "**/admin.key",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "**/.env",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "<base>/state/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.ssh/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.aws/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.config/gcloud/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.gnupg/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.netrc",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.config/agent-hub/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.local/share/agent-hub/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.config/agent-knowledge/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.local/share/agent-knowledge/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "**/bootstrap-admin.key",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "**/admin.key",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "<base>/state/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "tool",
+         "match": "web_search",
+         "decision": "deny",
+         "reason": "floor default",
+         "source": "floor"
+        },
+        {
+         "kind": "tool",
+         "match": "web_fetch",
+         "decision": "deny",
+         "reason": null,
+         "source": "profile"
+        }
+       ],
+       "default_tool_decision": "ask",
+       "network_default": "deny",
+       "mcp": [],
+       "egress": {
+        "default": "deny",
+        "allow_hosts": []
+       },
+       "findings": [
+        {
+         "code": "mcp_not_clean",
+         "severity": "error",
+         "message": "MCP server 'dirty' has scan_status='unscanned'; it must be 'clean' (run your MCP scanner yourself, then `hubctl attest-mcp NAME`; edits to command/args/url/pinned_ref/transport, or a missing/foreign attestation, reset it)",
+         "item": "dirty",
+         "concern": "mcp",
+         "rule": null
+        },
+        {
+         "code": "mcp_no_sandbox",
+         "severity": "error",
+         "message": "stdio MCP server 'dirty' has no sandbox_profile (each MCP server runs in its own sandbox)",
+         "item": "dirty",
+         "concern": "mcp",
+         "rule": null
+        }
+       ],
+       "diagnostics": [
+        {
+         "severity": "error",
+         "code": "concern_unsupported",
+         "message": "fake cannot consume memory",
+         "item": "memory:fact1"
+        }
+       ],
+       "warnings": [
+        "profile references missing collection 'missing-coll'",
+        "skill 'nope' is enabled but does not exist"
+       ]
+      }
+     }
+    },
+    {
+     "op": "rendered",
+     "args": {
+      "cid": "fake1",
+      "kind": "skill",
+      "name": "alpha",
+      "source": "committed"
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "kind": "skill",
+       "name": "alpha",
+       "source": "committed",
+       "artifacts": [
+        {
+         "root": "home",
+         "path": "skills/alpha/SKILL.md",
+         "merge": "own",
+         "kind": "skill",
+         "source_ids": [
+          "alpha"
+         ],
+         "managed_keys": [],
+         "size": 55,
+         "content": "---\nname: alpha\ndescription: Alpha skill\n---\nDo alpha.\n",
+         "truncated": false
+        },
+        {
+         "root": "home",
+         "path": "skills/alpha/ref/notes.md",
+         "merge": "own",
+         "kind": "skill",
+         "source_ids": [
+          "alpha"
+         ],
+         "managed_keys": [],
+         "size": 5,
+         "content": "notes",
+         "truncated": false
+        }
+       ],
+       "diagnostics": []
+      }
+     }
+    },
+    {
+     "op": "rendered",
+     "args": {
+      "cid": "fake1",
+      "kind": "instruction",
+      "name": "style",
+      "source": "committed"
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "kind": "instruction",
+       "name": "style",
+       "source": "committed",
+       "artifacts": [
+        {
+         "root": "home",
+         "path": "CLAUDE.md",
+         "merge": "block",
+         "kind": "instruction",
+         "source_ids": [
+          "style"
+         ],
+         "managed_keys": [],
+         "size": 116,
+         "content": "<!-- agent-hub:begin (managed block; edits inside are overwritten) -->\n## Style\n\nBe concise.\n<!-- agent-hub:end -->\n",
+         "truncated": false
+        }
+       ],
+       "diagnostics": []
+      }
+     }
+    },
+    {
+     "op": "rendered",
+     "args": {
+      "cid": "fake1",
+      "kind": "agent",
+      "name": "reviewer",
+      "source": "working"
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "kind": "agent",
+       "name": "reviewer",
+       "source": "working",
+       "artifacts": [
+        {
+         "root": "home",
+         "path": "agents/reviewer.md",
+         "merge": "own",
+         "kind": "agent",
+         "source_ids": [
+          "reviewer"
+         ],
+         "managed_keys": [],
+         "size": 29,
+         "content": "# reviewer\nReview carefully.\n",
+         "truncated": false
+        }
+       ],
+       "diagnostics": [
+        {
+         "severity": "error",
+         "code": "unsupported_capability",
+         "message": "browser unsupported",
+         "item": "reviewer"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "rendered",
+     "args": {
+      "cid": "fake1",
+      "kind": "skill",
+      "name": "beta",
+      "source": "committed"
+     },
+     "expect": {
+      "error": "NotFound",
+      "status": 404,
+      "code": "not_rendered",
+      "detail": "skill 'beta' does not render for fake1: it is not enabled for this client (profile or collection)",
+      "extra": {}
+     }
+    },
+    {
+     "op": "rendered",
+     "args": {
+      "cid": "fake1",
+      "kind": "mcp",
+      "name": "dirty",
+      "source": "working"
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "kind": "mcp",
+       "name": "dirty",
+       "source": "working",
+       "artifacts": [],
+       "diagnostics": []
+      }
+     }
+    },
+    {
+     "op": "rendered",
+     "args": {
+      "cid": "fake1",
+      "kind": "bogus",
+      "name": "x",
+      "source": "working"
+     },
+     "expect": {
+      "error": "BadRequest",
+      "status": 400,
+      "code": "bad_request",
+      "detail": "unknown kind",
+      "extra": {}
+     }
+    },
+    {
+     "op": "client_view",
+     "args": {
+      "cid": "fake1"
+     },
+     "expect": {
+      "ok": {
+       "id": "fake1",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {},
+       "strict": true,
+       "manage": {},
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "error",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 4
+       },
+       "committed": true,
+       "observed_summary": null,
+       "adopted_at": null,
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "toggles",
+   "steps": [
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "fake1",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "ok": {
+       "id": "fake1",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {},
+       "strict": true,
+       "manage": {},
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false,
+       "observed_summary": null,
+       "adopted_at": null,
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "fake2",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home2"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "ok": {
+       "id": "fake2",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home2"
+       },
+       "params": {},
+       "strict": true,
+       "manage": {},
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false,
+       "observed_summary": null,
+       "adopted_at": null,
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "skill",
+      "name": "alpha",
+      "payload": {
+       "description": "Alpha skill",
+       "body": "Do alpha.\n",
+       "files": {
+        "ref/notes.md": "notes"
+       },
+       "tags": [
+        "core"
+       ]
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "agent",
+      "name": "reviewer",
+      "payload": {
+       "description": "Reviews code",
+       "capabilities": [
+        "read",
+        "browser"
+       ],
+       "body": "Review carefully.\n"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "instruction",
+      "name": "style",
+      "payload": {
+       "title": "Style",
+       "order": 10,
+       "body": "Be concise.\n"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "rule",
+      "name": "no-web",
+      "payload": {
+       "title": "No web",
+       "kind": "tool",
+       "match": "web_fetch",
+       "decision": "deny"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "memory",
+      "name": "fact1",
+      "payload": {
+       "type": "reference",
+       "title": "A fact",
+       "body": "The sky is blue.\n"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "skill",
+      "name": "beta",
+      "payload": {
+       "description": "Beta",
+       "body": "b\n",
+       "source": "import:x"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "mcp",
+      "name": "dirty",
+      "payload": {
+       "transport": "stdio",
+       "command": "x",
+       "scan_status": "unscanned"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "mcp",
+      "name": "clean",
+      "payload": {
+       "transport": "stdio",
+       "command": "c",
+       "sandbox_profile": "srt",
+       "scan_status": "clean"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put",
+     "args": {
+      "kind": "instruction",
+      "name": "only-other",
+      "payload": {
+       "title": "O",
+       "applies_to": [
+        "someone-else"
+       ],
+       "body": "x"
+      }
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "work_put_collection",
+     "args": {
+      "cid": "core",
+      "payload": {
+       "id": "core",
+       "title": "Core",
+       "members": [
+        {
+         "kind": "skill",
+         "name": "alpha"
+        },
+        {
+         "kind": "instruction",
+         "name": "style"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "ok": {
+       "id": "core",
+       "title": "Core",
+       "description": "",
+       "icon": "",
+       "color": "",
+       "order": 100,
+       "members": [
+        {
+         "kind": "skill",
+         "name": "alpha"
+        },
+        {
+         "kind": "instruction",
+         "name": "style"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "work_put_collection",
+     "args": {
+      "cid": "extra",
+      "payload": {
+       "id": "extra",
+       "title": "Extra",
+       "order": 5,
+       "members": [
+        {
+         "kind": "mcp",
+         "name": "clean"
+        },
+        {
+         "kind": "skill",
+         "name": "ghost"
+        }
+       ]
+      }
+     },
+     "expect": {
+      "ok": {
+       "id": "extra",
+       "title": "Extra",
+       "description": "",
+       "icon": "",
+       "color": "",
+       "order": 5,
+       "members": [
+        {
+         "kind": "mcp",
+         "name": "clean"
+        },
+        {
+         "kind": "skill",
+         "name": "ghost"
+        }
+       ]
+      }
+     }
+    },
+    {
+     "op": "work_put_profile",
+     "args": {
+      "cid": "fake1",
+      "payload": {
+       "collections": [
+        "core",
+        "missing-coll"
+       ],
+       "enable": {
+        "agents": [
+         "reviewer"
+        ],
+        "rules": [
+         "no-web"
+        ],
+        "skills": [
+         "nope"
+        ],
+        "memory": [
+         "fact1"
+        ],
+        "mcp": [
+         "dirty"
+        ]
+       }
+      }
+     },
+     "expect": {
+      "ok": {
+       "collections": [
+        "core",
+        "missing-coll"
+       ],
+       "enable": {
+        "skills": [
+         "nope"
+        ],
+        "agents": [
+         "reviewer"
+        ],
+        "mcp": [
+         "dirty"
+        ],
+        "instructions": [],
+        "rules": [
+         "no-web"
+        ],
+        "memory": [
+         "fact1"
+        ]
+       },
+       "disable": {
+        "skills": [],
+        "agents": [],
+        "mcp": [],
+        "instructions": [],
+        "rules": [],
+        "memory": []
+       }
+      }
+     }
+    },
+    {
+     "op": "toggle",
+     "args": {
+      "client": "fake1",
+      "kind": "skill",
+      "name": "beta",
+      "enabled": true
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "kind": "skill",
+       "name": "beta",
+       "state": "on",
+       "via": [
+        "direct"
+       ]
+      }
+     }
+    },
+    {
+     "op": "toggle",
+     "args": {
+      "client": "fake1",
+      "kind": "skill",
+      "name": "beta",
+      "enabled": false
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "kind": "skill",
+       "name": "beta",
+       "state": "off",
+       "via": []
+      }
+     }
+    },
+    {
+     "op": "toggle",
+     "args": {
+      "client": "fake1",
+      "kind": "skill",
+      "name": "alpha",
+      "enabled": false
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "kind": "skill",
+       "name": "alpha",
+       "state": "off",
+       "via": []
+      }
+     }
+    },
+    {
+     "op": "toggle",
+     "args": {
+      "client": "fake1",
+      "kind": "skill",
+      "name": "alpha",
+      "enabled": true
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "kind": "skill",
+       "name": "alpha",
+       "state": "via_collection",
+       "via": [
+        "collection:core"
+       ]
+      }
+     }
+    },
+    {
+     "op": "toggle",
+     "args": {
+      "client": "fake1",
+      "kind": "mcp",
+      "name": "dirty",
+      "enabled": true
+     },
+     "expect": {
+      "error": "Conflict",
+      "status": 409,
+      "code": "cell_blocked",
+      "detail": "cannot enable: MCP server 'dirty' has scan_status='unscanned'; it must be 'clean' (run your MCP scanner yourself, then `hubctl attest-mcp NAME`; edits to command/args/url/pinned_ref/transport, or a missing/foreign attestation, reset it)",
+      "extra": {
+       "reason": "MCP server 'dirty' has scan_status='unscanned'; it must be 'clean' (run your MCP scanner yourself, then `hubctl attest-mcp NAME`; edits to command/args/url/pinned_ref/transport, or a missing/foreign attestation, reset it)"
+      }
+     }
+    },
+    {
+     "op": "toggle",
+     "args": {
+      "client": "fake1",
+      "kind": "memory",
+      "name": "fact1",
+      "enabled": true
+     },
+     "expect": {
+      "error": "Conflict",
+      "status": 409,
+      "code": "cell_unsupported",
+      "detail": "cannot enable: fake cannot consume memory",
+      "extra": {
+       "reason": "fake cannot consume memory"
+      }
+     }
+    },
+    {
+     "op": "toggle",
+     "args": {
+      "client": "fake1",
+      "kind": "instruction",
+      "name": "only-other",
+      "enabled": true
+     },
+     "expect": {
+      "error": "Conflict",
+      "status": 409,
+      "code": "cell_blocked",
+      "detail": "cannot enable: applies_to limits it to someone-else",
+      "extra": {
+       "reason": "applies_to limits it to someone-else"
+      }
+     }
+    },
+    {
+     "op": "toggle",
+     "args": {
+      "client": "nobody",
+      "kind": "skill",
+      "name": "beta",
+      "enabled": true
+     },
+     "expect": {
+      "error": "NotFound",
+      "status": 404,
+      "code": "not_found",
+      "detail": "no such client: nobody",
+      "extra": {}
+     }
+    },
+    {
+     "op": "toggle",
+     "args": {
+      "client": "fake1",
+      "kind": "skill",
+      "name": "ghost",
+      "enabled": true
+     },
+     "expect": {
+      "error": "NotFound",
+      "status": 404,
+      "code": "not_found",
+      "detail": "no such skill: ghost",
+      "extra": {}
+     }
+    },
+    {
+     "op": "toggle",
+     "args": {
+      "client": "fake1",
+      "kind": "widget",
+      "name": "x",
+      "enabled": true
+     },
+     "expect": {
+      "error": "BadRequest",
+      "status": 400,
+      "code": "bad_request",
+      "detail": "unknown kind: widget",
+      "extra": {}
+     }
+    },
+    {
+     "op": "bulk_toggle",
+     "args": {
+      "clients": [
+       "fake1",
+       "fake2",
+       "nobody"
+      ],
+      "items": [
+       {
+        "kind": "skill",
+        "name": "beta"
+       },
+       {
+        "kind": "mcp",
+        "name": "dirty"
+       }
+      ],
+      "enabled": true
+     },
+     "expect": {
+      "ok": [
+       {
+        "client": "fake1",
+        "kind": "skill",
+        "name": "beta",
+        "state": "on",
+        "via": [
+         "direct"
+        ],
+        "ok": true
+       },
+       {
+        "client": "fake1",
+        "kind": "mcp",
+        "name": "dirty",
+        "ok": false,
+        "error": "cannot enable: MCP server 'dirty' has scan_status='unscanned'; it must be 'clean' (run your MCP scanner yourself, then `hubctl attest-mcp NAME`; edits to command/args/url/pinned_ref/transport, or a missing/foreign attestation, reset it)",
+        "code": "cell_blocked"
+       },
+       {
+        "client": "fake2",
+        "kind": "skill",
+        "name": "beta",
+        "state": "on",
+        "via": [
+         "direct"
+        ],
+        "ok": true
+       },
+       {
+        "client": "fake2",
+        "kind": "mcp",
+        "name": "dirty",
+        "ok": false,
+        "error": "cannot enable: MCP server 'dirty' has scan_status='unscanned'; it must be 'clean' (run your MCP scanner yourself, then `hubctl attest-mcp NAME`; edits to command/args/url/pinned_ref/transport, or a missing/foreign attestation, reset it)",
+        "code": "cell_blocked"
+       },
+       {
+        "client": "nobody",
+        "kind": "skill",
+        "name": "beta",
+        "ok": false,
+        "error": "no such client: nobody",
+        "code": "not_found"
+       },
+       {
+        "client": "nobody",
+        "kind": "mcp",
+        "name": "dirty",
+        "ok": false,
+        "error": "no such client: nobody",
+        "code": "not_found"
+       }
+      ]
+     }
+    },
+    {
+     "op": "get_profile",
+     "args": {
+      "cid": "fake1"
+     },
+     "expect": {
+      "ok": {
+       "collections": [
+        "core",
+        "missing-coll"
+       ],
+       "enable": {
+        "skills": [
+         "nope",
+         "beta"
+        ],
+        "agents": [
+         "reviewer"
+        ],
+        "mcp": [
+         "dirty"
+        ],
+        "instructions": [],
+        "rules": [
+         "no-web"
+        ],
+        "memory": [
+         "fact1"
+        ]
+       },
+       "disable": {
+        "skills": [],
+        "agents": [],
+        "mcp": [],
+        "instructions": [],
+        "rules": [],
+        "memory": []
+       }
+      }
+     }
+    },
+    {
+     "op": "get_profile",
+     "args": {
+      "cid": "fake2"
+     },
+     "expect": {
+      "ok": {
+       "collections": [],
+       "enable": {
+        "skills": [
+         "beta"
+        ],
+        "agents": [],
+        "mcp": [],
+        "instructions": [],
+        "rules": [],
+        "memory": []
+       },
+       "disable": {
+        "skills": [],
+        "agents": [],
+        "mcp": [],
+        "instructions": [],
+        "rules": [],
+        "memory": []
+       }
+      }
+     }
+    },
+    {
+     "op": "matrix",
+     "args": {},
+     "expect": {
+      "ok": {
+       "clients": [
+        {
+         "id": "fake1",
+         "display_name": "Fake 1",
+         "adapter": "fake",
+         "adapter_installed": true
+        },
+        {
+         "id": "fake2",
+         "display_name": "Fake 1",
+         "adapter": "fake",
+         "adapter_installed": true
+        }
+       ],
+       "groups": [
+        {
+         "id": "extra",
+         "title": "Extra",
+         "icon": "",
+         "color": "",
+         "rows": [
+          {
+           "kind": "mcp",
+           "name": "clean",
+           "title": "clean",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "off",
+             "via": []
+            },
+            "fake2": {
+             "state": "off",
+             "via": []
+            }
+           }
+          }
+         ]
+        },
+        {
+         "id": "core",
+         "title": "Core",
+         "icon": "",
+         "color": "",
+         "rows": [
+          {
+           "kind": "skill",
+           "name": "alpha",
+           "title": "Alpha skill",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "via_collection",
+             "via": [
+              "collection:core"
+             ]
+            },
+            "fake2": {
+             "state": "off",
+             "via": []
+            }
+           }
+          },
+          {
+           "kind": "instruction",
+           "name": "style",
+           "title": "Style",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "via_collection",
+             "via": [
+              "collection:core"
+             ]
+            },
+            "fake2": {
+             "state": "off",
+             "via": []
+            }
+           }
+          }
+         ]
+        },
+        {
+         "id": null,
+         "title": "Uncollected",
+         "icon": "",
+         "color": "",
+         "rows": [
+          {
+           "kind": "agent",
+           "name": "reviewer",
+           "title": "Reviews code",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "on",
+             "via": [
+              "direct"
+             ]
+            },
+            "fake2": {
+             "state": "off",
+             "via": []
+            }
+           }
+          },
+          {
+           "kind": "instruction",
+           "name": "only-other",
+           "title": "O",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "blocked",
+             "reason": "applies_to limits it to someone-else",
+             "via": []
+            },
+            "fake2": {
+             "state": "blocked",
+             "reason": "applies_to limits it to someone-else",
+             "via": []
+            }
+           }
+          },
+          {
+           "kind": "mcp",
+           "name": "dirty",
+           "title": "dirty",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "blocked",
+             "reason": "MCP server 'dirty' has scan_status='unscanned'; it must be 'clean' (run your MCP scanner yourself, then `hubctl attest-mcp NAME`; edits to command/args/url/pinned_ref/transport, or a missing/foreign attestation, reset it)",
+             "via": [
+              "direct"
+             ]
+            },
+            "fake2": {
+             "state": "blocked",
+             "reason": "MCP server 'dirty' has scan_status='unscanned'; it must be 'clean' (run your MCP scanner yourself, then `hubctl attest-mcp NAME`; edits to command/args/url/pinned_ref/transport, or a missing/foreign attestation, reset it)",
+             "via": []
+            }
+           }
+          },
+          {
+           "kind": "memory",
+           "name": "fact1",
+           "title": "A fact",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "unsupported",
+             "reason": "fake cannot consume memory"
+            },
+            "fake2": {
+             "state": "unsupported",
+             "reason": "fake cannot consume memory"
+            }
+           }
+          },
+          {
+           "kind": "rule",
+           "name": "no-web",
+           "title": "No web",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "on",
+             "via": [
+              "direct"
+             ]
+            },
+            "fake2": {
+             "state": "off",
+             "via": []
+            }
+           }
+          },
+          {
+           "kind": "skill",
+           "name": "beta",
+           "title": "Beta",
+           "valid": true,
+           "cells": {
+            "fake1": {
+             "state": "on",
+             "via": [
+              "direct"
+             ]
+            },
+            "fake2": {
+             "state": "on",
+             "via": [
+              "direct"
+             ]
+            }
+           }
+          }
+         ]
+        }
+       ]
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "import",
+   "steps": [
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "fake1",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {
+        "keep": "operator"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "ok": {
+       "id": "fake1",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {
+        "keep": "operator"
+       },
+       "strict": true,
+       "manage": {},
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false,
+       "observed_summary": null,
+       "adopted_at": null,
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "discover",
+     "args": {
+      "cid": "fake1"
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "items": {
+        "skill": [
+         {
+          "kind": "skill",
+          "name": "Bad Name",
+          "description": "found",
+          "conflict": null,
+          "files": [
+           "SKILL.md"
+          ]
+         },
+         {
+          "kind": "skill",
+          "name": "native-skill",
+          "description": "found",
+          "conflict": null,
+          "files": [
+           "SKILL.md",
+           "x.txt"
+          ]
+         }
+        ],
+        "agent": [
+         {
+          "kind": "agent",
+          "name": "helper",
+          "description": "found agent",
+          "conflict": null
+         }
+        ],
+        "instruction": [
+         {
+          "kind": "instruction",
+          "name": "native",
+          "description": "Native",
+          "conflict": null
+         }
+        ],
+        "mcp": [
+         {
+          "kind": "mcp",
+          "name": "srv",
+          "description": "run-srv",
+          "conflict": null
+         }
+        ],
+        "rule": [
+         {
+          "kind": "rule",
+          "name": "imp-fake1-ffb76a13",
+          "description": "deny tool web_fetch",
+          "conflict": null
+         },
+         {
+          "kind": "rule",
+          "name": "imp-fake1-3ae7438c",
+          "description": "ask command git *",
+          "conflict": null
+         }
+        ]
+       },
+       "notes": [],
+       "suggested_params": {
+        "instructions_mode": "own",
+        "keep": "adapter"
+       }
+      }
+     }
+    },
+    {
+     "op": "discover",
+     "args": {
+      "cid": "ghost"
+     },
+     "expect": {
+      "error": "NotFound",
+      "status": 404,
+      "code": "not_found",
+      "detail": "no such client: ghost",
+      "extra": {}
+     }
+    },
+    {
+     "op": "import_items",
+     "args": {
+      "client": "fake1",
+      "on_conflict": "skip"
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "results": [
+        {
+         "kind": "skill",
+         "name": "Bad Name",
+         "final_name": "bad-name",
+         "status": "renamed",
+         "detail": "renamed from 'Bad Name' to satisfy the id rules",
+         "gate": "missing",
+         "warnings": []
+        },
+        {
+         "kind": "skill",
+         "name": "native-skill",
+         "final_name": "native-skill",
+         "status": "created",
+         "detail": "",
+         "gate": "missing",
+         "warnings": []
+        },
+        {
+         "kind": "agent",
+         "name": "helper",
+         "final_name": "helper",
+         "status": "created",
+         "detail": "",
+         "warnings": []
+        },
+        {
+         "kind": "instruction",
+         "name": "native",
+         "final_name": "native",
+         "status": "created",
+         "detail": "",
+         "warnings": []
+        },
+        {
+         "kind": "mcp",
+         "name": "srv",
+         "final_name": "srv",
+         "status": "created",
+         "detail": "",
+         "warnings": []
+        },
+        {
+         "kind": "rule",
+         "name": "imp-fake1-ffb76a13",
+         "final_name": "imp-fake1-ffb76a13",
+         "status": "created",
+         "detail": "",
+         "warnings": []
+        },
+        {
+         "kind": "rule",
+         "name": "imp-fake1-3ae7438c",
+         "final_name": "imp-fake1-3ae7438c",
+         "status": "created",
+         "detail": "",
+         "warnings": []
+        }
+       ],
+       "adopted_live": 3,
+       "gate_mode": "advisory"
+      }
+     }
+    },
+    {
+     "op": "import_items",
+     "args": {
+      "client": "fake1",
+      "override_reason": "short"
+     },
+     "expect": {
+      "error": "Unprocessable",
+      "status": 422,
+      "code": "bad_override_reason",
+      "detail": "override_reason must be 10 to 500 characters",
+      "extra": {}
+     }
+    },
+    {
+     "op": "import_items",
+     "args": {
+      "client": "fake1",
+      "on_conflict": "nope"
+     },
+     "expect": {
+      "error": "BadRequest",
+      "status": 400,
+      "code": "bad_request",
+      "detail": "on_conflict must be skip, rename, replace or link",
+      "extra": {}
+     }
+    },
+    {
+     "op": "import_items",
+     "args": {
+      "client": "fake1",
+      "selection": [
+       [
+        "skill",
+        "native-skill"
+       ],
+       [
+        "skill",
+        "zzz"
+       ]
+      ],
+      "on_conflict": "rename"
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "results": [
+        {
+         "kind": "skill",
+         "name": "native-skill",
+         "final_name": "native-skill",
+         "status": "identical",
+         "detail": "",
+         "gate": "missing"
+        },
+        {
+         "kind": "skill",
+         "name": "zzz",
+         "final_name": "zzz",
+         "status": "error",
+         "detail": "not found in the client's discovered content"
+        }
+       ],
+       "adopted_live": 0,
+       "gate_mode": "advisory"
+      }
+     }
+    },
+    {
+     "op": "get_client",
+     "args": {
+      "cid": "fake1"
+     },
+     "expect": {
+      "ok": {
+       "id": "fake1",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {
+        "instructions_mode": "own",
+        "keep": "operator"
+       },
+       "strict": true,
+       "manage": {}
+      }
+     }
+    },
+    {
+     "op": "get_profile",
+     "args": {
+      "cid": "fake1"
+     },
+     "expect": {
+      "ok": {
+       "collections": [],
+       "enable": {
+        "skills": [
+         "bad-name",
+         "native-skill"
+        ],
+        "agents": [
+         "helper"
+        ],
+        "mcp": [
+         "srv"
+        ],
+        "instructions": [
+         "native"
+        ],
+        "rules": [
+         "imp-fake1-ffb76a13",
+         "imp-fake1-3ae7438c"
+        ],
+        "memory": []
+       },
+       "disable": {
+        "skills": [],
+        "agents": [],
+        "mcp": [],
+        "instructions": [],
+        "rules": [],
+        "memory": []
+       }
+      }
+     }
+    },
+    {
+     "op": "names",
+     "args": {
+      "kind": "skill"
+     },
+     "expect": {
+      "ok": [
+       "bad-name",
+       "native-skill"
+      ]
+     }
+    },
+    {
+     "op": "client_view",
+     "args": {
+      "cid": "fake1"
+     },
+     "expect": {
+      "ok": {
+       "id": "fake1",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {
+        "instructions_mode": "own",
+        "keep": "operator"
+       },
+       "strict": true,
+       "manage": {},
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false,
+       "observed_summary": null,
+       "adopted_at": "<time>",
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "item_detail",
+     "args": {
+      "kind": "skill",
+      "name": "native-skill"
+     },
+     "expect": {
+      "ok": {
+       "kind": "skill",
+       "name": "native-skill",
+       "title": "From client",
+       "description": "From client",
+       "tags": [],
+       "groups": [],
+       "collections": [],
+       "source": "import:fake1",
+       "valid": true,
+       "issues": [],
+       "updated": "<time>",
+       "enabled_for": [
+        "fake1"
+       ],
+       "meta": {
+        "name": "native-skill",
+        "description": "From client"
+       },
+       "body": "body\n",
+       "file_list": [
+        {
+         "path": "SKILL.md",
+         "size": 57,
+         "binary": false
+        },
+        {
+         "path": "x.txt",
+         "size": 1,
+         "binary": false
+        }
+       ],
+       "files": {
+        "SKILL.md": "---\nname: native-skill\ndescription: From client\n---\nbody\n",
+        "x.txt": "x"
+       },
+       "sidecar": {
+        "groups": [],
+        "tags": [],
+        "notes": "",
+        "source": "import:fake1",
+        "provenance": {
+         "client": "fake1",
+         "imported_at": "<time>",
+         "evaluation": {
+          "run_id": null,
+          "verdict": null,
+          "gate": "missing"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "op": "commit",
+     "args": {
+      "message": "imported"
+     },
+     "expect": {
+      "ok": null
+     }
+    },
+    {
+     "op": "client_view",
+     "args": {
+      "cid": "fake1"
+     },
+     "expect": {
+      "ok": {
+       "id": "fake1",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {
+        "instructions_mode": "own",
+        "keep": "operator"
+       },
+       "strict": true,
+       "manage": {},
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "pending_changes",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 3
+       },
+       "committed": true,
+       "observed_summary": null,
+       "adopted_at": "<time>",
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "effective",
+     "args": {
+      "cid": "fake1",
+      "source": "committed"
+     },
+     "expect": {
+      "ok": {
+       "client": "fake1",
+       "source": "committed",
+       "adapter": "fake",
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "manage": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "items": {
+        "agents": [
+         {
+          "name": "helper",
+          "via": [
+           "direct"
+          ]
+         }
+        ],
+        "instructions": [
+         {
+          "name": "native",
+          "via": [
+           "direct"
+          ]
+         }
+        ],
+        "mcp": [
+         {
+          "name": "srv",
+          "via": [
+           "direct"
+          ]
+         }
+        ],
+        "rules": [
+         {
+          "name": "imp-fake1-3ae7438c",
+          "via": [
+           "direct"
+          ]
+         },
+         {
+          "name": "imp-fake1-ffb76a13",
+          "via": [
+           "direct"
+          ]
+         }
+        ],
+        "skills": [
+         {
+          "name": "bad-name",
+          "via": [
+           "direct"
+          ]
+         },
+         {
+          "name": "native-skill",
+          "via": [
+           "direct"
+          ]
+         }
+        ]
+       },
+       "rules": [
+        {
+         "kind": "path_read",
+         "match": "~/.ssh/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.aws/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/gcloud/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.gnupg/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.netrc",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/google-chrome/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/chromium/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/BraveSoftware/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.mozilla/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/snap/firefox/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/snap/chromium/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.local/share/keyrings/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.docker/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.kube/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.git-credentials",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/gh/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.npmrc",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/agent-hub/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.local/share/agent-hub/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.config/agent-knowledge/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "~/.local/share/agent-knowledge/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "**/bootstrap-admin.key",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "**/admin.key",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "**/.env",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_read",
+         "match": "<base>/state/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.ssh/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.aws/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.config/gcloud/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.gnupg/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.netrc",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.config/agent-hub/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.local/share/agent-hub/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.config/agent-knowledge/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "~/.local/share/agent-knowledge/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "**/bootstrap-admin.key",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "**/admin.key",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "path_write",
+         "match": "<base>/state/**",
+         "decision": "deny",
+         "reason": "floor: secrets and credentials",
+         "source": "floor"
+        },
+        {
+         "kind": "tool",
+         "match": "web_search",
+         "decision": "deny",
+         "reason": "floor default",
+         "source": "floor"
+        },
+        {
+         "kind": "command",
+         "match": "git *",
+         "decision": "ask",
+         "reason": null,
+         "source": "profile"
+        },
+        {
+         "kind": "tool",
+         "match": "web_fetch",
+         "decision": "deny",
+         "reason": null,
+         "source": "profile"
+        }
+       ],
+       "default_tool_decision": "ask",
+       "network_default": "deny",
+       "mcp": [],
+       "egress": {
+        "default": "deny",
+        "allow_hosts": []
+       },
+       "findings": [
+        {
+         "code": "mcp_not_clean",
+         "severity": "error",
+         "message": "MCP server 'srv' has scan_status='unscanned'; it must be 'clean' (run your MCP scanner yourself, then `hubctl attest-mcp NAME`; edits to command/args/url/pinned_ref/transport, or a missing/foreign attestation, reset it)",
+         "item": "srv",
+         "concern": "mcp",
+         "rule": null
+        },
+        {
+         "code": "mcp_no_sandbox",
+         "severity": "error",
+         "message": "stdio MCP server 'srv' has no sandbox_profile (each MCP server runs in its own sandbox)",
+         "item": "srv",
+         "concern": "mcp",
+         "rule": null
+        }
+       ],
+       "diagnostics": [],
+       "warnings": []
+      }
+     }
+    }
+   ]
+  },
+  {
+   "name": "inbox",
+   "steps": [
+    {
+     "op": "put_client",
+     "args": {
+      "cid": "fake1",
+      "payload": {
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "roots": {
+        "home": "<base>/client-home"
+       }
+      },
+      "create": true
+     },
+     "expect": {
+      "ok": {
+       "id": "fake1",
+       "adapter": "fake",
+       "display_name": "Fake 1",
+       "description": "",
+       "roots": {
+        "home": "<base>/client-home"
+       },
+       "params": {},
+       "strict": true,
+       "manage": {},
+       "manage_effective": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": false,
+        "permissions": false,
+        "memory": false
+       },
+       "adapter_installed": true,
+       "caps": {
+        "skills": true,
+        "agents": true,
+        "instructions": true,
+        "mcp": true,
+        "permissions": true,
+        "egress": true,
+        "memory": false,
+        "tool_map": {
+         "read": "Read",
+         "shell": "Bash",
+         "browser": null
+        },
+        "model_tiers": {},
+        "notes": "fake"
+       },
+       "status": "never_applied",
+       "drift": {
+        "edited_outside": [],
+        "pending_changes": 0
+       },
+       "committed": false,
+       "observed_summary": null,
+       "adopted_at": null,
+       "last_applied_at": null,
+       "last_applied_plan": null,
+       "last_verified_at": null,
+       "last_verified_ok": null
+      }
+     }
+    },
+    {
+     "op": "inbox_add",
+     "args": {
+      "client": "fake1",
+      "title": "Remember the milk",
+      "body": "Buy milk\n",
+      "mtype": "user"
+     },
+     "save": "a",
+     "expect": {
+      "ok": {
+       "id": "${a}",
+       "client": "fake1",
+       "type": "user",
+       "title": "Remember the milk"
+      }
+     }
+    },
+    {
+     "op": "inbox_add",
+     "args": {
+      "client": "fake1",
+      "title": "Other",
+      "body": "text",
+      "mtype": "feedback"
+     },
+     "save": "b",
+     "expect": {
+      "ok": {
+       "id": "${b}",
+       "client": "fake1",
+       "type": "feedback",
+       "title": "Other"
+      }
+     }
+    },
+    {
+     "op": "inbox_list",
+     "args": {},
+     "expect": {
+      "ok": [
+       {
+        "id": "${a}",
+        "client": "fake1",
+        "type": "user",
+        "title": "Remember the milk",
+        "body": "Buy milk\n",
+        "created": "<time>",
+        "valid": true
+       },
+       {
+        "id": "${b}",
+        "client": "fake1",
+        "type": "feedback",
+        "title": "Other",
+        "body": "text",
+        "created": "<time>",
+        "valid": true
+       }
+      ]
+     }
+    },
+    {
+     "op": "inbox_list",
+     "args": {
+      "client": "fake1"
+     },
+     "expect": {
+      "ok": [
+       {
+        "id": "${a}",
+        "client": "fake1",
+        "type": "user",
+        "title": "Remember the milk",
+        "body": "Buy milk\n",
+        "created": "<time>",
+        "valid": true
+       },
+       {
+        "id": "${b}",
+        "client": "fake1",
+        "type": "feedback",
+        "title": "Other",
+        "body": "text",
+        "created": "<time>",
+        "valid": true
+       }
+      ]
+     }
+    },
+    {
+     "op": "inbox_list",
+     "args": {
+      "client": "../.."
+     },
+     "expect": {
+      "ok": []
+     }
+    },
+    {
+     "op": "inbox_promote",
+     "args": {
+      "iid": "${a}",
+      "edits": {
+       "title": "Milk fact"
+      }
+     },
+     "expect": {
+      "ok": {
+       "id": "${a}",
+       "promoted_from": "fake1/${a}"
+      }
+     }
+    },
+    {
+     "op": "item_detail",
+     "args": {
+      "kind": "memory",
+      "name": "${a}"
+     },
+     "expect": {
+      "ok": {
+       "kind": "memory",
+       "name": "${a}",
+       "title": "Milk fact",
+       "description": "Milk fact",
+       "tags": [],
+       "groups": [],
+       "collections": [],
+       "source": "",
+       "valid": true,
+       "issues": [],
+       "updated": "<time>",
+       "enabled_for": [],
+       "meta": {
+        "id": "${a}",
+        "type": "user",
+        "title": "Milk fact",
+        "tags": []
+       },
+       "body": "Buy milk\n"
+      }
+     }
+    },
+    {
+     "op": "inbox_reject",
+     "args": {
+      "iid": "${b}"
+     },
+     "expect": {
+      "ok": {
+       "id": "${b}",
+       "client": "fake1",
+       "rejected": true
+      }
+     }
+    },
+    {
+     "op": "inbox_reject",
+     "args": {
+      "iid": "${b}"
+     },
+     "expect": {
+      "error": "NotFound",
+      "status": 404,
+      "code": "not_found",
+      "detail": "no such inbox item: ${b}",
+      "extra": {}
+     }
+    },
+    {
+     "op": "inbox_list",
+     "args": {},
+     "expect": {
+      "ok": []
+     }
+    }
+   ]
+  }
+ ]
+}

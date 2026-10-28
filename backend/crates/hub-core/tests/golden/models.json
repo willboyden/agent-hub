@@ -1,0 +1,2774 @@
+[
+ {
+  "model": "HubMeta",
+  "input": {},
+  "ok": true,
+  "dump": {
+   "version": 1,
+   "name": "agent-hub-content"
+  },
+  "dump_exclude_none": {
+   "version": 1,
+   "name": "agent-hub-content"
+  }
+ },
+ {
+  "model": "HubMeta",
+  "input": {
+   "version": 2
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "version"
+    ],
+    "msg": "Input should be 1",
+    "type": "literal_error"
+   }
+  ],
+  "str": "1 validation error for HubMeta\nversion\n  Input should be 1 [type=literal_error, input_value=2, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+  "title": "HubMeta"
+ },
+ {
+  "model": "HubMeta",
+  "input": {
+   "version": 1,
+   "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Value error, longer than 300 characters",
+    "type": "value_error"
+   }
+  ],
+  "str": "1 validation error for HubMeta\nname\n  Value error, longer than 300 characters [type=value_error, input_value='xxxxxxxxxxxxxxxxxxxxxxxx...xxxxxxxxxxxxxxxxxxxxxxx', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+  "title": "HubMeta"
+ },
+ {
+  "model": "HubMeta",
+  "input": {
+   "extra": 1
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "extra"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "1 validation error for HubMeta\nextra\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "HubMeta"
+ },
+ {
+  "model": "SkillMeta",
+  "input": {
+   "name": "ok",
+   "description": "d",
+   "allowed-tools": "Read",
+   "x": {
+    "y": [
+     1,
+     null
+    ]
+   }
+  },
+  "ok": true,
+  "dump": {
+   "name": "ok",
+   "description": "d",
+   "allowed-tools": "Read",
+   "x": {
+    "y": [
+     1,
+     null
+    ]
+   }
+  },
+  "dump_exclude_none": {
+   "name": "ok",
+   "description": "d",
+   "allowed-tools": "Read",
+   "x": {
+    "y": [
+     1,
+     null
+    ]
+   }
+  }
+ },
+ {
+  "model": "SkillMeta",
+  "input": {
+   "name": "Bad Name",
+   "description": ""
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Value error, must match ^[a-z0-9][a-z0-9._-]{0,63}$",
+    "type": "value_error"
+   },
+   {
+    "loc": [
+     "description"
+    ],
+    "msg": "String should have at least 1 character",
+    "type": "string_too_short"
+   }
+  ],
+  "str": "2 validation errors for SkillMeta\nname\n  Value error, must match ^[a-z0-9][a-z0-9._-]{0,63}$ [type=value_error, input_value='Bad Name', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\ndescription\n  String should have at least 1 character [type=string_too_short, input_value='', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_too_short",
+  "title": "SkillMeta"
+ },
+ {
+  "model": "SkillMeta",
+  "input": {},
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "description"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   }
+  ],
+  "str": "2 validation errors for SkillMeta\nname\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ndescription\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing",
+  "title": "SkillMeta"
+ },
+ {
+  "model": "SkillMeta",
+  "input": {
+   "name": 5,
+   "description": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   },
+   {
+    "loc": [
+     "description"
+    ],
+    "msg": "String should have at most 1024 characters",
+    "type": "string_too_long"
+   }
+  ],
+  "str": "2 validation errors for SkillMeta\nname\n  Input should be a valid string [type=string_type, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type\ndescription\n  String should have at most 1024 characters [type=string_too_long, input_value='xxxxxxxxxxxxxxxxxxxxxxxx...xxxxxxxxxxxxxxxxxxxxxxx', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_too_long",
+  "title": "SkillMeta"
+ },
+ {
+  "model": "SkillMeta",
+  "input": "not a dict",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [],
+    "msg": "Input should be a valid dictionary or instance of SkillMeta",
+    "type": "model_type"
+   }
+  ],
+  "str": "1 validation error for SkillMeta\n  Input should be a valid dictionary or instance of SkillMeta [type=model_type, input_value='not a dict', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/model_type",
+  "title": "SkillMeta"
+ },
+ {
+  "model": "SkillMeta",
+  "input": null,
+  "ok": false,
+  "errors": [
+   {
+    "loc": [],
+    "msg": "Input should be a valid dictionary or instance of SkillMeta",
+    "type": "model_type"
+   }
+  ],
+  "str": "1 validation error for SkillMeta\n  Input should be a valid dictionary or instance of SkillMeta [type=model_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/model_type",
+  "title": "SkillMeta"
+ },
+ {
+  "model": "SkillMeta",
+  "input": [
+   1
+  ],
+  "ok": false,
+  "errors": [
+   {
+    "loc": [],
+    "msg": "Input should be a valid dictionary or instance of SkillMeta",
+    "type": "model_type"
+   }
+  ],
+  "str": "1 validation error for SkillMeta\n  Input should be a valid dictionary or instance of SkillMeta [type=model_type, input_value=[1], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.13/v/model_type",
+  "title": "SkillMeta"
+ },
+ {
+  "model": "Sidecar",
+  "input": {},
+  "ok": true,
+  "dump": {
+   "groups": [],
+   "tags": [],
+   "notes": "",
+   "source": "",
+   "provenance": {}
+  },
+  "dump_exclude_none": {
+   "groups": [],
+   "tags": [],
+   "notes": "",
+   "source": "",
+   "provenance": {}
+  }
+ },
+ {
+  "model": "Sidecar",
+  "input": {
+   "groups": [
+    "a",
+    "B"
+   ],
+   "tags": "x",
+   "notes": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "provenance": {
+    "k": 1
+   }
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "groups",
+     1
+    ],
+    "msg": "Value error, must match ^[a-z0-9][a-z0-9._-]{0,63}$",
+    "type": "value_error"
+   },
+   {
+    "loc": [
+     "tags"
+    ],
+    "msg": "Input should be a valid list",
+    "type": "list_type"
+   },
+   {
+    "loc": [
+     "notes"
+    ],
+    "msg": "String should have at most 2000 characters",
+    "type": "string_too_long"
+   }
+  ],
+  "str": "3 validation errors for Sidecar\ngroups.1\n  Value error, must match ^[a-z0-9][a-z0-9._-]{0,63}$ [type=value_error, input_value='B', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\ntags\n  Input should be a valid list [type=list_type, input_value='x', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type\nnotes\n  String should have at most 2000 characters [type=string_too_long, input_value='xxxxxxxxxxxxxxxxxxxxxxxx...xxxxxxxxxxxxxxxxxxxxxxx', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_too_long",
+  "title": "Sidecar"
+ },
+ {
+  "model": "InstructionMeta",
+  "input": {
+   "id": "a",
+   "title": "t",
+   "order": 5
+  },
+  "ok": true,
+  "dump": {
+   "id": "a",
+   "title": "t",
+   "order": 5,
+   "applies_to": [],
+   "tags": []
+  },
+  "dump_exclude_none": {
+   "id": "a",
+   "title": "t",
+   "order": 5,
+   "applies_to": [],
+   "tags": []
+  }
+ },
+ {
+  "model": "InstructionMeta",
+  "input": {
+   "id": "a",
+   "title": "t",
+   "order": "7"
+  },
+  "ok": true,
+  "dump": {
+   "id": "a",
+   "title": "t",
+   "order": 7,
+   "applies_to": [],
+   "tags": []
+  },
+  "dump_exclude_none": {
+   "id": "a",
+   "title": "t",
+   "order": 7,
+   "applies_to": [],
+   "tags": []
+  }
+ },
+ {
+  "model": "InstructionMeta",
+  "input": {
+   "id": "a",
+   "title": "t",
+   "order": 5.0
+  },
+  "ok": true,
+  "dump": {
+   "id": "a",
+   "title": "t",
+   "order": 5,
+   "applies_to": [],
+   "tags": []
+  },
+  "dump_exclude_none": {
+   "id": "a",
+   "title": "t",
+   "order": 5,
+   "applies_to": [],
+   "tags": []
+  }
+ },
+ {
+  "model": "InstructionMeta",
+  "input": {
+   "id": "a",
+   "title": "t",
+   "order": 5.5
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "order"
+    ],
+    "msg": "Input should be a valid integer, got a number with a fractional part",
+    "type": "int_from_float"
+   }
+  ],
+  "str": "1 validation error for InstructionMeta\norder\n  Input should be a valid integer, got a number with a fractional part [type=int_from_float, input_value=5.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_from_float",
+  "title": "InstructionMeta"
+ },
+ {
+  "model": "InstructionMeta",
+  "input": {
+   "id": "a",
+   "title": "t",
+   "order": true
+  },
+  "ok": true,
+  "dump": {
+   "id": "a",
+   "title": "t",
+   "order": 1,
+   "applies_to": [],
+   "tags": []
+  },
+  "dump_exclude_none": {
+   "id": "a",
+   "title": "t",
+   "order": 1,
+   "applies_to": [],
+   "tags": []
+  }
+ },
+ {
+  "model": "InstructionMeta",
+  "input": {
+   "id": "a",
+   "title": "t",
+   "order": 100001
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "order"
+    ],
+    "msg": "Input should be less than or equal to 100000",
+    "type": "less_than_equal"
+   }
+  ],
+  "str": "1 validation error for InstructionMeta\norder\n  Input should be less than or equal to 100000 [type=less_than_equal, input_value=100001, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal",
+  "title": "InstructionMeta"
+ },
+ {
+  "model": "InstructionMeta",
+  "input": {
+   "id": "a",
+   "title": "t",
+   "order": "x"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "order"
+    ],
+    "msg": "Input should be a valid integer, unable to parse string as an integer",
+    "type": "int_parsing"
+   }
+  ],
+  "str": "1 validation error for InstructionMeta\norder\n  Input should be a valid integer, unable to parse string as an integer [type=int_parsing, input_value='x', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_parsing",
+  "title": "InstructionMeta"
+ },
+ {
+  "model": "InstructionMeta",
+  "input": {
+   "id": "a",
+   "title": null
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "title"
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   }
+  ],
+  "str": "1 validation error for InstructionMeta\ntitle\n  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type",
+  "title": "InstructionMeta"
+ },
+ {
+  "model": "AgentMeta",
+  "input": {
+   "name": "a",
+   "description": "d",
+   "capabilities": [
+    "read",
+    "fly",
+    "swim"
+   ],
+   "model_tier": "huge",
+   "mode": "x",
+   "read_only": "yes"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "capabilities"
+    ],
+    "msg": "Value error, 2 unknown capability name(s); allowed: ['browser', 'edit', 'image', 'mcp', 'notebook', 'read', 'shell', 'subagent', 'todo', 'web_fetch', 'web_search', 'write']",
+    "type": "value_error"
+   },
+   {
+    "loc": [
+     "model_tier"
+    ],
+    "msg": "Input should be 'fast', 'standard' or 'deep'",
+    "type": "literal_error"
+   },
+   {
+    "loc": [
+     "mode"
+    ],
+    "msg": "Input should be 'subagent' or 'primary'",
+    "type": "literal_error"
+   }
+  ],
+  "str": "3 validation errors for AgentMeta\ncapabilities\n  Value error, 2 unknown capability name(s); allowed: ['browser', 'edit', 'image', 'mcp', 'notebook', 'read', 'shell', 'subagent', 'todo', 'web_fetch', 'web_search', 'write'] [type=value_error, input_value=['read', 'fly', 'swim'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\nmodel_tier\n  Input should be 'fast', 'standard' or 'deep' [type=literal_error, input_value='huge', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\nmode\n  Input should be 'subagent' or 'primary' [type=literal_error, input_value='x', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "AgentMeta",
+  "input": {
+   "name": "a",
+   "description": "d",
+   "read_only": "no",
+   "model_tier": null
+  },
+  "ok": true,
+  "dump": {
+   "name": "a",
+   "description": "d",
+   "capabilities": [],
+   "model_tier": null,
+   "mode": "subagent",
+   "read_only": false,
+   "tags": []
+  },
+  "dump_exclude_none": {
+   "name": "a",
+   "description": "d",
+   "capabilities": [],
+   "mode": "subagent",
+   "read_only": false,
+   "tags": []
+  }
+ },
+ {
+  "model": "AgentMeta",
+  "input": {
+   "name": "a",
+   "description": "d",
+   "read_only": 2
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "read_only"
+    ],
+    "msg": "Input should be a valid boolean, unable to interpret input",
+    "type": "bool_parsing"
+   }
+  ],
+  "str": "1 validation error for AgentMeta\nread_only\n  Input should be a valid boolean, unable to interpret input [type=bool_parsing, input_value=2, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_parsing",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "McpDoc",
+  "input": {
+   "name": "s",
+   "transport": "stdio"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [],
+    "msg": "Value error, stdio transport needs `command`",
+    "type": "value_error"
+   }
+  ],
+  "str": "1 validation error for McpDoc\n  Value error, stdio transport needs `command` [type=value_error, input_value={'name': 's', 'transport': 'stdio'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+  "title": "McpDoc"
+ },
+ {
+  "model": "McpDoc",
+  "input": {
+   "name": "s",
+   "transport": "http"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [],
+    "msg": "Value error, http transport needs `url`",
+    "type": "value_error"
+   }
+  ],
+  "str": "1 validation error for McpDoc\n  Value error, http transport needs `url` [type=value_error, input_value={'name': 's', 'transport': 'http'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+  "title": "McpDoc"
+ },
+ {
+  "model": "McpDoc",
+  "input": {
+   "name": "s",
+   "transport": "http",
+   "url": "ftp://x"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [],
+    "msg": "Value error, url must be http(s)",
+    "type": "value_error"
+   }
+  ],
+  "str": "1 validation error for McpDoc\n  Value error, url must be http(s) [type=value_error, input_value={'name': 's', 'transport'...http', 'url': 'ftp://x'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+  "title": "McpDoc"
+ },
+ {
+  "model": "McpDoc",
+  "input": {
+   "name": "s",
+   "transport": "stdio",
+   "command": "c",
+   "env_names": [
+    "lower"
+   ],
+   "egress_hosts": [
+    "a b"
+   ]
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "env_names"
+    ],
+    "msg": "Value error, env var NAMES expected, like API_TOKEN (values never live in the hub)",
+    "type": "value_error"
+   },
+   {
+    "loc": [
+     "egress_hosts"
+    ],
+    "msg": "Value error, invalid host pattern",
+    "type": "value_error"
+   }
+  ],
+  "str": "2 validation errors for McpDoc\nenv_names\n  Value error, env var NAMES expected, like API_TOKEN (values never live in the hub) [type=value_error, input_value=['lower'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\negress_hosts\n  Value error, invalid host pattern [type=value_error, input_value=['a b'], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+  "title": "McpDoc"
+ },
+ {
+  "model": "McpDoc",
+  "input": {
+   "name": "s",
+   "transport": "sse",
+   "url": "https://h/x",
+   "scan_status": "clean",
+   "args": [
+    "a",
+    1
+   ]
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "args",
+     1
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   }
+  ],
+  "str": "1 validation error for McpDoc\nargs.1\n  Input should be a valid string [type=string_type, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type",
+  "title": "McpDoc"
+ },
+ {
+  "model": "RuleDoc",
+  "input": {
+   "id": "r",
+   "title": "t",
+   "kind": "tool",
+   "match": "a\nb",
+   "decision": "allow"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "match"
+    ],
+    "msg": "Value error, control characters not allowed",
+    "type": "value_error"
+   }
+  ],
+  "str": "1 validation error for RuleDoc\nmatch\n  Value error, control characters not allowed [type=value_error, input_value='a\\nb', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+  "title": "RuleDoc"
+ },
+ {
+  "model": "RuleDoc",
+  "input": {
+   "id": "r",
+   "title": "t",
+   "kind": "nope",
+   "match": "",
+   "decision": "maybe"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "kind"
+    ],
+    "msg": "Input should be 'tool', 'command', 'path_read', 'path_write', 'egress_host' or 'mcp_server'",
+    "type": "literal_error"
+   },
+   {
+    "loc": [
+     "match"
+    ],
+    "msg": "String should have at least 1 character",
+    "type": "string_too_short"
+   },
+   {
+    "loc": [
+     "decision"
+    ],
+    "msg": "Input should be 'allow', 'ask' or 'deny'",
+    "type": "literal_error"
+   }
+  ],
+  "str": "3 validation errors for RuleDoc\nkind\n  Input should be 'tool', 'command', 'path_read', 'path_write', 'egress_host' or 'mcp_server' [type=literal_error, input_value='nope', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\nmatch\n  String should have at least 1 character [type=string_too_short, input_value='', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_too_short\ndecision\n  Input should be 'allow', 'ask' or 'deny' [type=literal_error, input_value='maybe', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+  "title": "RuleDoc"
+ },
+ {
+  "model": "MemoryMeta",
+  "input": {
+   "id": "m",
+   "type": "user",
+   "title": "t",
+   "tags": [
+    "ok"
+   ]
+  },
+  "ok": true,
+  "dump": {
+   "id": "m",
+   "type": "user",
+   "title": "t",
+   "tags": [
+    "ok"
+   ]
+  },
+  "dump_exclude_none": {
+   "id": "m",
+   "type": "user",
+   "title": "t",
+   "tags": [
+    "ok"
+   ]
+  }
+ },
+ {
+  "model": "InboxMeta",
+  "input": {
+   "id": "i",
+   "type": "user",
+   "title": "t",
+   "client": "c",
+   "created": 5
+  },
+  "ok": true,
+  "dump": {
+   "id": "i",
+   "type": "user",
+   "title": "t",
+   "client": "c",
+   "created": 5.0
+  },
+  "dump_exclude_none": {
+   "id": "i",
+   "type": "user",
+   "title": "t",
+   "client": "c",
+   "created": 5.0
+  }
+ },
+ {
+  "model": "CollectionDoc",
+  "input": {
+   "id": "c",
+   "title": "t",
+   "color": "red!",
+   "icon": "xxxxxxxxxxxxxxxxx",
+   "members": [
+    {
+     "kind": "skill",
+     "name": "a"
+    },
+    {
+     "kind": "skill",
+     "name": "a"
+    },
+    {
+     "kind": "bad",
+     "name": "b"
+    }
+   ]
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "icon"
+    ],
+    "msg": "String should have at most 16 characters",
+    "type": "string_too_long"
+   },
+   {
+    "loc": [
+     "color"
+    ],
+    "msg": "String should match pattern '^[#A-Za-z0-9-]*$'",
+    "type": "string_pattern_mismatch"
+   },
+   {
+    "loc": [
+     "members",
+     2,
+     "kind"
+    ],
+    "msg": "Input should be 'skill', 'agent', 'instruction', 'mcp', 'rule' or 'memory'",
+    "type": "literal_error"
+   }
+  ],
+  "str": "3 validation errors for CollectionDoc\nicon\n  String should have at most 16 characters [type=string_too_long, input_value='xxxxxxxxxxxxxxxxx', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_too_long\ncolor\n  String should match pattern '^[#A-Za-z0-9-]*$' [type=string_pattern_mismatch, input_value='red!', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_pattern_mismatch\nmembers.2.kind\n  Input should be 'skill', 'agent', 'instruction', 'mcp', 'rule' or 'memory' [type=literal_error, input_value='bad', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+  "title": "CollectionDoc"
+ },
+ {
+  "model": "ClientDoc",
+  "input": {
+   "id": "c",
+   "adapter": "generic",
+   "display_name": "x"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [],
+    "msg": "Value error, adapter 'generic' requires `spec`",
+    "type": "value_error"
+   }
+  ],
+  "str": "1 validation error for ClientDoc\n  Value error, adapter 'generic' requires `spec` [type=value_error, input_value={'id': 'c', 'adapter': 'g...c', 'display_name': 'x'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+  "title": "ClientDoc"
+ },
+ {
+  "model": "ClientDoc",
+  "input": {
+   "id": "c",
+   "adapter": "claude-code",
+   "display_name": "x",
+   "manage": {
+    "skills": true,
+    "nope": false
+   },
+   "roots": {
+    "project": "/tmp/p",
+    "Bad": "x"
+   },
+   "params": {
+    "a": null,
+    "b": [
+     null
+    ]
+   },
+   "icon": null
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "roots",
+     "Bad",
+     "[key]"
+    ],
+    "msg": "Value error, must match ^[a-z0-9][a-z0-9._-]{0,63}$",
+    "type": "value_error"
+   },
+   {
+    "loc": [
+     "manage"
+    ],
+    "msg": "Value error, unknown concern name(s); allowed: ['skills', 'agents', 'instructions', 'mcp', 'permissions', 'memory']",
+    "type": "value_error"
+   }
+  ],
+  "str": "2 validation errors for ClientDoc\nroots.Bad.[key]\n  Value error, must match ^[a-z0-9][a-z0-9._-]{0,63}$ [type=value_error, input_value='Bad', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error\nmanage\n  Value error, unknown concern name(s); allowed: ['skills', 'agents', 'instructions', 'mcp', 'permissions', 'memory'] [type=value_error, input_value={'skills': True, 'nope': False}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error",
+  "title": "ClientDoc"
+ },
+ {
+  "model": "ClientDoc",
+  "input": {
+   "id": "c",
+   "adapter": "claude-code",
+   "display_name": "x",
+   "strict": "false",
+   "manage": {
+    "skills": "yes"
+   }
+  },
+  "ok": true,
+  "dump": {
+   "id": "c",
+   "adapter": "claude-code",
+   "display_name": "x",
+   "description": "",
+   "roots": {},
+   "params": {},
+   "spec": null,
+   "strict": false,
+   "icon": null,
+   "color": null,
+   "manage": {
+    "skills": true
+   }
+  },
+  "dump_exclude_none": {
+   "id": "c",
+   "adapter": "claude-code",
+   "display_name": "x",
+   "description": "",
+   "roots": {},
+   "params": {},
+   "strict": false,
+   "manage": {
+    "skills": true
+   }
+  }
+ },
+ {
+  "model": "ProfileDoc",
+  "input": {
+   "collections": [
+    "a"
+   ],
+   "enable": {
+    "skills": [
+     "x"
+    ]
+   },
+   "disable": {
+    "nope": []
+   }
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "disable",
+     "nope"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "1 validation error for ProfileDoc\ndisable.nope\n  Extra inputs are not permitted [type=extra_forbidden, input_value=[], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "ProfileDoc"
+ },
+ {
+  "model": "ProfileDoc",
+  "input": {
+   "enable": "x"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "enable"
+    ],
+    "msg": "Input should be a valid dictionary or instance of Selection",
+    "type": "model_type"
+   }
+  ],
+  "str": "1 validation error for ProfileDoc\nenable\n  Input should be a valid dictionary or instance of Selection [type=model_type, input_value='x', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/model_type",
+  "title": "ProfileDoc"
+ },
+ {
+  "model": "KeyIn",
+  "input": {
+   "name": "k"
+  },
+  "ok": true,
+  "dump": {
+   "name": "k",
+   "role": "viewer",
+   "client": null,
+   "scopes": []
+  },
+  "dump_exclude_none": {
+   "name": "k",
+   "role": "viewer",
+   "scopes": []
+  }
+ },
+ {
+  "model": "KeyIn",
+  "input": {
+   "name": "k",
+   "role": "admin",
+   "scopes": "x"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "scopes"
+    ],
+    "msg": "Input should be a valid list",
+    "type": "list_type"
+   }
+  ],
+  "str": "1 validation error for KeyIn\nscopes\n  Input should be a valid list [type=list_type, input_value='x', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type",
+  "title": "KeyIn"
+ },
+ {
+  "model": "KeyIn",
+  "input": {},
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   }
+  ],
+  "str": "1 validation error for KeyIn\nname\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing",
+  "title": "KeyIn"
+ },
+ {
+  "model": "KeyIn",
+  "input": {
+   "name": "k",
+   "x": 1
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "x"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "1 validation error for KeyIn\nx\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "KeyIn"
+ },
+ {
+  "model": "ImportIn",
+  "input": {
+   "client": "c",
+   "items": [
+    {
+     "kind": "skill",
+     "name": "a"
+    }
+   ],
+   "on_conflict": null
+  },
+  "ok": true,
+  "dump": {
+   "client": "c",
+   "items": [
+    {
+     "kind": "skill",
+     "name": "a",
+     "on_conflict": null
+    }
+   ],
+   "on_conflict": null,
+   "enable": true,
+   "override_reason": null
+  },
+  "dump_exclude_none": {
+   "client": "c",
+   "items": [
+    {
+     "kind": "skill",
+     "name": "a"
+    }
+   ],
+   "enable": true
+  }
+ },
+ {
+  "model": "ImportIn",
+  "input": {
+   "client": "c",
+   "items": [
+    {
+     "kind": "skill"
+    }
+   ],
+   "enable": "maybe"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "items",
+     0,
+     "name"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "enable"
+    ],
+    "msg": "Input should be a valid boolean, unable to interpret input",
+    "type": "bool_parsing"
+   }
+  ],
+  "str": "2 validation errors for ImportIn\nitems.0.name\n  Field required [type=missing, input_value={'kind': 'skill'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nenable\n  Input should be a valid boolean, unable to interpret input [type=bool_parsing, input_value='maybe', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_parsing",
+  "title": "ImportIn"
+ },
+ {
+  "model": "ObservedImportIn",
+  "input": {
+   "items": [
+    {
+     "key": "k"
+    }
+   ],
+   "on_conflict": "merge"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "on_conflict"
+    ],
+    "msg": "Input should be 'skip', 'rename', 'replace' or 'link'",
+    "type": "literal_error"
+   }
+  ],
+  "str": "1 validation error for ObservedImportIn\non_conflict\n  Input should be 'skip', 'rename', 'replace' or 'link' [type=literal_error, input_value='merge', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+  "title": "ObservedImportIn"
+ },
+ {
+  "model": "RollbackIn",
+  "input": {
+   "force_paths": "x"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "force_paths"
+    ],
+    "msg": "Input should be a valid list",
+    "type": "list_type"
+   }
+  ],
+  "str": "1 validation error for RollbackIn\nforce_paths\n  Input should be a valid list [type=list_type, input_value='x', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type",
+  "title": "RollbackIn"
+ },
+ {
+  "model": "DuplicateIn",
+  "input": {},
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "new_name"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   }
+  ],
+  "str": "1 validation error for DuplicateIn\nnew_name\n  Field required [type=missing, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing",
+  "title": "DuplicateIn"
+ },
+ {
+  "model": "InboxIn",
+  "input": {
+   "client": "c",
+   "title": "t",
+   "body": "b"
+  },
+  "ok": true,
+  "dump": {
+   "client": "c",
+   "title": "t",
+   "body": "b",
+   "type": "reference"
+  },
+  "dump_exclude_none": {
+   "client": "c",
+   "title": "t",
+   "body": "b",
+   "type": "reference"
+  }
+ },
+ {
+  "model": "BulkIn",
+  "input": {
+   "items": [
+    {
+     "kind": "skill",
+     "name": "a"
+    }
+   ],
+   "add_tags": [
+    "x"
+   ]
+  },
+  "ok": true,
+  "dump": {
+   "items": [
+    {
+     "kind": "skill",
+     "name": "a"
+    }
+   ],
+   "add_to_collection": null,
+   "remove_from_collection": null,
+   "add_tags": [
+    "x"
+   ],
+   "remove_tags": []
+  },
+  "dump_exclude_none": {
+   "items": [
+    {
+     "kind": "skill",
+     "name": "a"
+    }
+   ],
+   "add_tags": [
+    "x"
+   ],
+   "remove_tags": []
+  }
+ },
+ {
+  "model": "ToggleIn",
+  "input": {
+   "client": "c",
+   "kind": "agent",
+   "name": "a",
+   "enabled": "true"
+  },
+  "ok": true,
+  "dump": {
+   "client": "c",
+   "kind": "agent",
+   "name": "a",
+   "enabled": true
+  },
+  "dump_exclude_none": {
+   "client": "c",
+   "kind": "agent",
+   "name": "a",
+   "enabled": true
+  }
+ },
+ {
+  "model": "ToggleIn",
+  "input": {
+   "client": "c",
+   "kind": "agents",
+   "name": "a",
+   "enabled": null
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "kind"
+    ],
+    "msg": "Input should be 'skill', 'agent', 'instruction', 'mcp', 'rule' or 'memory'",
+    "type": "literal_error"
+   },
+   {
+    "loc": [
+     "enabled"
+    ],
+    "msg": "Input should be a valid boolean",
+    "type": "bool_type"
+   }
+  ],
+  "str": "2 validation errors for ToggleIn\nkind\n  Input should be 'skill', 'agent', 'instruction', 'mcp', 'rule' or 'memory' [type=literal_error, input_value='agents', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\nenabled\n  Input should be a valid boolean [type=bool_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_type",
+  "title": "ToggleIn"
+ },
+ {
+  "model": "BulkToggleIn",
+  "input": {
+   "clients": "c",
+   "items": [],
+   "enabled": 1
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "clients"
+    ],
+    "msg": "Input should be a valid list",
+    "type": "list_type"
+   }
+  ],
+  "str": "1 validation error for BulkToggleIn\nclients\n  Input should be a valid list [type=list_type, input_value='c', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type",
+  "title": "BulkToggleIn"
+ },
+ {
+  "model": "AcceptIn",
+  "input": {
+   "ids": [
+    "a"
+   ],
+   "overrides": {
+    "a": {
+     "title": "x"
+    },
+    "b": 1
+   }
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "overrides",
+     "b"
+    ],
+    "msg": "Input should be a valid dictionary",
+    "type": "dict_type"
+   }
+  ],
+  "str": "1 validation error for AcceptIn\noverrides.b\n  Input should be a valid dictionary [type=dict_type, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/dict_type",
+  "title": "AcceptIn"
+ },
+ {
+  "model": "CommitIn",
+  "input": {
+   "message": 5
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "message"
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   }
+  ],
+  "str": "1 validation error for CommitIn\nmessage\n  Input should be a valid string [type=string_type, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type",
+  "title": "CommitIn"
+ },
+ {
+  "model": "DiscardIn",
+  "input": {
+   "paths": null,
+   "confirm": "1"
+  },
+  "ok": true,
+  "dump": {
+   "paths": null,
+   "confirm": true,
+   "dry_run": false
+  },
+  "dump_exclude_none": {
+   "confirm": true,
+   "dry_run": false
+  }
+ },
+ {
+  "model": "PlanIn",
+  "input": {
+   "clients": null
+  },
+  "ok": true,
+  "dump": {
+   "clients": null,
+   "source": "committed"
+  },
+  "dump_exclude_none": {
+   "source": "committed"
+  }
+ },
+ {
+  "model": "ApplyIn",
+  "input": {
+   "plan_id": "p",
+   "confirm": "on",
+   "adopt_paths": [
+    1
+   ]
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "adopt_paths",
+     0
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   }
+  ],
+  "str": "1 validation error for ApplyIn\nadopt_paths.0\n  Input should be a valid string [type=string_type, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type",
+  "title": "ApplyIn"
+ },
+ {
+  "model": "EvaluateIn",
+  "input": {
+   "tiers": "tier9"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "tiers"
+    ],
+    "msg": "Input should be 'static', 'tier1' or 'tier1+2'",
+    "type": "literal_error"
+   }
+  ],
+  "str": "1 validation error for EvaluateIn\ntiers\n  Input should be 'static', 'tier1' or 'tier1+2' [type=literal_error, input_value='tier9', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+  "title": "EvaluateIn"
+ },
+ {
+  "model": "RunIn",
+  "input": {
+   "subjects": [
+    "a"
+   ],
+   "select": "some",
+   "tiers": "tier1+2",
+   "force": "off"
+  },
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "select"
+    ],
+    "msg": "Input should be 'none_or_stale' or 'all'",
+    "type": "literal_error"
+   }
+  ],
+  "str": "1 validation error for RunIn\nselect\n  Input should be 'none_or_stale' or 'all' [type=literal_error, input_value='some', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+  "title": "RunIn"
+ },
+ {
+  "model": "HubMeta",
+  "yaml": "name: ok\ndescription: d\non: 1\nyes: 2\n5: x\n-3: y\n2.5: z\n~: n\na.b: 1\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "description"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     1
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     5
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     -3
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "2.5"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "None"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "a.b"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "7 validation errors for HubMeta\ndescription\n  Extra inputs are not permitted [type=extra_forbidden, input_value='d', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\n1\n  Keys should be strings [type=invalid_key, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n5\n  Keys should be strings [type=invalid_key, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n-3\n  Keys should be strings [type=invalid_key, input_value=-3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`2.5`\n  Keys should be strings [type=invalid_key, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\nNone\n  Keys should be strings [type=invalid_key, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`a.b`\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "HubMeta"
+ },
+ {
+  "model": "SkillMeta",
+  "yaml": "name: ok\ndescription: d\non: 1\nyes: 2\n5: x\n-3: y\n2.5: z\n~: n\na.b: 1\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     1
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     5
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     -3
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "2.5"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "None"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   }
+  ],
+  "str": "5 validation errors for SkillMeta\n1\n  Keys should be strings [type=invalid_key, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n5\n  Keys should be strings [type=invalid_key, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n-3\n  Keys should be strings [type=invalid_key, input_value=-3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`2.5`\n  Keys should be strings [type=invalid_key, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\nNone\n  Keys should be strings [type=invalid_key, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key",
+  "title": "SkillMeta"
+ },
+ {
+  "model": "Sidecar",
+  "yaml": "name: ok\ndescription: d\non: 1\nyes: 2\n5: x\n-3: y\n2.5: z\n~: n\na.b: 1\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     "description"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     1
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     5
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     -3
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "2.5"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "None"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "a.b"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "8 validation errors for Sidecar\nname\n  Extra inputs are not permitted [type=extra_forbidden, input_value='ok', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\ndescription\n  Extra inputs are not permitted [type=extra_forbidden, input_value='d', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\n1\n  Keys should be strings [type=invalid_key, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n5\n  Keys should be strings [type=invalid_key, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n-3\n  Keys should be strings [type=invalid_key, input_value=-3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`2.5`\n  Keys should be strings [type=invalid_key, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\nNone\n  Keys should be strings [type=invalid_key, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`a.b`\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "Sidecar"
+ },
+ {
+  "model": "InstructionMeta",
+  "yaml": "name: ok\ndescription: d\non: 1\nyes: 2\n5: x\n-3: y\n2.5: z\n~: n\na.b: 1\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "id"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "title"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     "description"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     1
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     5
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     -3
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "2.5"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "None"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "a.b"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "10 validation errors for InstructionMeta\nid\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ntitle\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nname\n  Extra inputs are not permitted [type=extra_forbidden, input_value='ok', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\ndescription\n  Extra inputs are not permitted [type=extra_forbidden, input_value='d', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\n1\n  Keys should be strings [type=invalid_key, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n5\n  Keys should be strings [type=invalid_key, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n-3\n  Keys should be strings [type=invalid_key, input_value=-3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`2.5`\n  Keys should be strings [type=invalid_key, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\nNone\n  Keys should be strings [type=invalid_key, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`a.b`\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "InstructionMeta"
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: ok\ndescription: d\non: 1\nyes: 2\n5: x\n-3: y\n2.5: z\n~: n\na.b: 1\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     1
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     5
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     -3
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "2.5"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "None"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "a.b"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "6 validation errors for AgentMeta\n1\n  Keys should be strings [type=invalid_key, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n5\n  Keys should be strings [type=invalid_key, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n-3\n  Keys should be strings [type=invalid_key, input_value=-3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`2.5`\n  Keys should be strings [type=invalid_key, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\nNone\n  Keys should be strings [type=invalid_key, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`a.b`\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "McpDoc",
+  "yaml": "name: ok\ndescription: d\non: 1\nyes: 2\n5: x\n-3: y\n2.5: z\n~: n\na.b: 1\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "transport"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "description"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     1
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     5
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     -3
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "2.5"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "None"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "a.b"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "8 validation errors for McpDoc\ntransport\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ndescription\n  Extra inputs are not permitted [type=extra_forbidden, input_value='d', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\n1\n  Keys should be strings [type=invalid_key, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n5\n  Keys should be strings [type=invalid_key, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n-3\n  Keys should be strings [type=invalid_key, input_value=-3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`2.5`\n  Keys should be strings [type=invalid_key, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\nNone\n  Keys should be strings [type=invalid_key, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`a.b`\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "McpDoc"
+ },
+ {
+  "model": "RuleDoc",
+  "yaml": "name: ok\ndescription: d\non: 1\nyes: 2\n5: x\n-3: y\n2.5: z\n~: n\na.b: 1\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "id"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "title"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "kind"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "match"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "decision"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     "description"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     1
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     5
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     -3
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "2.5"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "None"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "a.b"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "13 validation errors for RuleDoc\nid\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ntitle\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nkind\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nmatch\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ndecision\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nname\n  Extra inputs are not permitted [type=extra_forbidden, input_value='ok', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\ndescription\n  Extra inputs are not permitted [type=extra_forbidden, input_value='d', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\n1\n  Keys should be strings [type=invalid_key, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n5\n  Keys should be strings [type=invalid_key, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n-3\n  Keys should be strings [type=invalid_key, input_value=-3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`2.5`\n  Keys should be strings [type=invalid_key, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\nNone\n  Keys should be strings [type=invalid_key, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`a.b`\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "RuleDoc"
+ },
+ {
+  "model": "MemoryMeta",
+  "yaml": "name: ok\ndescription: d\non: 1\nyes: 2\n5: x\n-3: y\n2.5: z\n~: n\na.b: 1\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "id"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "type"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "title"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     "description"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     1
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     5
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     -3
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "2.5"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "None"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "a.b"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "11 validation errors for MemoryMeta\nid\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ntype\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ntitle\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nname\n  Extra inputs are not permitted [type=extra_forbidden, input_value='ok', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\ndescription\n  Extra inputs are not permitted [type=extra_forbidden, input_value='d', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\n1\n  Keys should be strings [type=invalid_key, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n5\n  Keys should be strings [type=invalid_key, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n-3\n  Keys should be strings [type=invalid_key, input_value=-3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`2.5`\n  Keys should be strings [type=invalid_key, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\nNone\n  Keys should be strings [type=invalid_key, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`a.b`\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "MemoryMeta"
+ },
+ {
+  "model": "InboxMeta",
+  "yaml": "name: ok\ndescription: d\non: 1\nyes: 2\n5: x\n-3: y\n2.5: z\n~: n\na.b: 1\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "id"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "type"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "title"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "client"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     "description"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     1
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     5
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     -3
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "2.5"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "None"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "a.b"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "12 validation errors for InboxMeta\nid\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ntype\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ntitle\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nclient\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nname\n  Extra inputs are not permitted [type=extra_forbidden, input_value='ok', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\ndescription\n  Extra inputs are not permitted [type=extra_forbidden, input_value='d', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\n1\n  Keys should be strings [type=invalid_key, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n5\n  Keys should be strings [type=invalid_key, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n-3\n  Keys should be strings [type=invalid_key, input_value=-3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`2.5`\n  Keys should be strings [type=invalid_key, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\nNone\n  Keys should be strings [type=invalid_key, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`a.b`\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "InboxMeta"
+ },
+ {
+  "model": "CollectionDoc",
+  "yaml": "name: ok\ndescription: d\non: 1\nyes: 2\n5: x\n-3: y\n2.5: z\n~: n\na.b: 1\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "id"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "title"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     1
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     5
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     -3
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "2.5"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "None"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "a.b"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "9 validation errors for CollectionDoc\nid\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ntitle\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nname\n  Extra inputs are not permitted [type=extra_forbidden, input_value='ok', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\n1\n  Keys should be strings [type=invalid_key, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n5\n  Keys should be strings [type=invalid_key, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n-3\n  Keys should be strings [type=invalid_key, input_value=-3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`2.5`\n  Keys should be strings [type=invalid_key, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\nNone\n  Keys should be strings [type=invalid_key, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`a.b`\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "CollectionDoc"
+ },
+ {
+  "model": "ClientDoc",
+  "yaml": "name: ok\ndescription: d\non: 1\nyes: 2\n5: x\n-3: y\n2.5: z\n~: n\na.b: 1\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "id"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "adapter"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "display_name"
+    ],
+    "msg": "Field required",
+    "type": "missing"
+   },
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     1
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     5
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     -3
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "2.5"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "None"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "a.b"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "10 validation errors for ClientDoc\nid\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nadapter\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\ndisplay_name\n  Field required [type=missing, input_value={'name': 'ok', 'descripti...z', None: 'n', 'a.b': 1}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nname\n  Extra inputs are not permitted [type=extra_forbidden, input_value='ok', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\n1\n  Keys should be strings [type=invalid_key, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n5\n  Keys should be strings [type=invalid_key, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n-3\n  Keys should be strings [type=invalid_key, input_value=-3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`2.5`\n  Keys should be strings [type=invalid_key, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\nNone\n  Keys should be strings [type=invalid_key, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`a.b`\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "ClientDoc"
+ },
+ {
+  "model": "ProfileDoc",
+  "yaml": "name: ok\ndescription: d\non: 1\nyes: 2\n5: x\n-3: y\n2.5: z\n~: n\na.b: 1\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "name"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     "description"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   },
+   {
+    "loc": [
+     1
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     5
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     -3
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "2.5"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "None"
+    ],
+    "msg": "Keys should be strings",
+    "type": "invalid_key"
+   },
+   {
+    "loc": [
+     "a.b"
+    ],
+    "msg": "Extra inputs are not permitted",
+    "type": "extra_forbidden"
+   }
+  ],
+  "str": "8 validation errors for ProfileDoc\nname\n  Extra inputs are not permitted [type=extra_forbidden, input_value='ok', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\ndescription\n  Extra inputs are not permitted [type=extra_forbidden, input_value='d', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden\n1\n  Keys should be strings [type=invalid_key, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n5\n  Keys should be strings [type=invalid_key, input_value=5, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n-3\n  Keys should be strings [type=invalid_key, input_value=-3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`2.5`\n  Keys should be strings [type=invalid_key, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\nNone\n  Keys should be strings [type=invalid_key, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/invalid_key\n`a.b`\n  Extra inputs are not permitted [type=extra_forbidden, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden",
+  "title": "ProfileDoc"
+ },
+ {
+  "model": "SkillMeta",
+  "yaml": "name: ok\ndescription: d\nextra_none: ~\nkept: {a: ~, b: [~]}\n",
+  "ok": true,
+  "dump": {
+   "name": "ok",
+   "description": "d",
+   "extra_none": null,
+   "kept": {
+    "a": null,
+    "b": [
+     null
+    ]
+   }
+  },
+  "dump_exclude_none": {
+   "name": "ok",
+   "description": "d",
+   "kept": {
+    "a": null,
+    "b": [
+     null
+    ]
+   }
+  }
+ },
+ {
+  "model": "Sidecar",
+  "yaml": "notes: ~\nprovenance: {k: ~}\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "notes"
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   }
+  ],
+  "str": "1 validation error for Sidecar\nnotes\n  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type",
+  "title": "Sidecar"
+ },
+ {
+  "model": "ClientDoc",
+  "yaml": "id: c\nadapter: generic\ndisplay_name: x\nparams: {1: a, on: b, ~: c}\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "params",
+     1,
+     "[key]"
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   },
+   {
+    "loc": [
+     "params",
+     "None",
+     "[key]"
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   }
+  ],
+  "str": "2 validation errors for ClientDoc\nparams.1.[key]\n  Input should be a valid string [type=string_type, input_value=1, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type\nparams.None.[key]\n  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type",
+  "title": "ClientDoc"
+ },
+ {
+  "model": "ClientDoc",
+  "yaml": "id: c\nadapter: generic\ndisplay_name: x\nmanage: {skills: yes, 3: no}\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "manage",
+     3,
+     "[key]"
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   }
+  ],
+  "str": "1 validation error for ClientDoc\nmanage.3.[key]\n  Input should be a valid string [type=string_type, input_value=3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type",
+  "title": "ClientDoc"
+ },
+ {
+  "model": "SkillMeta",
+  "yaml": "name: ok\ndescription: d\nx.y: 1\n",
+  "ok": true,
+  "dump": {
+   "name": "ok",
+   "description": "d",
+   "x.y": 1
+  },
+  "dump_exclude_none": {
+   "name": "ok",
+   "description": "d",
+   "x.y": 1
+  }
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: a\ndescription: d\nread_only: 2.0\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "read_only"
+    ],
+    "msg": "Input should be a valid boolean, unable to interpret input",
+    "type": "bool_parsing"
+   }
+  ],
+  "str": "1 validation error for AgentMeta\nread_only\n  Input should be a valid boolean, unable to interpret input [type=bool_parsing, input_value=2.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_parsing",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: a\ndescription: d\nread_only: 2.5\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "read_only"
+    ],
+    "msg": "Input should be a valid boolean",
+    "type": "bool_type"
+   }
+  ],
+  "str": "1 validation error for AgentMeta\nread_only\n  Input should be a valid boolean [type=bool_type, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_type",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: a\ndescription: d\nread_only: -1.0\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "read_only"
+    ],
+    "msg": "Input should be a valid boolean, unable to interpret input",
+    "type": "bool_parsing"
+   }
+  ],
+  "str": "1 validation error for AgentMeta\nread_only\n  Input should be a valid boolean, unable to interpret input [type=bool_parsing, input_value=-1.0, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_parsing",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: a\ndescription: d\nread_only: .nan\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "read_only"
+    ],
+    "msg": "Input should be a valid boolean",
+    "type": "bool_type"
+   }
+  ],
+  "str": "1 validation error for AgentMeta\nread_only\n  Input should be a valid boolean [type=bool_type, input_value=nan, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_type",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: a\ndescription: d\nread_only: .inf\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "read_only"
+    ],
+    "msg": "Input should be a valid boolean",
+    "type": "bool_type"
+   }
+  ],
+  "str": "1 validation error for AgentMeta\nread_only\n  Input should be a valid boolean [type=bool_type, input_value=inf, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_type",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: a\ndescription: d\nread_only: 1.0e+300\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "read_only"
+    ],
+    "msg": "Input should be a valid boolean",
+    "type": "bool_type"
+   }
+  ],
+  "str": "1 validation error for AgentMeta\nread_only\n  Input should be a valid boolean [type=bool_type, input_value=1e+300, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_type",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: a\ndescription: d\nread_only: 3\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "read_only"
+    ],
+    "msg": "Input should be a valid boolean, unable to interpret input",
+    "type": "bool_parsing"
+   }
+  ],
+  "str": "1 validation error for AgentMeta\nread_only\n  Input should be a valid boolean, unable to interpret input [type=bool_parsing, input_value=3, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_parsing",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: a\ndescription: d\nread_only: 1000000000000000000000000000000\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "read_only"
+    ],
+    "msg": "Input should be a valid boolean",
+    "type": "bool_type"
+   }
+  ],
+  "str": "1 validation error for AgentMeta\nread_only\n  Input should be a valid boolean [type=bool_type, input_value=1000000000000000000000000000000, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_type",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: a\ndescription: d\nread_only: 1.0\n",
+  "ok": true,
+  "dump": {
+   "name": "a",
+   "description": "d",
+   "capabilities": [],
+   "model_tier": null,
+   "mode": "subagent",
+   "read_only": true,
+   "tags": []
+  },
+  "dump_exclude_none": {
+   "name": "a",
+   "description": "d",
+   "capabilities": [],
+   "mode": "subagent",
+   "read_only": true,
+   "tags": []
+  }
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: a\ndescription: d\nread_only: !!binary eWVz\n",
+  "ok": true,
+  "dump": {
+   "name": "a",
+   "description": "d",
+   "capabilities": [],
+   "model_tier": null,
+   "mode": "subagent",
+   "read_only": true,
+   "tags": []
+  },
+  "dump_exclude_none": {
+   "name": "a",
+   "description": "d",
+   "capabilities": [],
+   "mode": "subagent",
+   "read_only": true,
+   "tags": []
+  }
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: a\ndescription: d\nread_only: !!binary /w==\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "read_only"
+    ],
+    "msg": "Input should be a valid boolean, unable to interpret input",
+    "type": "bool_parsing"
+   }
+  ],
+  "str": "1 validation error for AgentMeta\nread_only\n  Input should be a valid boolean, unable to interpret input [type=bool_parsing, input_value=b'\\xff', input_type=bytes]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_parsing",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "AgentMeta",
+  "yaml": "name: a\ndescription: d\nread_only: !!binary bWF5YmU=\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "read_only"
+    ],
+    "msg": "Input should be a valid boolean, unable to interpret input",
+    "type": "bool_parsing"
+   }
+  ],
+  "str": "1 validation error for AgentMeta\nread_only\n  Input should be a valid boolean, unable to interpret input [type=bool_parsing, input_value=b'maybe', input_type=bytes]\n    For further information visit https://errors.pydantic.dev/2.13/v/bool_parsing",
+  "title": "AgentMeta"
+ },
+ {
+  "model": "InstructionMeta",
+  "yaml": "id: a\ntitle: t\norder: 1000000000000000000000000000000\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "order"
+    ],
+    "msg": "Input should be less than or equal to 100000",
+    "type": "less_than_equal"
+   }
+  ],
+  "str": "1 validation error for InstructionMeta\norder\n  Input should be less than or equal to 100000 [type=less_than_equal, input_value=1000000000000000000000000000000, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal",
+  "title": "InstructionMeta"
+ },
+ {
+  "model": "InstructionMeta",
+  "yaml": "id: a\ntitle: t\norder: -1000000000000000000000000000000\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "order"
+    ],
+    "msg": "Input should be greater than or equal to -100000",
+    "type": "greater_than_equal"
+   }
+  ],
+  "str": "1 validation error for InstructionMeta\norder\n  Input should be greater than or equal to -100000 [type=greater_than_equal, input_value=-1000000000000000000000000000000, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal",
+  "title": "InstructionMeta"
+ },
+ {
+  "model": "InstructionMeta",
+  "yaml": "id: a\ntitle: t\norder: 1.0e+30\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "order"
+    ],
+    "msg": "Unable to parse input string as an integer, exceeded maximum size",
+    "type": "int_parsing_size"
+   }
+  ],
+  "str": "1 validation error for InstructionMeta\norder\n  Unable to parse input string as an integer, exceeded maximum size [type=int_parsing_size, input_value=1e+30, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_parsing_size",
+  "title": "InstructionMeta"
+ },
+ {
+  "model": "InstructionMeta",
+  "yaml": "id: a\ntitle: t\norder: '99999999999999999999'\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "order"
+    ],
+    "msg": "Input should be less than or equal to 100000",
+    "type": "less_than_equal"
+   }
+  ],
+  "str": "1 validation error for InstructionMeta\norder\n  Input should be less than or equal to 100000 [type=less_than_equal, input_value='99999999999999999999', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal",
+  "title": "InstructionMeta"
+ },
+ {
+  "model": "InstructionMeta",
+  "yaml": "id: a\ntitle: t\norder: '00042'\n",
+  "ok": true,
+  "dump": {
+   "id": "a",
+   "title": "t",
+   "order": 42,
+   "applies_to": [],
+   "tags": []
+  },
+  "dump_exclude_none": {
+   "id": "a",
+   "title": "t",
+   "order": 42,
+   "applies_to": [],
+   "tags": []
+  }
+ },
+ {
+  "model": "InstructionMeta",
+  "yaml": "id: a\ntitle: !!binary aGVsbG8=\n",
+  "ok": true,
+  "dump": {
+   "id": "a",
+   "title": "hello",
+   "order": 100,
+   "applies_to": [],
+   "tags": []
+  },
+  "dump_exclude_none": {
+   "id": "a",
+   "title": "hello",
+   "order": 100,
+   "applies_to": [],
+   "tags": []
+  }
+ },
+ {
+  "model": "InstructionMeta",
+  "yaml": "id: a\ntitle: !!binary /w==\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "title"
+    ],
+    "msg": "Input should be a valid string, unable to parse raw data as a unicode string",
+    "type": "string_unicode"
+   }
+  ],
+  "str": "1 validation error for InstructionMeta\ntitle\n  Input should be a valid string, unable to parse raw data as a unicode string [type=string_unicode, input_value=b'\\xff', input_type=bytes]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_unicode",
+  "title": "InstructionMeta"
+ },
+ {
+  "model": "ClientDoc",
+  "yaml": "id: c\nadapter: generic\ndisplay_name: x\nparams: {2024-01-02: a, 2.5: b, ~: c, yes: d, 100000000000000000000: e}\n",
+  "ok": false,
+  "errors": [
+   {
+    "loc": [
+     "params",
+     "datetime.date(2024, 1, 2)",
+     "[key]"
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   },
+   {
+    "loc": [
+     "params",
+     "2.5",
+     "[key]"
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   },
+   {
+    "loc": [
+     "params",
+     "None",
+     "[key]"
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   },
+   {
+    "loc": [
+     "params",
+     1,
+     "[key]"
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   },
+   {
+    "loc": [
+     "params",
+     "100000000000000000000",
+     "[key]"
+    ],
+    "msg": "Input should be a valid string",
+    "type": "string_type"
+   }
+  ],
+  "str": "5 validation errors for ClientDoc\nparams.`datetime.date(2024, 1, 2)`.[key]\n  Input should be a valid string [type=string_type, input_value=datetime.date(2024, 1, 2), input_type=date]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type\nparams.`2.5`.[key]\n  Input should be a valid string [type=string_type, input_value=2.5, input_type=float]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type\nparams.None.[key]\n  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type\nparams.1.[key]\n  Input should be a valid string [type=string_type, input_value=True, input_type=bool]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type\nparams.100000000000000000000.[key]\n  Input should be a valid string [type=string_type, input_value=100000000000000000000, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type",
+  "title": "ClientDoc"
+ }
+]

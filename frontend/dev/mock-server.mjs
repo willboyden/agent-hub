@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Dependency-free mock of the Agent Hub API plus a static host for the frontend. Response SHAPES mirror the backend source as read from
-// hub/backend/src/agent_hub (api/routers/*, services/hub.py, organize.py, importer.py, planner.py ...): where the architecture sketch and the
-// code differ, the code wins.
+// the Python backend this mock was written against (0.2.x; since 0.3.0 the same API is served by backend/crates/agent-hub: api/routes/*,
+// services/hub/*.rs, organize.rs, importer.rs, planner.rs ...): where the architecture sketch and the code differ, the code wins.
 // Usage: node dev/mock-server.mjs [--port 8794] [--host 127.0.0.1] [--empty] [--trust]      (MOCK_KEY=secret requires a bearer key)
 //        --proxy http://127.0.0.1:8792  forwards /api and /metrics to a real backend (screenshots only), keeping the static host.
 // Reproduced: RFC 7807 errors with `code`, {items,next_cursor} lists, X-Agent-Hub CSRF header (403), JSON-only bodies (415), body cap (413),
