@@ -1,6 +1,9 @@
 # Example spec: adjust to your client's current config format. Covers project AGENTS.md, and MCP servers
 # as [mcp_servers.<name>] tables in a config.toml. The TOML table is delivered as a hub marker block (no TOML key-merge exists).
 # `roots.codex_home` must be the directory that holds config.toml on your machine.
+# NOTE: if your Codex MCP rows authenticate with `http_headers` (e.g. an Authorization bearer), keep
+# `manage.mcp: false`: this spec's entry templates cannot express headers, and a managed row would
+# silently drop them and break auth. Turn MCP management on only for rows that need no auth.
 id: codex-cli
 adapter: generic
 display_name: Codex CLI (example spec)
