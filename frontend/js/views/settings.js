@@ -42,6 +42,10 @@ class AhSettings extends AhView {
       h('header', { class: 'card-head' }, h('h2', t('set.limits'))), h('div', { class: 'card-body' }, h('p', { class: 'hint' }, t('set.limits_hint')),
         ...Object.entries(inputs).map(([k, el]) => field(t(`set.f_${k}`), el, t(`set.f_${k}_hint`))), err, h('div', btn(t('common.save'), { icon: 'check', kind: 'primary', type: 'submit' })))) : null,
       this.gateCard(s),
+      h('section', { class: 'card' }, h('header', { class: 'card-head' }, h('h2', t('set.related'))), h('div', { class: 'card-body' },
+        // the loopback address is content, not code: it comes from i18n (the source tree itself
+        // must not reference any origin, see the hygiene test in tests/i18n-coverage.test.mjs)
+        h('p', { class: 'small' }, h('a', { href: t('set.related_ec_url'), target: '_blank', rel: 'noopener' }, t('set.related_ec')), ' — ', t('set.related_ec_hint')))),
       h('p', { class: 'note info' }, t('set.endpoints_where')));
   }
   // Import gate (F10): off = no check, advisory = show the gate, require = refuse unevaluated or blocked skills unless an override reason is given.
