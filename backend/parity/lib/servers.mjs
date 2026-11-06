@@ -19,18 +19,27 @@ const RUST_BIN = process.env.PARITY_RUST_BIN_DIR || join(REPO, 'backend', 'targe
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export const freePort = () => new Promise((resolve, reject) => {
-  const s = createServer();
-  s.once('error', reject);
-  s.listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => resolve(port)); });
-});
+export const freePort = () =>
+  new Promise((resolve, reject) => {
+    const s = createServer();
+    s.once('error', reject);
+    s.listen(0, '127.0.0.1', () => {
+      const { port } = s.address();
+      s.close(() => resolve(port));
+    });
+  });
 
 export function hubEnv(tmp, port, extra = {}) {
   return {
     PATH: `${join(PARITY, 'fake-bin')}:/usr/bin:/bin`,
-    HOME: join(tmp, 'home'), LANG: 'C.UTF-8', AGENT_HUB_ENV_FILE: join(tmp, 'no-env-file'),
-    HUB_PORT: String(port), HUB_DATA_DIR: join(tmp, 'data'), HUB_TRUST_LOOPBACK: 'false',
-    HUB_FRONTEND_DIR: join(REPO, 'frontend'), HUB_POLICY_FILE: join(REPO, 'policy', 'floor.yaml'),
+    HOME: join(tmp, 'home'),
+    LANG: 'C.UTF-8',
+    AGENT_HUB_ENV_FILE: join(tmp, 'no-env-file'),
+    HUB_PORT: String(port),
+    HUB_DATA_DIR: join(tmp, 'data'),
+    HUB_TRUST_LOOPBACK: 'false',
+    HUB_FRONTEND_DIR: join(REPO, 'frontend'),
+    HUB_POLICY_FILE: join(REPO, 'policy', 'floor.yaml'),
     ...extra,
   };
 }
@@ -49,7 +58,11 @@ export function resetTmp(tmp) {
  *  the same Python-seeded state, so the Rust server is also proven to open what Python wrote. */
 export function seedWithPython(env, seedImpl = 'python') {
   const rel = pythonRelease(refOf(seedImpl) ?? LAST_PYTHON_REF);
-  const r = spawnSync(join(rel.backend, '.venv', 'bin', 'hubctl'), ['init'], { cwd: rel.backend, env, encoding: 'utf8' });
+  const r = spawnSync(join(rel.backend, '.venv', 'bin', 'hubctl'), ['init'], {
+    cwd: rel.backend,
+    env,
+    encoding: 'utf8',
+  });
   if (r.status !== 0) throw new Error(`python hubctl init failed (${r.status}): ${(r.stdout + r.stderr).slice(-1500)}`);
 }
 
@@ -67,7 +80,11 @@ export function knowledgeCommand(impl, configFile) {
   const ref = refOf(impl);
   if (ref) {
     const rel = pythonRelease(ref);
-    return { cmd: join(rel.knowledge, '.venv', 'bin', 'python'), args: ['-I', '-m', 'agent_knowledge.main', '--config', configFile], cwd: rel.knowledge };
+    return {
+      cmd: join(rel.knowledge, '.venv', 'bin', 'python'),
+      args: ['-I', '-m', 'agent_knowledge.main', '--config', configFile],
+      cwd: rel.knowledge,
+    };
   }
   if (impl === 'rust') return { cmd: join(RUST_BIN, 'agent-knowledge'), args: ['--config', configFile], cwd: REPO };
   throw new Error(`unknown implementation ${impl} (rust, python or python@<ref>)`);
@@ -78,14 +95,20 @@ export async function startServer({ cmd, args, cwd }, env, port, probePath, host
   if (!existsSync(cmd)) throw new Error(`${cmd} missing (build or set up the implementation first)`);
   const proc = spawn(cmd, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = '';
-  proc.stdout.on('data', (d) => { log += d; });
-  proc.stderr.on('data', (d) => { log += d; });
+  proc.stdout.on('data', (d) => {
+    log += d;
+  });
+  proc.stderr.on('data', (d) => {
+    log += d;
+  });
   for (let i = 0; i < 200; i++) {
     if (proc.exitCode !== null) throw new Error(`${cmd} exited early (${proc.exitCode}):\n${log.slice(-2000)}`);
     try {
       await fetch(`http://${host}:${port}${probePath}`, { headers: { host: `127.0.0.1:${port}` } });
       return { proc, log: () => log };
-    } catch { await sleep(100); }
+    } catch {
+      await sleep(100);
+    }
   }
   proc.kill('SIGKILL');
   throw new Error(`${cmd} never answered on port ${port}:\n${log.slice(-2000)}`);

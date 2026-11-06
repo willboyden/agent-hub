@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Prettier 3.9.10 formats and checks the JS, CSS, HTML and JSON (`make fmt`, `make fmt-check` in `make all` and in
+  CI). It is the frontend's only devDependency (exact version, committed `package-lock.json`); the frontend still has
+  zero runtime dependencies and nothing of Prettier is served or built into a binary. Markdown, YAML, goldens,
+  fixtures and generated files are excluded (`.prettierignore`); the one-time reformat is listed in
+  `.git-blame-ignore-revs`.
+
 ## 0.4.0
 
 ### Fixed

@@ -39,11 +39,19 @@ test('dropPosition uses the vertical midpoint', () => {
   assert.equal(dropPosition(100, 40, 130), 'after');
 });
 
-test('renumber gives steps of 10 in order', () => assert.deepEqual(renumber(['x', 'y']), [{ id: 'x', order: 10 }, { id: 'y', order: 20 }]));
+test('renumber gives steps of 10 in order', () =>
+  assert.deepEqual(renumber(['x', 'y']), [
+    { id: 'x', order: 10 },
+    { id: 'y', order: 20 },
+  ]));
 
 test('addMembers appends only new (kind,name) pairs', () => {
   const cur = [{ kind: 'skill', name: 'a' }];
-  const out = addMembers(cur, [{ kind: 'skill', name: 'a' }, { kind: 'agent', name: 'a' }, { kind: 'agent', name: 'a' }]);
+  const out = addMembers(cur, [
+    { kind: 'skill', name: 'a' },
+    { kind: 'agent', name: 'a' },
+    { kind: 'agent', name: 'a' },
+  ]);
   assert.deepEqual(out.map(memberKey), ['skill/a', 'agent/a']);
   assert.equal(cur.length, 1);
 });

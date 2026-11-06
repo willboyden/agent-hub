@@ -29,11 +29,7 @@
         "accepts": "`off`, `advisory` or `require`.",
         "default": "advisory (or `HUB_EVAL_GATE`)",
         "effect": "At once, and kept in the hub's database across restarts (it then wins over `HUB_EVAL_GATE`).",
-        "choices": [
-          "off",
-          "advisory",
-          "require"
-        ]
+        "choices": ["off", "advisory", "require"]
       },
       "eval_gate_observed": {
         "what": "The same gate for skills imported from a client's observed inventory (Clients > Health > Observed), which is untrusted text taken from a live agent.",
@@ -41,11 +37,7 @@
         "accepts": "`off`, `advisory` or `require`.",
         "default": "require (or `HUB_EVAL_GATE_OBSERVED`)",
         "effect": "At once, and kept in the hub's database across restarts.",
-        "choices": [
-          "off",
-          "advisory",
-          "require"
-        ]
+        "choices": ["off", "advisory", "require"]
       },
       "eval_gate_min_tiers": {
         "what": "The weakest evaluation that counts for the gate. `static` needs no model; `tier1` and `tier1+2` also need the LLM pass of SkillEvaluator.",
@@ -53,11 +45,7 @@
         "accepts": "`static`, `tier1` or `tier1+2`.",
         "default": "static (or `HUB_EVAL_GATE_MIN_TIERS`)",
         "effect": "At once, and kept in the hub's database across restarts.",
-        "choices": [
-          "static",
-          "tier1",
-          "tier1+2"
-        ]
+        "choices": ["static", "tier1", "tier1+2"]
       }
     },
     "hub-env": {
@@ -284,11 +272,7 @@
         "accepts": "`off`, `advisory` or `require`.",
         "default": "advisory",
         "effect": "Read once at start: restart the hub after you install the file.",
-        "choices": [
-          "off",
-          "advisory",
-          "require"
-        ]
+        "choices": ["off", "advisory", "require"]
       },
       "HUB_EVAL_GATE_OBSERVED": {
         "what": "The default gate for skills from a client's observed inventory. A value saved in Settings > General wins over it.",
@@ -296,11 +280,7 @@
         "accepts": "`off`, `advisory` or `require`.",
         "default": "require",
         "effect": "Read once at start: restart the hub after you install the file.",
-        "choices": [
-          "off",
-          "advisory",
-          "require"
-        ]
+        "choices": ["off", "advisory", "require"]
       },
       "HUB_EVAL_GATE_MIN_TIERS": {
         "what": "The default weakest evaluation that counts. A value saved in Settings > General wins over it.",
@@ -308,11 +288,7 @@
         "accepts": "`static`, `tier1` or `tier1+2`.",
         "default": "static",
         "effect": "Read once at start: restart the hub after you install the file.",
-        "choices": [
-          "static",
-          "tier1",
-          "tier1+2"
-        ]
+        "choices": ["static", "tier1", "tier1+2"]
       },
       "HUB_ENABLE_METRICS": {
         "what": "Whether `/metrics` (Prometheus) is served. It needs a key like every API route.",
@@ -751,11 +727,7 @@
         "accepts": "`block`, `own` or `concat`.",
         "default": "block",
         "effect": "The next plan and apply use it; files already delivered change only when you apply again.",
-        "choices": [
-          "block",
-          "own",
-          "concat"
-        ]
+        "choices": ["block", "own", "concat"]
       },
       "spec.mcp": {
         "what": "Where MCP servers go: `root`, `file`, `format` (`json`, `yaml`, `toml`), `key_path`, `entry` templates per transport, `env_style`, `wrapper`.",
@@ -768,22 +740,14 @@
         "change": "Changes how the servers are merged into the file.",
         "accepts": "`json`, `yaml` or `toml`.",
         "effect": "The next plan and apply use it; files already delivered change only when you apply again.",
-        "choices": [
-          "json",
-          "yaml",
-          "toml"
-        ]
+        "choices": ["json", "yaml", "toml"]
       },
       "spec.mcp.env_style": {
         "what": "How environment variables are written: `dollar_brace` (`${NAME}`), `env_ref`, or `names_only`. Values never enter the hub.",
         "change": "Pick what the client understands.",
         "accepts": "`dollar_brace`, `env_ref` or `names_only`.",
         "effect": "The next plan and apply use it; files already delivered change only when you apply again.",
-        "choices": [
-          "dollar_brace",
-          "env_ref",
-          "names_only"
-        ]
+        "choices": ["dollar_brace", "env_ref", "names_only"]
       },
       "spec.permissions": {
         "what": "Where permission rules go: `root`, `file`, `format`, `lists` (decision to key path), `rule_templates`.",

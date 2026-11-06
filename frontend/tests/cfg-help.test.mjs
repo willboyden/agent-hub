@@ -17,12 +17,21 @@ test('the catalog document is well formed', () => {
   for (const [id, cat] of Object.entries(doc.catalogs)) {
     for (const [pat, e] of Object.entries(cat)) {
       const segs = pat.split('.');
-      assert.ok(segs.every((s) => s !== ''), `${id}: empty segment in '${pat}'`);
+      assert.ok(
+        segs.every((s) => s !== ''),
+        `${id}: empty segment in '${pat}'`
+      );
       assert.ok(!segs.slice(0, -1).includes('**'), `${id}: '**' must be last in '${pat}'`);
       assert.ok(typeof e.what === 'string' && e.what.length >= 10, `${id}.${pat}: what`);
-      assert.deepEqual(Object.keys(e).filter((k) => !ENTRY_KEYS.includes(k)), [], `${id}.${pat}: unknown keys`);
-      for (const k of ['change', 'accepts', 'default', 'effect']) if (k in e) assert.equal(typeof e[k], 'string', `${id}.${pat}.${k}`);
-      if ('choices' in e) assert.ok(Array.isArray(e.choices) && e.choices.every((c) => typeof c === 'string'), `${id}.${pat}.choices`);
+      assert.deepEqual(
+        Object.keys(e).filter((k) => !ENTRY_KEYS.includes(k)),
+        [],
+        `${id}.${pat}: unknown keys`
+      );
+      for (const k of ['change', 'accepts', 'default', 'effect'])
+        if (k in e) assert.equal(typeof e[k], 'string', `${id}.${pat}.${k}`);
+      if ('choices' in e)
+        assert.ok(Array.isArray(e.choices) && e.choices.every((c) => typeof c === 'string'), `${id}.${pat}.choices`);
       const all = ['what', 'change', 'accepts', 'default', 'effect'].map((k) => e[k] || '').join('');
       assert.equal((all.match(/`/g) || []).length % 2, 0, `${id}.${pat}: unbalanced backticks`);
       assert.doesNotMatch(all, /https?:\/\/(?!127\.0\.0\.1)/, `${id}.${pat}: external URL`);
@@ -31,7 +40,10 @@ test('the catalog document is well formed', () => {
 });
 
 test('matchScore and lookupHelp: literal beats wildcard, # matches list indexes, ** the rest, env names ignore case', () => {
-  assert.ok(matchScore(['spec', 'mcp', 'format'], ['spec', 'mcp', 'format']) > matchScore(['spec', '*', 'format'], ['spec', 'mcp', 'format']));
+  assert.ok(
+    matchScore(['spec', 'mcp', 'format'], ['spec', 'mcp', 'format']) >
+      matchScore(['spec', '*', 'format'], ['spec', 'mcp', 'format'])
+  );
   assert.equal(matchScore(['a', '#'], ['a', 'x']), -1);
   assert.ok(matchScore(['a', '#'], ['a', 0]) > 0);
   assert.ok(matchScore(['spec', '**'], ['spec', 'x', 'y']) > 0);
@@ -51,11 +63,15 @@ test('every setting the hub reads from its env file has help (config.rs settings
   assert.ok(names.length >= 30, `${names.length} settings parsed`);
   const cat = catalogFor(doc, 'hub-env');
   for (const n of names) {
-    const keys = n === 'knowledge_admin_key_file' ? ['KNOWLEDGE_ADMIN_KEY_FILE', 'HUB_KNOWLEDGE_ADMIN_KEY_FILE'] : [`HUB_${n.toUpperCase()}`];
+    const keys =
+      n === 'knowledge_admin_key_file'
+        ? ['KNOWLEDGE_ADMIN_KEY_FILE', 'HUB_KNOWLEDGE_ADMIN_KEY_FILE']
+        : [`HUB_${n.toUpperCase()}`];
     for (const k of keys) assert.ok(lookupHelp(cat, [k]), `hub-env: ${k}`);
   }
   // the template lists only names the hub reads, each with help
-  for (const m of repo('deploy/agent-hub.env.example').matchAll(/^(?:# )?([A-Z_]+)=/gm)) assert.ok(lookupHelp(cat, [m[1]]), `template ${m[1]}`);
+  for (const m of repo('deploy/agent-hub.env.example').matchAll(/^(?:# )?([A-Z_]+)=/gm))
+    assert.ok(lookupHelp(cat, [m[1]]), `template ${m[1]}`);
 });
 
 test('every key of the knowledge service config has help (hub_core::knowledge_config fields)', () => {
@@ -73,7 +89,12 @@ test('every key of the knowledge service config has help (hub_core::knowledge_co
 });
 
 test('every key of the example client specs and the policy floor has help', () => {
-  const pairs = [['client-spec', 'examples/clients/cursor.yaml'], ['client-spec', 'examples/clients/codex-cli.yaml'], ['client-spec', 'examples/clients/gemini-cli.yaml'], ['floor', 'policy/floor.yaml']];
+  const pairs = [
+    ['client-spec', 'examples/clients/cursor.yaml'],
+    ['client-spec', 'examples/clients/codex-cli.yaml'],
+    ['client-spec', 'examples/clients/gemini-cli.yaml'],
+    ['floor', 'policy/floor.yaml'],
+  ];
   for (const [id, f] of pairs) {
     const r = parseConfig('yaml', repo(f));
     assert.ok(r.root, `${f}: ${r.unsupported || JSON.stringify(r.errors)}`);
@@ -84,7 +105,11 @@ test('every key of the example client specs and the policy floor has help', () =
 
 test('the Settings > General fields all have help', () => {
   const src = readFileSync(new URL('../js/views/settings.js', import.meta.url), 'utf8');
-  const keys = [...src.matchAll(/(plan_retention|inbox_max_per_client|inbox_rate_per_min|eval_gate_observed|eval_gate_min_tiers|eval_gate)\b/g)].map((m) => m[1]);
+  const keys = [
+    ...src.matchAll(
+      /(plan_retention|inbox_max_per_client|inbox_rate_per_min|eval_gate_observed|eval_gate_min_tiers|eval_gate)\b/g
+    ),
+  ].map((m) => m[1]);
   const cat = catalogFor(doc, 'settings');
   for (const k of new Set(keys)) {
     const e = lookupHelp(cat, [k]);

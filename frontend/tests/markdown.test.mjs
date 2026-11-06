@@ -11,12 +11,29 @@ test('escapes raw HTML before anything else', () => {
 
 test('XSS corpus never yields live script/handler/js-url markup', () => {
   const corpus = [
-    '<script>alert(1)</script>', '<img src=x onerror=alert(1)>', '<svg onload=alert(1)>', '"><script>x</script>',
-    '[x](javascript:alert(1))', '[x](JaVaScRiPt:alert(1))', '[x]( javascript:alert(1))', '[x](data:text/html;base64,PHNjcmlwdD4=)',
-    '[x](vbscript:msgbox)', '[x](//evil.example/x)', '[x](&#106;avascript:alert(1))', '[x](java\tscript:alert(1))',
-    '`<script>`', '```html\n<script>alert(1)</script>\n```', '![x](javascript:alert(1))', '**<b onmouseover=alert(1)>x</b>**',
-    '[a](https://e.com" onmouseover="alert(1))', '> <iframe src=javascript:alert(1)>', '| <script> |\n|---|\n| <img onerror=x> |',
-    '# <script>', '- <script>', '[<img src=x onerror=alert(1)>](https://e.com)', '\u0000<script>\u0000',
+    '<script>alert(1)</script>',
+    '<img src=x onerror=alert(1)>',
+    '<svg onload=alert(1)>',
+    '"><script>x</script>',
+    '[x](javascript:alert(1))',
+    '[x](JaVaScRiPt:alert(1))',
+    '[x]( javascript:alert(1))',
+    '[x](data:text/html;base64,PHNjcmlwdD4=)',
+    '[x](vbscript:msgbox)',
+    '[x](//evil.example/x)',
+    '[x](&#106;avascript:alert(1))',
+    '[x](java\tscript:alert(1))',
+    '`<script>`',
+    '```html\n<script>alert(1)</script>\n```',
+    '![x](javascript:alert(1))',
+    '**<b onmouseover=alert(1)>x</b>**',
+    '[a](https://e.com" onmouseover="alert(1))',
+    '> <iframe src=javascript:alert(1)>',
+    '| <script> |\n|---|\n| <img onerror=x> |',
+    '# <script>',
+    '- <script>',
+    '[<img src=x onerror=alert(1)>](https://e.com)',
+    '\u0000<script>\u0000',
   ];
   for (const c of corpus) {
     const out = renderMarkdown(c);
@@ -31,7 +48,10 @@ test('XSS corpus never yields live script/handler/js-url markup', () => {
 
 test('safe links become anchors with rel=noopener', () => {
   const out = renderMarkdown('[docs](https://example.com/a?b=1&c=2)');
-  assert.match(out, /<a href="https:\/\/example.com\/a\?b=1&amp;c=2" target="_blank" rel="noopener noreferrer">docs<\/a>/);
+  assert.match(
+    out,
+    /<a href="https:\/\/example.com\/a\?b=1&amp;c=2" target="_blank" rel="noopener noreferrer">docs<\/a>/
+  );
 });
 
 test('attribute-breaking quotes in URLs are escaped', () => {
@@ -41,7 +61,10 @@ test('attribute-breaking quotes in URLs are escaped', () => {
 });
 
 test('inline formatting', () => {
-  assert.equal(renderMarkdown('**b** *i* `c` ~~s~~'), '<p><strong>b</strong> <em>i</em> <code>c</code> <del>s</del></p>');
+  assert.equal(
+    renderMarkdown('**b** *i* `c` ~~s~~'),
+    '<p><strong>b</strong> <em>i</em> <code>c</code> <del>s</del></p>'
+  );
 });
 
 test('inline code content is not formatted and stays escaped', () => {
@@ -97,8 +120,20 @@ test('copy label is escaped', () => {
 
 test('link URLs: protocol-relative, backslash and script schemes are never turned into links', () => {
   const link = (u) => renderMarkdown(`[x](${u})`);
-  for (const bad of ['/\\evil.example', '//evil.example', '\\\\evil.example', '/a\\b', 'javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'javascript&#58;alert(1)', '&#106;avascript:alert(1)', 'data:text/html,x', 'vbscript:x']) {
+  for (const bad of [
+    '/\\evil.example',
+    '//evil.example',
+    '\\\\evil.example',
+    '/a\\b',
+    'javascript:alert(1)',
+    'JaVaScRiPt:alert(1)',
+    'javascript&#58;alert(1)',
+    '&#106;avascript:alert(1)',
+    'data:text/html,x',
+    'vbscript:x',
+  ]) {
     assert.ok(!/<a /.test(link(bad)), `linked: ${bad} -> ${link(bad)}`);
   }
-  for (const good of ['/docs/page', 'https://example.com/x', '#anchor', 'mailto:a@b.example']) assert.match(link(good), /<a href=/, good);
+  for (const good of ['/docs/page', 'https://example.com/x', '#anchor', 'mailto:a@b.example'])
+    assert.match(link(good), /<a href=/, good);
 });

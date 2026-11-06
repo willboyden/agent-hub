@@ -1,6 +1,8 @@
 // Tiny i18n: flat dotted keys, {var} interpolation, and _one/_other plural selection via vars.count.
 let messages = {};
-export function setMessages(m) { messages = m || {}; }
+export function setMessages(m) {
+  messages = m || {};
+}
 export async function loadMessages(url = 'i18n/en.json') {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`i18n load failed: ${r.status}`);

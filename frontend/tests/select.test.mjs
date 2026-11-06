@@ -43,6 +43,7 @@ test('range only covers currently visible ids', () => {
 
 test('pruneSelection drops ids that are no longer visible; selectAll', () => {
   const p = pruneSelection(S(['a', 'z'], 'z'), order);
-  assert.deepEqual([...p.ids], ['a']); assert.equal(p.anchor, null);
+  assert.deepEqual([...p.ids], ['a']);
+  assert.equal(p.anchor, null);
   assert.equal(selectAll(order).ids.size, 5);
 });

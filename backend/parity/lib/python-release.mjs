@@ -45,17 +45,33 @@ export function pythonRelease(ref = LAST_PYTHON_REF) {
     }
     return out;
   }
-  const sha = run('git', ['-C', REPO, 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`]).toString().trim();
+  const sha = run('git', ['-C', REPO, 'rev-parse', '--verify', '--quiet', `${ref}^{commit}`])
+    .toString()
+    .trim();
   const root = join(REPO, 'backend', 'target', 'python-release', sha);
   const out = { root, backend: join(root, 'backend'), knowledge: join(root, 'knowledge') };
   if (existsSync(join(root, '.ready'))) return out;
   rmSync(root, { recursive: true, force: true });
   mkdirSync(root, { recursive: true });
-  const tar = run('git', ['-C', REPO, 'archive', '--format=tar', sha, '--', 'backend', 'knowledge', 'policy', 'deploy']);
+  const tar = run('git', [
+    '-C',
+    REPO,
+    'archive',
+    '--format=tar',
+    sha,
+    '--',
+    'backend',
+    'knowledge',
+    'policy',
+    'deploy',
+  ]);
   run('tar', ['-x', '-C', root], { input: tar });
   for (const pkg of [out.backend, out.knowledge]) {
     if (!existsSync(join(pkg, 'pyproject.toml'))) throw new Error(`${ref} has no Python package at ${pkg}`);
-    run('uv', ['sync', '--frozen', '--python', '3.13'], { cwd: pkg, env: { UV_PYTHON_DOWNLOADS: 'never', ...process.env } });
+    run('uv', ['sync', '--frozen', '--python', '3.13'], {
+      cwd: pkg,
+      env: { UV_PYTHON_DOWNLOADS: 'never', ...process.env },
+    });
   }
   writeFileSync(join(root, '.ready'), `${ref}\n`);
   return out;

@@ -1,6 +1,22 @@
 // REST client for /api/v1 (ARCHITECTURE §5). RFC 7807 problem+json errors become ApiError; every non-GET sends X-Agent-Hub: 1.
 import { maskEnvSecrets } from './cfg-parse.js';
-import { normalizeItem, normalizeMatrix, normalizeChanges, normalizeHistory, normalizeClient, normalizeEffective, normalizeDrift, normalizeApply, normalizeDiscover, normalizeImportResult, normalizeSettings, normalizeAudit, normalizeInbox, normalizeSuggestion, normalizeBackends } from './adapt.js';
+import {
+  normalizeItem,
+  normalizeMatrix,
+  normalizeChanges,
+  normalizeHistory,
+  normalizeClient,
+  normalizeEffective,
+  normalizeDrift,
+  normalizeApply,
+  normalizeDiscover,
+  normalizeImportResult,
+  normalizeSettings,
+  normalizeAudit,
+  normalizeInbox,
+  normalizeSuggestion,
+  normalizeBackends,
+} from './adapt.js';
 
 export class ApiError extends Error {
   constructor(status, problem = {}) {
@@ -12,8 +28,12 @@ export class ApiError extends Error {
     this.problem = problem;
   }
   // True only for a 401 from the hub itself: this is the ONLY condition that may open the API-key dialog.
-  get isHubAuth() { return this.status === 401 && !KNOWLEDGE_CODES.has(this.code) && !String(this.code || '').startsWith('knowledge_'); }
-  get isKnowledgeSetup() { return KNOWLEDGE_CODES.has(this.code); }
+  get isHubAuth() {
+    return this.status === 401 && !KNOWLEDGE_CODES.has(this.code) && !String(this.code || '').startsWith('knowledge_');
+  }
+  get isKnowledgeSetup() {
+    return KNOWLEDGE_CODES.has(this.code);
+  }
 }
 
 // Error codes the hub uses when the KNOWLEDGE service (not the hub) refuses or is unreachable. They must never be mistaken for a hub 401.
@@ -22,7 +42,14 @@ export const CSRF_HEADER = 'X-Agent-Hub';
 export const SAFE_METHODS = new Set(['GET', 'HEAD']);
 export const KINDS = ['skill', 'agent', 'instruction', 'mcp', 'rule', 'memory'];
 // Path segment per kind (contract §5: /skills /agents /instructions /mcp /rules /memory).
-export const KIND_PATH = { skill: 'skills', agent: 'agents', instruction: 'instructions', mcp: 'mcp', rule: 'rules', memory: 'memory' };
+export const KIND_PATH = {
+  skill: 'skills',
+  agent: 'agents',
+  instruction: 'instructions',
+  mcp: 'mcp',
+  rule: 'rules',
+  memory: 'memory',
+};
 
 export function buildQuery(query) {
   const p = new URLSearchParams();
@@ -39,14 +66,20 @@ const arr = (x) => (Array.isArray(x) ? x : []);
 
 export function createClient({ base = '/api/v1', getKey = () => null, onUnauthorized = () => {}, fetchImpl } = {}) {
   const f = (...a) => (fetchImpl || globalThis.fetch)(...a);
-  const authHeaders = () => { const k = getKey(); return k ? { Authorization: `Bearer ${k}` } : {}; };
+  const authHeaders = () => {
+    const k = getKey();
+    return k ? { Authorization: `Bearer ${k}` } : {};
+  };
   const url = (path, query) => `${base}${path}${buildQuery(query)}`;
   // After the hub's own 401 nothing is sent with the same key (or with none) until the user signs in again: views poll
   // on timers, and a signed-out tab used to send the refused requests forever. /health stays open (public; it reports
   // the role). A knowledge-service refusal (not isHubAuth) never holds anything.
   let authHeld = false;
   let heldKey = null;
-  const clearAuthHold = () => { authHeld = false; heldKey = null; };
+  const clearAuthHold = () => {
+    authHeld = false;
+    heldKey = null;
+  };
 
   async function raw(method, path, { query, body, signal, headers } = {}) {
     if (authHeld && path !== '/health' && (getKey() || null) === heldKey) {
@@ -57,15 +90,34 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
     // CSRF / DNS-rebinding guard: a custom header a cross-site form or <img> cannot set.
     if (!SAFE_METHODS.has(method.toUpperCase())) h[CSRF_HEADER] = '1';
     let payload;
-    if (body !== undefined) { h['Content-Type'] = 'application/json'; payload = JSON.stringify(body); }
+    if (body !== undefined) {
+      h['Content-Type'] = 'application/json';
+      payload = JSON.stringify(body);
+    }
     let res;
-    try { res = await f(url(path, query), { method, headers: h, body: payload, signal }); }
-    catch (e) { if (e?.name === 'AbortError') throw e; throw new ApiError(0, { title: 'Network error', detail: e?.message || 'Cannot reach the Agent Hub backend', code: 'network' }); }
+    try {
+      res = await f(url(path, query), { method, headers: h, body: payload, signal });
+    } catch (e) {
+      if (e?.name === 'AbortError') throw e;
+      throw new ApiError(0, {
+        title: 'Network error',
+        detail: e?.message || 'Cannot reach the Agent Hub backend',
+        code: 'network',
+      });
+    }
     if (!res.ok) {
       let problem = {};
-      try { problem = await res.json(); } catch { /* not json */ }
+      try {
+        problem = await res.json();
+      } catch {
+        /* not json */
+      }
       const err = new ApiError(res.status, problem);
-      if (err.isHubAuth) { authHeld = true; heldKey = getKey() || null; onUnauthorized(); }
+      if (err.isHubAuth) {
+        authHeld = true;
+        heldKey = getKey() || null;
+        onUnauthorized();
+      }
       throw err;
     }
     clearAuthHold();
@@ -98,7 +150,16 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
   const kp = (kind) => KIND_PATH[kind] || kind;
 
   return {
-    url, authHeaders, raw, request, get, post, put, del, listAll, clearAuthHold,
+    url,
+    authHeaders,
+    raw,
+    request,
+    get,
+    post,
+    put,
+    del,
+    listAll,
+    clearAuthHold,
     health: () => get('/health'),
     adapters: () => listAll('/adapters'),
     adapter: (id) => get(`/adapters/${enc(id)}`),
@@ -111,7 +172,8 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
     discoverClient: async (id) => normalizeDiscover(await post(`/clients/${enc(id)}/discover`)),
     importItems: async (body) => normalizeImportResult(await post('/import', body)),
     rendered: (id, kind, name) => get(`/clients/${enc(id)}/rendered`, { kind, name }),
-    effective: async (id, source) => normalizeEffective(await get(`/clients/${enc(id)}/effective`, source ? { source } : undefined)),
+    effective: async (id, source) =>
+      normalizeEffective(await get(`/clients/${enc(id)}/effective`, source ? { source } : undefined)),
     verify: (id) => post(`/clients/${enc(id)}/verify`),
     drift: async (id) => normalizeDrift(await get(`/clients/${enc(id)}/drift`)),
     audit: (id) => get(`/clients/${enc(id)}/audit`),
@@ -132,7 +194,9 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
       let cursor;
       for (let i = 0; i < maxPages; i++) {
         const page = await get('/skill-evaluations', { limit: 200, ...query, cursor });
-        out.items.push(...arr(page.items)); out.summary = page.summary ?? out.summary; out.running = page.running ?? out.running;
+        out.items.push(...arr(page.items));
+        out.summary = page.summary ?? out.summary;
+        out.running = page.running ?? out.running;
         if (!page.next_cursor) break;
         cursor = page.next_cursor;
       }
@@ -148,7 +212,11 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
     importObserved: (client, body) => post(`/clients/${enc(client)}/observed/import`, body),
     collections: () => listAll('/collections'),
     suggestions: async () => arr((await get('/collections/suggestions')).items).map(normalizeSuggestion),
-    acceptSuggestions: (ids, overrides) => post('/collections/suggestions/accept', { ids, ...(overrides && Object.keys(overrides).length ? { overrides } : {}) }),
+    acceptSuggestions: (ids, overrides) =>
+      post('/collections/suggestions/accept', {
+        ids,
+        ...(overrides && Object.keys(overrides).length ? { overrides } : {}),
+      }),
     createCollection: (body) => post('/collections', body),
     updateCollection: (id, body) => put(`/collections/${enc(id)}`, body),
     deleteCollection: (id) => del(`/collections/${enc(id)}`),
@@ -168,28 +236,36 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
     revert: (commit) => post('/changes/revert', { commit }),
     plan: (clients) => post('/plan', clients ? { clients } : {}),
     getPlan: (id) => get(`/plan/${enc(id)}`),
-    apply: async (plan_id, adopt_paths) => normalizeApply(await post('/apply', { plan_id, confirm: true, ...(adopt_paths?.length ? { adopt_paths } : {}) })),
+    apply: async (plan_id, adopt_paths) =>
+      normalizeApply(await post('/apply', { plan_id, confirm: true, ...(adopt_paths?.length ? { adopt_paths } : {}) })),
     floor: () => get('/policy/floor'),
     checkPolicy: (body) => post('/policy/check', body),
     inbox: async () => (await listAll('/memory/inbox')).filter((i) => i.valid !== false).map(normalizeInbox),
     promote: (id, body) => post(`/memory/inbox/${enc(id)}/promote`, body),
     reject: (id) => post(`/memory/inbox/${enc(id)}/reject`),
-    auditLog: async (q) => { const p = await get('/audit', q); return { ...p, items: arr(p.items ?? p).map(normalizeAudit) }; },
+    auditLog: async (q) => {
+      const p = await get('/audit', q);
+      return { ...p, items: arr(p.items ?? p).map(normalizeAudit) };
+    },
     doctor: () => get('/doctor'),
     doctorSummary: () => get('/doctor/summary'),
     settings: async () => normalizeSettings(await get('/settings')),
     saveSettings: (body) => put('/settings', body),
     // Config editor (Settings > Config files): read a template or the policy floor, check a draft. Nothing writes.
     configFiles: async () => (await get('/config-files')).items || [],
-    configTemplate: (file, name) => get(`/config-files/${encodeURIComponent(file)}/templates/${encodeURIComponent(name)}`),
+    configTemplate: (file, name) =>
+      get(`/config-files/${encodeURIComponent(file)}/templates/${encodeURIComponent(name)}`),
     configCurrent: (file) => get(`/config-files/${encodeURIComponent(file)}/current`),
     // an env draft goes with its secret values replaced (same lines), so a pasted key never leaves the browser
-    validateConfig: (file, text) => post(`/config-files/${encodeURIComponent(file)}/validate`, { text: file === 'hub-env' ? maskEnvSecrets(text) : text }),
+    validateConfig: (file, text) =>
+      post(`/config-files/${encodeURIComponent(file)}/validate`, {
+        text: file === 'hub-env' ? maskEnvSecrets(text) : text,
+      }),
     keys: () => get('/keys'),
     createKey: (body) => post('/keys', body),
     deleteKey: (id) => del(`/keys/${enc(id)}`),
     // knowledge proxy (admin token added server-side; the browser stays same-origin)
-    kHealth: () => get('/knowledge/health'),  // {reachable, authenticated, backends}
+    kHealth: () => get('/knowledge/health'), // {reachable, authenticated, backends}
     kBackends: async () => ({ items: normalizeBackends(await get('/knowledge/backends')) }),
     kNamespaces: () => listAll('/knowledge/namespaces'),
     kCreateNamespace: (body) => post('/knowledge/namespaces', body),

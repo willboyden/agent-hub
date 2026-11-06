@@ -2,7 +2,7 @@
 
 The web UI for Agent Hub: organise skills, agents, instructions, MCP servers, rules and memory across many agent clients, review a plan, then apply it.
 
-- **Zero build, zero npm dependencies.** Plain ES modules and web components served as static files; strict CSP (no inline scripts or styles, no CDN, no eval).
+- **Zero build, zero runtime npm dependencies.** Plain ES modules and web components served as static files; strict CSP (no inline scripts or styles, no CDN, no eval). The one devDependency is the formatter, Prettier (exact version, `package-lock.json`): `npm ci` here once, then `make fmt` / `make fmt-check` from the repo root. The hub never serves `node_modules/`.
 - **Tests:** `npm test` (Node's built-in test runner; pure logic, the API client, the markdown XSS corpus and the mock server).
 - **Try it without a backend:** `node dev/mock-server.mjs` serves the UI and a contract-faithful mock API on `http://127.0.0.1:8794/` (flags: `--port`, `--empty` for a first-run state, `--trust` for the trust warning). It uses invented data only.
 - **Against a real backend:** the hub serves this directory itself; nothing to build.

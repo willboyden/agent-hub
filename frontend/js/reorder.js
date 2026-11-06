@@ -30,6 +30,10 @@ export const memberKey = (m) => `${m.kind}/${m.name}`;
 export function addMembers(members, incoming) {
   const seen = new Set(members.map(memberKey));
   const out = members.slice();
-  for (const m of incoming) if (!seen.has(memberKey(m))) { seen.add(memberKey(m)); out.push({ kind: m.kind, name: m.name }); }
+  for (const m of incoming)
+    if (!seen.has(memberKey(m))) {
+      seen.add(memberKey(m));
+      out.push({ kind: m.kind, name: m.name });
+    }
   return out;
 }

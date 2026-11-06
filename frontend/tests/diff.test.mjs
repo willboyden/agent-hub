@@ -20,15 +20,35 @@ test('inside a hunk, "--- x" is a DELETION of "-- x", not a header', () => {
 const SAMPLE = '--- a/f.md\n+++ b/f.md\n@@ -1,3 +1,3 @@\n keep\n-old\n+new\n tail\n';
 test('parseUnified numbers old/new lines and strips the sign', () => {
   const l = parseUnified(SAMPLE);
-  assert.deepEqual(l.map((x) => x.type), ['meta', 'meta', 'hunk', 'ctx', 'del', 'add', 'ctx']);
-  assert.deepEqual(l.map((x) => [x.oldNo, x.newNo]), [[null, null], [null, null], [null, null], [1, 1], [2, null], [null, 2], [3, 3]]);
-  assert.equal(l[4].text, 'old'); assert.equal(l[5].text, 'new');
+  assert.deepEqual(
+    l.map((x) => x.type),
+    ['meta', 'meta', 'hunk', 'ctx', 'del', 'add', 'ctx']
+  );
+  assert.deepEqual(
+    l.map((x) => [x.oldNo, x.newNo]),
+    [
+      [null, null],
+      [null, null],
+      [null, null],
+      [1, 1],
+      [2, null],
+      [null, 2],
+      [3, 3],
+    ]
+  );
+  assert.equal(l[4].text, 'old');
+  assert.equal(l[5].text, 'new');
 });
 
 test('new-file diff (from /dev/null) has only additions', () => {
   const d = '--- /dev/null\n+++ b/n\n@@ -0,0 +1,2 @@\n+a\n+b\n';
   assert.deepEqual(diffStats(d), { add: 2, del: 0 });
-  assert.deepEqual(parseUnified(d).filter((x) => x.type === 'add').map((x) => x.newNo), [1, 2]);
+  assert.deepEqual(
+    parseUnified(d)
+      .filter((x) => x.type === 'add')
+      .map((x) => x.newNo),
+    [1, 2]
+  );
 });
 
 test('markup in file content stays plain text data', () => {
