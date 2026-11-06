@@ -1,0 +1,3 @@
+# Revisions that git blame skips: `git config blame.ignoreRevsFile .git-blame-ignore-revs` (GitHub reads this file itself).
+# format: apply Prettier (the one-time Prettier 3.9.10 reformat of the JS, CSS, HTML and JSON; no behaviour change)
+6bc2cfb3673b70937bec72ca1a822f18059ca68f
