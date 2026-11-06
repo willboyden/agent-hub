@@ -93,8 +93,14 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-      - name: Tests (no dependencies to install)
+      - name: Tests (Node's built-in runner; no runtime dependencies)
         run: npm test
+      # Prettier is the only package: a devDependency pinned to an exact version, installed from package-lock.json.
+      - name: Install the formatter (npm ci, lockfile only, no install scripts)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Prettier check (code and JSON; make fmt-check)
+        working-directory: .
+        run: make fmt-check
 
   e2e:
     # Every page, detail route and tab in a real headless Chrome against the real backend (frontend/e2e/run.mjs):

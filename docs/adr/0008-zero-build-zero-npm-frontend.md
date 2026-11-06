@@ -13,6 +13,11 @@ Plain ES modules and web components served by the backend from `frontend/` (`ind
 inline scripts or styles (CSS classes and CSSOM only); all strings from `i18n/en.json`; a contract-faithful
 `dev/mock-server.mjs`. `package.json` exists only so Node treats `js/` as ES modules for `node --test`.
 
+Amendment (2026-11-06): zero *runtime* npm dependencies. `package.json` also pins one devDependency, the Prettier
+formatter (exact version, committed `package-lock.json`, `make fmt` / `make fmt-check`, checked in CI). It is a
+development tool only: nothing of it is served (the hub serves `index.html`, `css/`, `js/` and `i18n/` only) or built
+into a binary, and nothing is needed to run the app.
+
 ## Consequences
 
 * Nothing to install to run; nothing to audit except our own code; fast start.

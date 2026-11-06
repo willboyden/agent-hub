@@ -11,8 +11,8 @@ FRONTEND := frontend
 CARGO    := cargo
 RELEASE  := $(BACKEND)/target/release
 
-.PHONY: help setup hooks build release run run-knowledge mock test knowledge-test knowledge-live fmt lint clippy typecheck \
-        deny audit crate-age test-map parity frontend-test e2e all install-desktop install-desktop-icon uninstall-desktop
+.PHONY: help setup hooks build release run run-knowledge mock test knowledge-test knowledge-live fmt fmt-check lint clippy \
+        typecheck prettier deny audit crate-age test-map parity frontend-test e2e all install-desktop install-desktop-icon uninstall-desktop
 
 help:  ## list targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | sed 's/:.*## /\t/'
@@ -60,8 +60,21 @@ knowledge-test:  ## the knowledge service's tests only (the Qdrant half of test_
 knowledge-live:  ## needs AK_LIVE_QDRANT_URL of a THROWAWAY Qdrant; runs the live tests against it
 	cd $(BACKEND) && AK_LIVE=1 $(CARGO) test --locked -p agent-knowledge --test test_live
 
-fmt:  ## rustfmt the backend in place
+# Prettier (frontend/package.json devDependency, exact version + package-lock.json; `cd frontend && npm ci` once) formats
+# code and JSON only. It is a development tool: nothing of it is served by the hub or built into a binary. Files whose
+# bytes matter (goldens, fixtures, generated files) and Markdown/YAML are listed in .prettierignore.
+PRETTIER := $(FRONTEND)/node_modules/prettier/bin/prettier.cjs
+PRETTIER_FILES := '**/*.{js,mjs,cjs,ts,tsx,css,html,json}'
+
+prettier:  ## fail with the install hint when Prettier is not installed (used by fmt and fmt-check)
+	@test -f $(PRETTIER) || { echo "Prettier is not installed: run 'cd $(FRONTEND) && npm ci' first" >&2; exit 1; }
+
+fmt: prettier  ## format in place: rustfmt the backend, Prettier the code and JSON (.prettierrc.json, .prettierignore)
 	cd $(BACKEND) && $(CARGO) fmt --all
+	node $(PRETTIER) --write --log-level warn $(PRETTIER_FILES)
+
+fmt-check: prettier  ## Prettier check of the code and JSON (rustfmt is checked by `lint`); `make fmt` fixes it
+	node $(PRETTIER) --check $(PRETTIER_FILES)
 
 lint:  ## rustfmt check + clippy with warnings as errors
 	cd $(BACKEND) && $(CARGO) fmt --all --check
@@ -94,7 +107,7 @@ frontend-test:  ## node --test on the pure-logic modules (no npm install needed)
 e2e:  ## browser end-to-end: real backend + headless Chrome, every page and tab; records a pass for the pre-push hook
 	scripts/e2e-gate.sh run
 
-all: lint test test-map deny audit frontend-test e2e  ## everything the quality bar requires (plus crate-age and parity)
+all: lint fmt-check test test-map deny audit frontend-test e2e  ## everything the quality bar requires (plus crate-age and parity)
 
 # Desktop launcher (opt-in, Linux). Paths go into a .desktop Exec line and a sed replacement, so the checkout path is
 # limited to a safe character set. Fixed ~/.local/share, like the app's own config (XDG vars are unreliable under snaps);

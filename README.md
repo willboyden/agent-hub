@@ -35,7 +35,8 @@ Shared content drifts, and nothing shows what a client is allowed to do. The hub
 
 Prerequisites: `git`, `rustup` (it installs the exact toolchain pinned in `backend/rust-toolchain.toml`) and a C linker
 (`cc`). protoc, which the knowledge service's Lance engine needs at build time, is vendored; nothing else is installed.
-No Node is needed to run anything (the UI is zero-build; Node is only for the frontend tests and the browser suite), and
+No Node is needed to run anything (the UI is zero-build with zero runtime dependencies; Node is only for the frontend tests,
+the browser suite and the Prettier formatter), and
 no Python (only the optional delivery scripts use `python3`: `deploy/turnstone-deliver.py`, and `deploy/dsh-deliver.sh`
 to read dsh's answer when `DSH_CONTAINER` is set).
 
@@ -161,11 +162,17 @@ optionally `~/.config/agent-hub/env`. Ports: hub 8792, knowledge service 8795. D
 
 ## Developer commands
 
-`make help` lists them: `setup`, `build`, `release`, `hooks`, `test`, `lint` (rustfmt + clippy), `typecheck` (clippy),
-`deny`, `audit`, `crate-age`, `test-map`, `parity`, `frontend-test`, `knowledge-test`, `e2e`, `mock`, `all`.
+`make help` lists them: `setup`, `build`, `release`, `hooks`, `test`, `lint` (rustfmt + clippy), `fmt` / `fmt-check`,
+`typecheck` (clippy), `deny`, `audit`, `crate-age`, `test-map`, `parity`, `frontend-test`, `knowledge-test`, `e2e`, `mock`, `all`.
+`make fmt` formats in place (rustfmt for the backend, Prettier for the JS, CSS, HTML and JSON) and `make fmt-check` (part of
+`make all`) checks the Prettier half. Prettier is the frontend's only devDependency, pinned to an exact version: run
+`cd frontend && npm ci` once. Markdown, YAML and files whose exact bytes matter (goldens, fixtures, generated files) are
+listed in `.prettierignore`. The reformat commit is in `.git-blame-ignore-revs` (`git config blame.ignoreRevsFile
+.git-blame-ignore-revs`).
 `make install-desktop` adds an app-menu launcher (Linux, after `make release`); see `docs/OPERATIONS.md` section 2.
 CI (`.github/workflows/ci.yml`) runs rustfmt, clippy, the tests, the test-map check, cargo-deny and cargo-audit, the
-14-day dependency cooldown (`crate-age`, which queries the crates.io API), the frontend tests and the browser suite.
+14-day dependency cooldown (`crate-age`, which queries the crates.io API), the frontend tests, the Prettier check and the
+browser suite.
 `make parity` replays the differential corpus against the last Python backend (it prepares that version's venvs with
 `uv` under `backend/target/`).
 
