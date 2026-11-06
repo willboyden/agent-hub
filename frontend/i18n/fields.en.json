@@ -1,0 +1,968 @@
+{
+  "_comment": "Field help for the config editor's Form view and the Settings fields (js/cfg-help.js). Each catalog maps path patterns (`*` any key, `#` any list index, `**` the rest) to {what, change?, accepts?, default?, effect?, choices?}. Plain text; `backticks` mark code.",
+  "catalogs": {
+    "settings": {
+      "plan_retention": {
+        "what": "How many plans the hub keeps in its data directory (`plans/`). A plan is the reviewed list of file changes for one or more clients; Apply needs the plan you reviewed.",
+        "change": "Lower keeps less on disk; a plan older than the newest N is deleted when a new plan is made, and applying it then fails (make a new plan).",
+        "accepts": "A whole number from 1 to 200.",
+        "default": "20 (or `HUB_PLAN_RETENTION`)",
+        "effect": "At once, and kept in the hub's database across restarts (it then wins over `HUB_PLAN_RETENTION` in the hub env file)."
+      },
+      "inbox_max_per_client": {
+        "what": "The most pending proposals one client may have in the memory inbox. Agents propose memories with their client token; you promote or reject them on the Inbox page.",
+        "change": "Lower stops a busy or misbehaving agent sooner: once a client reaches the limit, its new proposals are refused until you clear some.",
+        "accepts": "A whole number from 1 to 5000.",
+        "default": "200 (or `HUB_INBOX_MAX_PER_CLIENT`)",
+        "effect": "At once, and kept in the hub's database across restarts (it then wins over `HUB_INBOX_MAX_PER_CLIENT` in the hub env file)."
+      },
+      "inbox_rate_per_min": {
+        "what": "How many inbox proposals one client may send per minute.",
+        "change": "Lower slows down an agent that floods the inbox; proposals over the rate are refused (HTTP 429) and the agent may try again later.",
+        "accepts": "A whole number from 1 to 600.",
+        "default": "20 (or `HUB_INBOX_RATE_PER_MIN`)",
+        "effect": "At once, and kept in the hub's database across restarts (it then wins over `HUB_INBOX_RATE_PER_MIN` in the hub env file)."
+      },
+      "eval_gate": {
+        "what": "The skill evaluation gate for normal imports (the Import page and discover). It looks at the SkillEvaluator result of the exact content being imported.",
+        "change": "`off`: no check. `advisory`: the gate is shown, nothing is refused. `require`: a skill without an evaluation, or with a blocked gate, is refused unless you give an override reason (recorded in the audit log).",
+        "accepts": "`off`, `advisory` or `require`.",
+        "default": "advisory (or `HUB_EVAL_GATE`)",
+        "effect": "At once, and kept in the hub's database across restarts (it then wins over `HUB_EVAL_GATE`).",
+        "choices": [
+          "off",
+          "advisory",
+          "require"
+        ]
+      },
+      "eval_gate_observed": {
+        "what": "The same gate for skills imported from a client's observed inventory (Clients > Health > Observed), which is untrusted text taken from a live agent.",
+        "change": "Keep it at `require` unless you have a reason: the inventory can carry text an agent wrote.",
+        "accepts": "`off`, `advisory` or `require`.",
+        "default": "require (or `HUB_EVAL_GATE_OBSERVED`)",
+        "effect": "At once, and kept in the hub's database across restarts.",
+        "choices": [
+          "off",
+          "advisory",
+          "require"
+        ]
+      },
+      "eval_gate_min_tiers": {
+        "what": "The weakest evaluation that counts for the gate. `static` needs no model; `tier1` and `tier1+2` also need the LLM pass of SkillEvaluator.",
+        "change": "A stronger tier means fewer skills pass until you run the deeper evaluation on them (Evaluations page).",
+        "accepts": "`static`, `tier1` or `tier1+2`.",
+        "default": "static (or `HUB_EVAL_GATE_MIN_TIERS`)",
+        "effect": "At once, and kept in the hub's database across restarts.",
+        "choices": [
+          "static",
+          "tier1",
+          "tier1+2"
+        ]
+      }
+    },
+    "hub-env": {
+      "HUB_HOST": {
+        "what": "The address the hub listens on.",
+        "change": "Keep it on loopback. Any other address is refused at start unless `HUB_ALLOW_NONLOOPBACK=1` is in the process environment, and then you need an authenticating reverse proxy in front.",
+        "accepts": "An IP address or `localhost`.",
+        "default": "127.0.0.1",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_PORT": {
+        "what": "The TCP port of the API and the UI.",
+        "change": "Open the UI on the new port; the port is also part of the Host header allowlist. Clients that call the hub (agents with an inbox token) need the new URL.",
+        "accepts": "A whole number (a free port).",
+        "default": "8792",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_CONTENT_DIR": {
+        "what": "The content git repo: skills, agents, rules, MCP servers, collections, profiles and `clients/<id>.yaml`.",
+        "change": "The hub uses the repo at the new path; nothing is moved. Keep it outside any project an agent works in. Move an existing repo with `hubctl migrate-content --to PATH`.",
+        "accepts": "An absolute path.",
+        "default": "~/.local/share/agent-hub/content",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_DATA_DIR": {
+        "what": "The hub's private state: `hub.db` (keys, settings, audit), the bootstrap admin key, plans, locks, snapshots and backups (mode 0700).",
+        "change": "A new path starts with empty state: new bootstrap key, no keys, no history. Copy the directory first if you move it.",
+        "accepts": "An absolute path.",
+        "default": "~/.local/share/agent-hub",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_POLICY_FILE": {
+        "what": "The policy floor file. It lives in the app checkout, never in content.",
+        "change": "Point it only at a reviewed floor file; the hub refuses to start when the file is missing or invalid.",
+        "accepts": "An absolute path.",
+        "default": "<checkout>/policy/floor.yaml",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_FRONTEND_DIR": {
+        "what": "Where the UI files are served from.",
+        "change": "Only for a moved or packaged UI; without UI files the hub serves the API only.",
+        "accepts": "An absolute path.",
+        "default": "<checkout>/frontend",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_GIT_BIN": {
+        "what": "The git program the hub runs for the content repo and git-backed operations.",
+        "change": "Use an absolute path to pin a specific git.",
+        "accepts": "A program name or path.",
+        "default": "git",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_GIT_TIMEOUT_S": {
+        "what": "Seconds a git command may run before the hub stops it.",
+        "change": "Raise it for a slow disk or a very large content repo.",
+        "accepts": "A number of seconds.",
+        "default": "30",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_GIT_AUTHOR_NAME": {
+        "what": "The author name of the hub's commits in the content repo.",
+        "change": "Only new commits use it.",
+        "accepts": "Text.",
+        "default": "Agent Hub",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_GIT_AUTHOR_EMAIL": {
+        "what": "The author email of the hub's commits in the content repo.",
+        "change": "Only new commits use it.",
+        "accepts": "Text.",
+        "default": "agent-hub@localhost",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_ALLOWED_HOSTS": {
+        "what": "Extra Host header values the hub accepts besides 127.0.0.1, localhost and [::1] with its port (DNS-rebinding protection).",
+        "change": "Add only the name a trusted reverse proxy sends; any other Host gets 421.",
+        "accepts": "A JSON list, e.g. `[\"hub.example:8792\"]`.",
+        "default": "[]",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_TRUST_LOOPBACK": {
+        "what": "Whether a request from loopback with no key is treated as admin.",
+        "change": "Leave it `false`. `true` makes every local process (any agent with a shell) admin without a key; the UI then shows a warning on every page.",
+        "accepts": "`true` or `false`.",
+        "default": "false",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_BODY_CAP_BYTES": {
+        "what": "The largest request body the API accepts (most routes).",
+        "change": "Bigger bodies get 413 before they are read.",
+        "accepts": "A whole number of bytes.",
+        "default": "1048576 (1 MiB)",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_IMPORT_BODY_CAP_BYTES": {
+        "what": "The largest body for import and discover.",
+        "change": "Raise it for very large imports.",
+        "accepts": "A whole number of bytes.",
+        "default": "4194304 (4 MiB)",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_MAX_SSE_CONNECTIONS": {
+        "what": "How many live event streams (knowledge job progress) may be open at once.",
+        "change": "More are refused with 429 `too_many_streams`.",
+        "accepts": "A whole number.",
+        "default": "8",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_SSE_IDLE_TIMEOUT_S": {
+        "what": "Seconds an event stream may stay idle before the hub closes it.",
+        "change": "Lower frees stream slots sooner.",
+        "accepts": "A number of seconds.",
+        "default": "300",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_MAX_CONTENT_FILE_BYTES": {
+        "what": "The largest single content file the hub reads or writes (an item's YAML or Markdown).",
+        "change": "Bigger files are refused.",
+        "accepts": "A whole number of bytes.",
+        "default": "262144 (256 KiB)",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_MAX_SKILL_BYTES": {
+        "what": "The largest skill, all of its files together.",
+        "change": "Bigger skills are refused at import and save.",
+        "accepts": "A whole number of bytes.",
+        "default": "4194304 (4 MiB)",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_MAX_LIVE_FILE_BYTES": {
+        "what": "The largest client file the planner reads from disk to compare or merge.",
+        "change": "A larger live file blocks the plan for that file instead of being read.",
+        "accepts": "A whole number of bytes.",
+        "default": "8388608 (8 MiB)",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_KNOWLEDGE_URL": {
+        "what": "Where the hub's knowledge proxy finds the knowledge service.",
+        "change": "The Knowledge page talks to the service at this URL, through the hub.",
+        "accepts": "An http URL.",
+        "default": "http://127.0.0.1:8795",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_KNOWLEDGE_ADMIN_KEY": {
+        "what": "The knowledge service's admin key, sent by the hub's proxy. A secret.",
+        "change": "Without it the hub reads the key file below. Keep this env file 0600 when you set it.",
+        "accepts": "The key text.",
+        "default": "unset (the key file is read)",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_KNOWLEDGE_TOKEN": {
+        "what": "The older name of `HUB_KNOWLEDGE_ADMIN_KEY`. A secret.",
+        "change": "Use `HUB_KNOWLEDGE_ADMIN_KEY` in new files.",
+        "accepts": "The key text.",
+        "default": "unset",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "KNOWLEDGE_ADMIN_KEY_FILE": {
+        "what": "The file the hub reads the knowledge admin key from when no key is set here (the service writes it on first start).",
+        "change": "Point it at the service's `<data_dir>/admin.key` if you moved that directory.",
+        "accepts": "An absolute path.",
+        "default": "~/.local/share/agent-knowledge/admin.key",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_KNOWLEDGE_ADMIN_KEY_FILE": {
+        "what": "The same as `KNOWLEDGE_ADMIN_KEY_FILE` (either name works).",
+        "change": "See `KNOWLEDGE_ADMIN_KEY_FILE`.",
+        "accepts": "An absolute path.",
+        "default": "~/.local/share/agent-knowledge/admin.key",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_KNOWLEDGE_TIMEOUT_S": {
+        "what": "Seconds the hub waits for the knowledge service on one call.",
+        "change": "Raise it for slow embedding endpoints; a timed-out call fails on the Knowledge page.",
+        "accepts": "A number of seconds.",
+        "default": "30",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_KNOWLEDGE_BODY_CAP_BYTES": {
+        "what": "The largest request body the hub forwards to the knowledge service.",
+        "change": "Bigger ingest requests get 413.",
+        "accepts": "A whole number of bytes.",
+        "default": "1048576 (1 MiB)",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_KNOWLEDGE_RESPONSE_CAP_BYTES": {
+        "what": "The largest answer the hub accepts from the knowledge service.",
+        "change": "A bigger answer is cut off and the call fails.",
+        "accepts": "A whole number of bytes.",
+        "default": "8388608 (8 MiB)",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_DISCOVER_EXTRA_ROOTS": {
+        "what": "Directories that discover and verify may read besides each client's own roots.",
+        "change": "Only add paths that hold agent config you want imported; the policy floor's denied paths stay denied.",
+        "accepts": "A JSON list of absolute paths.",
+        "default": "[]",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_INBOX_RATE_PER_MIN": {
+        "what": "Inbox proposals per client per minute until one is saved in Settings > General, which then wins, also after a restart.",
+        "change": "See Settings > General.",
+        "accepts": "A whole number, 1 to 600.",
+        "default": "20",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_INBOX_MAX_PER_CLIENT": {
+        "what": "Pending inbox proposals per client until one is saved in Settings > General, which then wins, also after a restart.",
+        "change": "See Settings > General.",
+        "accepts": "A whole number, 1 to 5000.",
+        "default": "200",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_PLAN_RETENTION": {
+        "what": "Plans kept until one is saved in Settings > General, which then wins, also after a restart.",
+        "change": "See Settings > General.",
+        "accepts": "A whole number, 1 to 200.",
+        "default": "20",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_EVAL_GATE": {
+        "what": "The default import gate. A value saved in Settings > General wins over it.",
+        "change": "See Settings > General.",
+        "accepts": "`off`, `advisory` or `require`.",
+        "default": "advisory",
+        "effect": "Read once at start: restart the hub after you install the file.",
+        "choices": [
+          "off",
+          "advisory",
+          "require"
+        ]
+      },
+      "HUB_EVAL_GATE_OBSERVED": {
+        "what": "The default gate for skills from a client's observed inventory. A value saved in Settings > General wins over it.",
+        "change": "See Settings > General.",
+        "accepts": "`off`, `advisory` or `require`.",
+        "default": "require",
+        "effect": "Read once at start: restart the hub after you install the file.",
+        "choices": [
+          "off",
+          "advisory",
+          "require"
+        ]
+      },
+      "HUB_EVAL_GATE_MIN_TIERS": {
+        "what": "The default weakest evaluation that counts. A value saved in Settings > General wins over it.",
+        "change": "See Settings > General.",
+        "accepts": "`static`, `tier1` or `tier1+2`.",
+        "default": "static",
+        "effect": "Read once at start: restart the hub after you install the file.",
+        "choices": [
+          "static",
+          "tier1",
+          "tier1+2"
+        ]
+      },
+      "HUB_ENABLE_METRICS": {
+        "what": "Whether `/metrics` (Prometheus) is served. It needs a key like every API route.",
+        "change": "`false` removes the route.",
+        "accepts": "`true` or `false`.",
+        "default": "true",
+        "effect": "Read once at start: restart the hub after you install the file."
+      },
+      "HUB_API_KEY": {
+        "what": "A key for `hubctl`, read from the environment, else from this file. The server does not read it.",
+        "change": "A key in a file can be read by every process of your user; the hidden prompt or the bootstrap key file are the alternatives (docs/OPERATIONS.md, Key handling).",
+        "accepts": "An API key.",
+        "default": "unset",
+        "effect": "hubctl reads it on each run."
+      },
+      "HUB_ALLOW_NONLOOPBACK": {
+        "what": "Allows a non-loopback `HUB_HOST`. Read only from the process environment.",
+        "change": "In this file it has no effect.",
+        "accepts": "`1`.",
+        "default": "unset"
+      },
+      "HUB_PYTHON": {
+        "what": "The Python the Turnstone adapter's verify uses. Read only from the process environment.",
+        "change": "In this file it has no effect; set it with `Environment=` in the unit.",
+        "accepts": "An absolute path.",
+        "default": "/usr/bin/python3"
+      },
+      "AGENT_HUB_APP_ROOT": {
+        "what": "Where `policy/`, `frontend/` and `deploy/` are, for a binary moved out of `backend/target/`. Read only from the process environment.",
+        "change": "In this file it has no effect.",
+        "accepts": "An absolute path.",
+        "default": "the checkout above the binary"
+      },
+      "AGENT_HUB_ENV_FILE": {
+        "what": "Which env file the hub reads. Read only from the process environment.",
+        "change": "In this file it has no effect.",
+        "accepts": "An absolute path.",
+        "default": "~/.config/agent-hub/env"
+      }
+    },
+    "knowledge": {
+      "host": {
+        "what": "The address the service listens on.",
+        "change": "Keep loopback. Any other host is refused at start unless the service runs with `--allow-bind-any`, which is for a container on an internal network only.",
+        "accepts": "An IP address or `localhost`.",
+        "default": "127.0.0.1",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "port": {
+        "what": "The service's TCP port.",
+        "change": "Set the same URL in the hub (`HUB_KNOWLEDGE_URL`).",
+        "accepts": "A whole number.",
+        "default": "8795",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "allowed_hosts": {
+        "what": "Extra Host header values the service accepts (DNS-rebinding allowlist).",
+        "change": "Add the name a broker or proxy sends, such as `agent-knowledge:8795`.",
+        "accepts": "A list of text.",
+        "default": "[]",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "allowed_hosts.#": {
+        "what": "One accepted Host header value.",
+        "change": "Remove it to refuse that Host.",
+        "accepts": "`name:port`.",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "data_dir": {
+        "what": "The service's own state: its database (`knowledge.db`, 0600) and the admin key file (`admin.key`, 0600, written on first start).",
+        "change": "A new path starts with new tokens and a new admin key.",
+        "accepts": "A path; `~` is expanded.",
+        "default": "~/.local/share/agent-knowledge",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "lance_dir": {
+        "what": "Where the embedded LanceDB tables are stored.",
+        "change": "Put it on an SSD, never on tmpfs. Moving it without the files loses the lancedb namespaces.",
+        "accepts": "A path.",
+        "default": "<data_dir>/lance",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "qdrant_url": {
+        "what": "The Qdrant server for namespaces with backend `qdrant`. Unset turns that backend off.",
+        "change": "Qdrant must enforce an API key (the service refuses a keyless Qdrant).",
+        "accepts": "A plain http(s) URL without credentials or query.",
+        "default": "unset",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "qdrant_api_key_env": {
+        "what": "The NAME of the environment variable that holds the Qdrant API key. Never the key itself.",
+        "change": "The value must equal Qdrant's `QDRANT__SERVICE__API_KEY`.",
+        "accepts": "An environment variable name.",
+        "default": "KNOWLEDGE_QDRANT_API_KEY",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "qdrant_vectors_on_disk": {
+        "what": "Whether new Qdrant collections keep vectors on disk rather than in RAM.",
+        "change": "Applies to collections created afterwards.",
+        "accepts": "`true` or `false`.",
+        "default": "true",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "router_url": {
+        "what": "The OpenAI-compatible endpoint the service calls for `/v1/embeddings` (a LiteLLM router, for example).",
+        "change": "Text queries and ingest use it; it must serve the namespace's embedding model.",
+        "accepts": "A plain http(s) URL. Unset: `KNOWLEDGE_ROUTER_URL`, else http://127.0.0.1:4000.",
+        "default": "http://127.0.0.1:4000",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "router_api_key_env": {
+        "what": "The NAME of the environment variable that holds the embeddings key.",
+        "change": "Use an embeddings-only virtual key, never a master key.",
+        "accepts": "An environment variable name.",
+        "default": "KNOWLEDGE_EMBED_API_KEY",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "default_embedding_model": {
+        "what": "The embedding model a new namespace uses when it names none.",
+        "change": "Existing namespaces keep their model.",
+        "accepts": "A model name your endpoint serves.",
+        "default": "text-embedding-3-small",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "ingest_roots": {
+        "what": "Directories an admin may ingest from with a `path` job.",
+        "change": "Empty turns path ingest off; only add trees whose files may be searched.",
+        "accepts": "A list of paths.",
+        "default": "[]",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "ingest_roots.#": {
+        "what": "One directory path ingest may read.",
+        "change": "Remove it to refuse jobs under it.",
+        "accepts": "A path.",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "index_roots": {
+        "what": "Directories the shared-index registry may point at.",
+        "change": "Empty means no shared index can be registered.",
+        "accepts": "A list of paths.",
+        "default": "[]",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "index_roots.#": {
+        "what": "One directory the shared-index registry may use.",
+        "change": "Remove it to refuse indexes under it.",
+        "accepts": "A path.",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "body_cap_bytes": {
+        "what": "The largest request body the service accepts.",
+        "change": "Bigger bodies get 413.",
+        "accepts": "A whole number of bytes.",
+        "default": "4194304 (4 MiB)",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "max_docs_per_request": {
+        "what": "Documents per ingest request.",
+        "change": "More are refused.",
+        "accepts": "A whole number.",
+        "default": "200",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "max_doc_chars": {
+        "what": "Characters per document.",
+        "change": "Longer documents are refused.",
+        "accepts": "A whole number.",
+        "default": "500000",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "max_files_per_job": {
+        "what": "Files one path-ingest job may read.",
+        "change": "The job stops at the limit.",
+        "accepts": "A whole number.",
+        "default": "2000",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "max_job_bytes": {
+        "what": "Bytes one path-ingest job may read.",
+        "change": "The job stops at the limit.",
+        "accepts": "A whole number of bytes.",
+        "default": "209715200 (200 MiB)",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "max_chunks_per_namespace": {
+        "what": "Chunks one namespace may hold.",
+        "change": "Writes over the cap are refused.",
+        "accepts": "A whole number.",
+        "default": "2000000",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "max_k": {
+        "what": "The most results one query may ask for.",
+        "change": "Larger `k` is refused.",
+        "accepts": "A whole number.",
+        "default": "100",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "max_filter_nodes": {
+        "what": "The size limit of a query filter.",
+        "change": "Larger filters are refused.",
+        "accepts": "A whole number.",
+        "default": "16",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "lance_max_scan_rows": {
+        "what": "The largest LanceDB table a filtered query may scan (a `doc_id` filter is exempt).",
+        "change": "Bigger scans are refused with 422 `scan_cap`.",
+        "accepts": "A whole number.",
+        "default": "200000",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "store_timeout_s": {
+        "what": "Seconds one store call may take before the caller gets 429 `store_timeout`.",
+        "change": "Raise it for slow disks.",
+        "accepts": "A number of seconds.",
+        "default": "20",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "lance_lock_wait_s": {
+        "what": "Seconds a call waits for a busy LanceDB namespace before 429 `store_busy`.",
+        "change": "Raise it for heavy concurrent writes.",
+        "accepts": "A number of seconds.",
+        "default": "5",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "lance_workers": {
+        "what": "Threads for LanceDB work.",
+        "change": "More threads, more parallel store calls.",
+        "accepts": "A whole number.",
+        "default": "4",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "max_query_chars": {
+        "what": "Characters in one query text.",
+        "change": "Longer queries are refused.",
+        "accepts": "A whole number.",
+        "default": "8000",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "max_jobs_kept": {
+        "what": "Finished ingest jobs kept for their status.",
+        "change": "Older jobs are forgotten.",
+        "accepts": "A whole number.",
+        "default": "200",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "embed_batch": {
+        "what": "Texts sent to the embeddings endpoint per call.",
+        "change": "Lower it if the endpoint refuses large batches.",
+        "accepts": "A whole number.",
+        "default": "64",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "default_rate_per_min": {
+        "what": "Requests per minute for a token created without its own rate.",
+        "change": "Applies to tokens created afterwards.",
+        "accepts": "A whole number.",
+        "default": "120",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "default_daily_queries": {
+        "what": "Queries per day for a token created without its own quota.",
+        "change": "Applies to tokens created afterwards.",
+        "accepts": "A whole number.",
+        "default": "5000",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "default_daily_writes": {
+        "what": "Chunks a write token may upsert per day, when created without its own quota.",
+        "change": "Applies to tokens created afterwards.",
+        "accepts": "A whole number.",
+        "default": "20000",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "sse_max_seconds": {
+        "what": "The longest an ingest-progress stream stays open.",
+        "change": "Clients reconnect after it.",
+        "accepts": "A whole number of seconds.",
+        "default": "3600",
+        "effect": "Read once at start: restart the knowledge service."
+      },
+      "sse_max_streams": {
+        "what": "Progress streams open at once.",
+        "change": "More are refused.",
+        "accepts": "A whole number.",
+        "default": "8",
+        "effect": "Read once at start: restart the knowledge service."
+      }
+    },
+    "client-spec": {
+      "id": {
+        "what": "The client's id; the file must be named `<id>.yaml`. Also the name in plans, profiles and the audit log.",
+        "change": "A new id is a new client: the old one keeps its profile and history.",
+        "accepts": "Lower-case letters, digits, `.`, `_`, `-`; 1 to 64 characters; `hub` is reserved.",
+        "effect": "When the file is committed in the content repo."
+      },
+      "adapter": {
+        "what": "Which adapter renders this client's files: `generic` (driven by `spec:`) or a built-in one (claude-code, opencode, hermes-agent, turnstone, deepseek-harness).",
+        "change": "Another adapter writes other files in other places; review the plan carefully.",
+        "accepts": "An installed adapter id.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "display_name": {
+        "what": "The name the UI shows.",
+        "change": "Only the UI changes.",
+        "accepts": "Short text.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "description": {
+        "what": "A sentence the UI shows under the name.",
+        "change": "Only the UI changes.",
+        "accepts": "Short text.",
+        "default": "",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "strict": {
+        "what": "Whether anything the client cannot express is an error that blocks apply.",
+        "change": "`false` turns those into warnings, so a plan can apply with parts left out.",
+        "accepts": "`true` or `false`.",
+        "default": "true",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "roots": {
+        "what": "Named delivery roots: the directories this client's files go to. The spec and the adapter refer to them by name (`project`, `home`, ...).",
+        "change": "A root may not be your home directory itself, `/`, or overlap the hub's own state or content.",
+        "accepts": "A mapping of name to path; `~` is expanded.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "roots.*": {
+        "what": "One delivery root.",
+        "change": "Files under the old path are not moved or removed; the next plan targets the new path.",
+        "accepts": "A path.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "manage": {
+        "what": "Which concerns the hub manages for this client: `skills`, `agents`, `instructions`, `mcp`, `permissions`, `memory`.",
+        "change": "A concern set to `false` is left alone (advisory only).",
+        "accepts": "A mapping of concern to `true` / `false`.",
+        "default": "skills, agents, instructions on; mcp, permissions, memory off",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "manage.*": {
+        "what": "Whether the hub manages this concern for the client.",
+        "change": "Turning it on makes the next plan deliver it; turning it off stops managing those files (they stay where they are).",
+        "accepts": "`true` or `false`.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "params": {
+        "what": "Adapter-specific settings (for example a container name for a staged delivery).",
+        "change": "Read the adapter's section in docs/OPERATIONS.md first.",
+        "accepts": "A mapping.",
+        "default": "{}",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "params.**": {
+        "what": "An adapter-specific value.",
+        "change": "See the adapter's documentation.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "icon": {
+        "what": "An icon name the UI may show.",
+        "change": "Only the UI changes.",
+        "accepts": "Short text."
+      },
+      "color": {
+        "what": "A colour the UI may show.",
+        "change": "Only the UI changes.",
+        "accepts": "Short text."
+      },
+      "spec": {
+        "what": "The declarative delivery layout of a `generic` client: where each concern goes and in which format (docs/ADDING-A-CLIENT.md).",
+        "change": "Every section is optional; a concern without one is reported as unsupported.",
+        "accepts": "A mapping.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.version": {
+        "what": "The spec format version.",
+        "change": "Only `1` exists.",
+        "accepts": "`1`.",
+        "default": "1",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.notes": {
+        "what": "Free text for the people who read the spec.",
+        "change": "Nothing is rendered from it.",
+        "accepts": "Text.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.tool_map": {
+        "what": "Canonical capability to the client's native tool name (`read`, `write`, `shell`, ...). `null` marks a capability unsupported.",
+        "change": "Agents' tool lists are translated with it.",
+        "accepts": "A mapping.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.tool_map.*": {
+        "what": "The native tool name for one capability, or `null`.",
+        "change": "Changes how agents' tools are written.",
+        "accepts": "Text or `null`.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.model_tiers": {
+        "what": "Model tier (`fast`, `standard`, `deep`) to the client's model id.",
+        "change": "Agents' model lines are written with it.",
+        "accepts": "A mapping.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.model_tiers.*": {
+        "what": "The client's model id for one tier.",
+        "change": "Changes the model agents of that tier use.",
+        "accepts": "Text.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.skills": {
+        "what": "Where skills go: `root`, `path`, `layout` (`dir_per_skill` or `flat`), `filename`.",
+        "change": "Changes the folder skills are delivered to.",
+        "accepts": "A mapping.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.agents": {
+        "what": "Where subagents go and how they are written: `root`, `path`, `filename` (needs `{name}`), `format` (`md_frontmatter`, `json`, `yaml`), `fields`, `static`, `tools_field`, `tools_format`, `model_field`.",
+        "change": "Changes the agent files.",
+        "accepts": "A mapping.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.instructions": {
+        "what": "Where instructions go: `root`, `file`, `mode` (`block`, `own`, `concat`), `marker` (`md`, `hash`).",
+        "change": "`block` replaces only the hub's marker region, so hand-written text survives; `own` and `concat` own the whole file.",
+        "accepts": "A mapping.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.instructions.mode": {
+        "what": "How instructions are written into the file.",
+        "change": "`block`: only the hub's marker region. `own`: the whole file, with headings. `concat`: the whole file, bodies joined.",
+        "accepts": "`block`, `own` or `concat`.",
+        "default": "block",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again.",
+        "choices": [
+          "block",
+          "own",
+          "concat"
+        ]
+      },
+      "spec.mcp": {
+        "what": "Where MCP servers go: `root`, `file`, `format` (`json`, `yaml`, `toml`), `key_path`, `entry` templates per transport, `env_style`, `wrapper`.",
+        "change": "JSON and YAML are key-merged (other keys in the file are kept); TOML is a marker block.",
+        "accepts": "A mapping.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.mcp.format": {
+        "what": "The MCP config file's format.",
+        "change": "Changes how the servers are merged into the file.",
+        "accepts": "`json`, `yaml` or `toml`.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again.",
+        "choices": [
+          "json",
+          "yaml",
+          "toml"
+        ]
+      },
+      "spec.mcp.env_style": {
+        "what": "How environment variables are written: `dollar_brace` (`${NAME}`), `env_ref`, or `names_only`. Values never enter the hub.",
+        "change": "Pick what the client understands.",
+        "accepts": "`dollar_brace`, `env_ref` or `names_only`.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again.",
+        "choices": [
+          "dollar_brace",
+          "env_ref",
+          "names_only"
+        ]
+      },
+      "spec.permissions": {
+        "what": "Where permission rules go: `root`, `file`, `format`, `lists` (decision to key path), `rule_templates`.",
+        "change": "Only the listed keys are the hub's; the rest of the file is kept.",
+        "accepts": "A mapping.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.memory": {
+        "what": "Where memories go: `root`, `path`, `filename` (needs `{id}`), `frontmatter`.",
+        "change": "Changes the memory files.",
+        "accepts": "A mapping.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.*.root": {
+        "what": "The named root (from `roots:`) this section writes under.",
+        "change": "Must name a root of this client.",
+        "accepts": "A root name.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.*.file": {
+        "what": "The file this section writes, relative to its root.",
+        "change": "Relative paths only; `..` and absolute paths are refused.",
+        "accepts": "A relative path.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.*.path": {
+        "what": "The folder this section writes into, relative to its root.",
+        "change": "Relative paths only.",
+        "accepts": "A relative path.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      },
+      "spec.**": {
+        "what": "Part of the generic spec (docs/ADDING-A-CLIENT.md has the full reference).",
+        "change": "Check the draft: errors name their exact path, such as `spec.skills.layoutt: unknown key`.",
+        "effect": "The next plan and apply use it; files already delivered change only when you apply again."
+      }
+    },
+    "floor": {
+      "version": {
+        "what": "The floor format version.",
+        "accepts": "`1`.",
+        "default": "1",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "network_default": {
+        "what": "The default for network egress: content can only add explicit `egress_host` allow rules for named hosts.",
+        "change": "Stays `deny`; content may only be stricter than the floor.",
+        "accepts": "`deny`.",
+        "default": "deny",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "egress": {
+        "what": "Rules that catch an egress allow that is really a catch-all.",
+        "accepts": "A mapping of lists.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "egress.forbid_allow_patterns": {
+        "what": "Host patterns content may never allow (`*`, `*.*`, ...).",
+        "accepts": "A list of patterns.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "egress.forbid_allow_patterns.#": {
+        "what": "One forbidden allow pattern.",
+        "accepts": "A glob.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "egress.forbid_allow_probes": {
+        "what": "Sample host names: an allow rule that matches any of them is treated as a catch-all and refused.",
+        "accepts": "A list of host names.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "egress.forbid_allow_probes.#": {
+        "what": "One probe host name.",
+        "accepts": "A host name.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "egress.loopback_hosts": {
+        "what": "Names that count as loopback when an egress rule is checked.",
+        "accepts": "A list of host names.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "egress.loopback_hosts.#": {
+        "what": "One loopback name.",
+        "accepts": "A host name.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "deny_path_read": {
+        "what": "Paths no client may be allowed to read, whatever content says: credentials, browser profiles, the hub's and the knowledge service's own state, key files, `.env` files. The hub's data directory is added at start wherever it is.",
+        "accepts": "A list of globs; `~` is your home directory.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "deny_path_read.#": {
+        "what": "One path no client may read.",
+        "accepts": "A glob.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "deny_path_write": {
+        "what": "Paths no client may be allowed to write.",
+        "accepts": "A list of globs.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "deny_path_write.#": {
+        "what": "One path no client may write.",
+        "accepts": "A glob.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "tools": {
+        "what": "Per-tool posture: `default` applies when no content rule names the tool; `max` is the most permissive decision content may grant (deny < ask < allow).",
+        "accepts": "A mapping of tool to `{default, max}`.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "tools.*": {
+        "what": "The posture of one tool.",
+        "accepts": "`default` and `max`, each `deny`, `ask` or `allow`.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "tools.*.default": {
+        "what": "The decision when no content rule names this tool.",
+        "accepts": "`deny`, `ask` or `allow`.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "tools.*.max": {
+        "what": "The most permissive decision content may grant for this tool; a rule above it is a floor violation that blocks apply.",
+        "accepts": "`deny`, `ask` or `allow`.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "default_tool_decision": {
+        "what": "The decision for a tool the floor does not list and no rule names.",
+        "accepts": "`deny`, `ask` or `allow`.",
+        "default": "ask",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "command_allow_forbid_patterns": {
+        "what": "Command patterns an `allow` rule may never use (catch-alls).",
+        "accepts": "A list of patterns.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "command_allow_forbid_patterns.#": {
+        "what": "One forbidden command pattern.",
+        "accepts": "A pattern.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "command_allow_probes": {
+        "what": "Sample commands: an allow rule that matches any of them is a catch-all and is refused.",
+        "accepts": "A list of commands.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "command_allow_probes.#": {
+        "what": "One probe command.",
+        "accepts": "A command line.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "command_allow_warn_probes": {
+        "what": "General-purpose launchers (git, node, curl, ...): an allow rule that matches one is a warning.",
+        "accepts": "A list of commands.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "command_allow_warn_probes.#": {
+        "what": "One launcher probe.",
+        "accepts": "A command line.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "mcp": {
+        "what": "Conditions every MCP server must meet before it may be enabled for a client.",
+        "accepts": "A mapping of flags.",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "mcp.require_scan_clean": {
+        "what": "An MCP server's scan status must be `clean` before it may be enabled.",
+        "accepts": "`true` or `false`.",
+        "default": "true",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      },
+      "mcp.require_explicit_egress": {
+        "what": "Every egress host of an MCP server must be covered by an explicit `egress_host` allow rule.",
+        "accepts": "`true` or `false`.",
+        "default": "true",
+        "effect": "Never through the hub: change policy/floor.yaml in git, with review, then restart the hub (it is loaded at start and refuses to start if it is invalid)."
+      }
+    }
+  }
+}

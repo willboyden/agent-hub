@@ -10,7 +10,7 @@ const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e
 const files = walk(path.join(root, 'js'));
 const ns = new Set(Object.keys(en).map((k) => k.split('.')[0]));
 const has = (k) => k in en || `${k}_one` in en || `${k}_other` in en;
-const NS_RE = /^(nav|lib|coll|mx|editor|cl|imp|chg|plan|diff|home|inbox|k|set|val|mcp|rule|rules|new|picker|wizard|err|common|auth|topbar|palette|spec|kind|status|floor|sugg)\./;
+const NS_RE = /^(nav|lib|coll|mx|editor|cl|imp|chg|plan|diff|home|inbox|k|set|val|mcp|rule|rules|new|picker|wizard|err|common|auth|topbar|palette|spec|kind|status|floor|sugg|help|tab|form|fh|cfgx)\./;
 
 test('every literal key used in js/ exists in en.json (t("x.y") and any quoted "ns.key" of a known namespace)', () => {
   const missing = [];
@@ -37,7 +37,8 @@ test('dynamic key families are complete', () => {
     'concern.': ['skills', 'agents', 'instructions', 'mcp', 'permissions', 'memory'], 'memtype.': ['user', 'feedback', 'project', 'reference'], 'time.': ['s', 'm', 'h', 'd'],
     'home.step_': ['import', 'organise', 'plan', 'apply'], 'chg.s_': ['added', 'modified', 'deleted'], 'chg.gate_': ['not_reviewed', 'all_blocked', 'no_clients', 'nothing_to_do'],
     'imp.ch_': ['link', 'rename', 'replace', 'skip'], 'imp.a_': ['import', 'link', 'skip', 'rename', 'replace'], 'sugg.reason_': ['common_prefix', 'source', 'tag', 'keyword'], 'k.tab_': ['namespaces', 'ingest', 'query', 'tokens', 'indexes'], 'k.job_': ['running', 'done', 'failed'],
-    'set.tab_': ['general', 'keys', 'floor', 'audit'], 'set.role_': ['admin', 'viewer'], 'lib.sort_': ['relevance', 'name', 'updated', 'kind', 'issues', 'enabled'],
+    'set.tab_': ['general', 'keys', 'floor', 'audit', 'doctor', 'config'], 'tab.': ['start', 'faq'], 'form.type_': ['string', 'int', 'float', 'bool', 'date', 'null'], 'form.only_': ['all', 'changed', 'problems'], 'form.sev_': ['error', 'warn', 'info'],
+    'cfgx.file_': ['hub_env', 'knowledge', 'client_spec', 'floor'], 'cfgx.about_': ['hub_env', 'knowledge', 'client_spec', 'floor'], 'cfgx.not_served_': ['hub_env', 'knowledge', 'client_spec'], 'set.role_': ['admin', 'viewer'], 'lib.sort_': ['relevance', 'name', 'updated', 'kind', 'issues', 'enabled'],
     'inbox.reason_': ['override', 'exfil', 'secrets', 'url', 'pipe_shell', 'disable_guard', 'standing_order'], 'cl.dstate_': ['modified_live', 'missing', 'unmanaged', 'in_sync', 'advisory', 'never_applied', 'pending', 'orphaned', 'changed_live'],
     'editor.sev_': ['ok', 'warn', 'error', 'na'], 'common.sev_': ['error', 'warn', 'info'], 'agentmode.': ['subagent', 'primary'],
     'spec.code.': ['missing_field', 'unknown_key', 'bad_type', 'bad_value', 'bad_path', 'yaml_syntax', 'unsafe_path', 'no_skills_root', 'unsupported'],

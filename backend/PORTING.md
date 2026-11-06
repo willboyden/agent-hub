@@ -632,7 +632,8 @@ skips `base` and `_*` names itself, like `discover_package()`.
   - **D-YAML-RECURSIVE**: a container that contains itself (a recursive alias in a non-strict load) cannot be built as
     a PyValue tree and is refused.
   - **D-YAML-ALIAS-EXPANSION**: aliases are copied, not shared, so a non-strict load is refused beyond 1,000,000
-    materialised values (Python shares the objects and loads it).
+    materialised values (Python shares the objects and loads it), and beyond 1,000,000 key/value pairs copied by
+    merge keys (`<<`) in one document (a `MemoryError`; Python copies those pairs too, but without a cap).
   - **D-YAML-TUPLE**: `!!omap` / `!!pairs` items (Python 2-tuples) are 2-item lists.
   - **D-YAML-SURROGATE**: a `\uD800`-style escape (a lone surrogate in Python) becomes U+FFFD.
   - **D-YAML-HUGEINT**: an int of more than 4300 digits raises Python's `ValueError` at load time instead of at
@@ -998,3 +999,37 @@ finding (`tests/test_audit_0_3_0.rs` unless stated).
   allowed depending on the Python side, as before).
 - crate-age: the rustls 0.23.46 exception (A-9) was removed, the version is 14 days old now; the gate passes with 4
   exceptions, 0 too new, 0 stale.
+
+### A-18 (2026-11-05, Settings > Config files: the first Rust-only routes)
+- Four routes the Python app never had, in `routes::RUST_ONLY` and placed together just before `/metrics` (so they can
+  never shadow a Python route): `GET /api/v1/config-files`, `GET /api/v1/config-files/{file}/templates/{name}`,
+  `GET /api/v1/config-files/{file}/current`, `POST /api/v1/config-files/{file}/validate`. `tests/routes.rs` compares the
+  table minus `RUST_ONLY` with `parity/routes.python.json` and checks their position; `assets/openapi.json` (the Python
+  capture) and the parity corpus are unchanged. Every handler requires the admin role.
+- They never write: no file, no permission, no command. GETs read a fixed table of shipped templates under the app root
+  or the policy floor (`cfg.policy_file`), each capped at 64 KiB; the floor is refused (422 `secret_in_file`) if the
+  hub's scrubber would mask anything in it. The hub env file and the knowledge config are never served (403
+  `not_served`). The POST checks a draft of at most 64 KiB with the real loaders (`services/config_files.rs`), at most
+  four at once (429 `rate_limited`; the permit moves into the blocking task, so a client that disconnects does not free
+  its slot early). Messages and key paths are scrubbed; env-file diagnostics name the key and line, never a value;
+  loader exceptions about a value (`KeyError` for `!!bool maybe`, ...) are reported in fixed words; YAML diagnostics
+  may name an adapter, a root or a spec item as written. At most 200 diagnostics, then a count. Bounds: an env draft of
+  more than 2000 lines is 413 `too_many_lines`; `dotenv::values_bounded` stops a `${...}` expansion past 256 KiB
+  (`config::MAX_DRAFT_EXPANSION`; the server's own file at start is still read without a limit, like python-dotenv);
+  a knowledge draft is first loaded with `yamlsafe::load_exact`, and the safe loader runs only when that proves the
+  draft has no anchor or alias (it loads, fails after composing the whole document, or fails on syntax the safe loader
+  meets first); a draft with anchors or aliases, or nested deeper than the strict loader's 328 levels, is not checked
+  (one warning, `summary.checked: false`, `ok: false`). Every safe load also stops past 1,000,000 pairs copied by merge
+  keys (`yaml::constructor::MAX_MERGED_PAIRS`). The summary names at most 200 top-level keys (`key_count` has them all). Templates are read with `fs::read_regular(path, false, 64 KiB)` and
+  refused if `common::has_secret_token` finds a token of a secret shape. The browser masks the values of env keys
+  named like a secret before it sends a draft (`frontend/js/cfg-parse.js` `maskEnvSecrets`).
+- `security::CONTENT_PATHS` gains `/api/v1/config-files`: a check's audit row records the body's size and field names
+  only (a draft env file can hold the knowledge admin key, which the generic redaction would not recognise by name).
+- `config::settings_from_env_text` (the loader with an empty environment: nothing merged, `${VAR}` left empty) and
+  `config::settings_env_names`; `load_settings_from` now reads the file and calls the same `settings_from_sources`.
+- The knowledge config model and validator (`Config`, `py_path`, `validate`, `validation_text`) moved verbatim to
+  `hub_core::knowledge_config`; `agent_knowledge::config` re-exports them and keeps `load_config` and its tests.
+- Tests: `services::config_files::tests` (12), `api::routes::config_files::tests` (1, a dropped request keeps its
+  slot), `dotenv::tests::bounded_values_stop_an_expansion_chain`, `tests/test_config_files_api.rs` (3, through the real
+  pipeline: roles, Origin, the audit row, nothing written), `routes::rust_only_routes_sit_just_before_metrics`; the browser suite
+  (`frontend/e2e/run.mjs`) loads the floor read-only, opens an (i) pop-up and checks the env template on the real hub.

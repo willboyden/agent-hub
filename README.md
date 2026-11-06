@@ -8,7 +8,7 @@ Supported clients out of the box: **Claude Code**, **opencode**, **Hermes Agent*
 and anything file-based through a declarative `generic` adapter (a YAML spec; no code). License: MIT (`LICENSE`). Architecture contract:
 `docs/ARCHITECTURE.md`. Per-feature status: `docs/FEATURES.md`. Reporting a vulnerability: `SECURITY.md`.
 
-Status: **0.3.0** (what changed: `CHANGELOG.md`). Since 0.3.0 the hub, `hubctl` and the knowledge service are written in
+Status: **0.4.0** (what changed: `CHANGELOG.md`). Since 0.3.0 the hub, `hubctl` and the knowledge service are written in
 Rust, behaviour-compatible with the Python 0.2.x line: a differential harness (`backend/parity/`) runs the same requests
 against both and compares responses and the files each writes; the deliberate differences are listed in `CHANGELOG.md`
 and `backend/PORTING.md`. Developed and used on Linux by one operator; every feature's status is in `docs/FEATURES.md`,

@@ -1,10 +1,12 @@
 //! The route table, in Python's exact match order (backend/parity/routes.python.json; tests/routes.rs proves equality),
 //! and the handler helpers. Every handler is written here in full (CORE); a handler whose service is not ported yet
-//! answers 501 `not_ported` through the stub. Owner: CORE (LOCKED). A later route is an ADDITIVE addendum.
+//! answers 501 `not_ported` through the stub. Owner: CORE (LOCKED). A later route is an ADDITIVE addendum: the
+//! Rust-only routes ([`RUST_ONLY`], A-18) sit just before `/metrics` and the SPA catch-all.
 
 pub mod bodies;
 pub mod changes;
 pub mod clients;
+pub mod config_files;
 pub mod content;
 pub mod knowledge;
 pub mod organize;
@@ -646,6 +648,35 @@ pub fn table() -> Vec<Route> {
             h!(skilleval::evaluate),
             true,
         ),
+        // ---- Rust-only routes (PORTING.md A-18): the Settings page's config editor; never writes a file
+        R::new(
+            G,
+            "/api/v1/config-files",
+            "/api/v1/config-files",
+            h!(config_files::list),
+            false,
+        ),
+        R::new(
+            G,
+            "/api/v1/config-files/{file}/templates/{name}",
+            "/api/v1/config-files/{file}/templates/{name}",
+            h!(config_files::template),
+            false,
+        ),
+        R::new(
+            G,
+            "/api/v1/config-files/{file}/current",
+            "/api/v1/config-files/{file}/current",
+            h!(config_files::current),
+            false,
+        ),
+        R::new(
+            P,
+            "/api/v1/config-files/{file}/validate",
+            "/api/v1/config-files/{file}/validate",
+            h!(config_files::validate),
+            true,
+        ),
         R::new(G, "/metrics", "/metrics", h!(system::metrics), false),
         R::new(
             G,
@@ -656,6 +687,14 @@ pub fn table() -> Vec<Route> {
         ),
     ]
 }
+
+/// Routes the Python app never had (addendum A-18), in table order; tests/routes.rs compares the rest with Python.
+pub const RUST_ONLY: [&str; 4] = [
+    "/api/v1/config-files",
+    "/api/v1/config-files/{file}/templates/{name}",
+    "/api/v1/config-files/{file}/current",
+    "/api/v1/config-files/{file}/validate",
+];
 
 /// The metric `route` label Python reports for a matched route template (`/api/v1` + the un-prefixed template for
 /// included routers; the catch-all reports `/api/v1/{path:path}` for /api/v1 paths).

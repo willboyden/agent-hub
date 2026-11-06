@@ -1,4 +1,5 @@
 // REST client for /api/v1 (ARCHITECTURE §5). RFC 7807 problem+json errors become ApiError; every non-GET sends X-Agent-Hub: 1.
+import { maskEnvSecrets } from './cfg-parse.js';
 import { normalizeItem, normalizeMatrix, normalizeChanges, normalizeHistory, normalizeClient, normalizeEffective, normalizeDrift, normalizeApply, normalizeDiscover, normalizeImportResult, normalizeSettings, normalizeAudit, normalizeInbox, normalizeSuggestion, normalizeBackends } from './adapt.js';
 
 export class ApiError extends Error {
@@ -178,6 +179,12 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
     doctorSummary: () => get('/doctor/summary'),
     settings: async () => normalizeSettings(await get('/settings')),
     saveSettings: (body) => put('/settings', body),
+    // Config editor (Settings > Config files): read a template or the policy floor, check a draft. Nothing writes.
+    configFiles: async () => (await get('/config-files')).items || [],
+    configTemplate: (file, name) => get(`/config-files/${encodeURIComponent(file)}/templates/${encodeURIComponent(name)}`),
+    configCurrent: (file) => get(`/config-files/${encodeURIComponent(file)}/current`),
+    // an env draft goes with its secret values replaced (same lines), so a pasted key never leaves the browser
+    validateConfig: (file, text) => post(`/config-files/${encodeURIComponent(file)}/validate`, { text: file === 'hub-env' ? maskEnvSecrets(text) : text }),
     keys: () => get('/keys'),
     createKey: (body) => post('/keys', body),
     deleteKey: (id) => del(`/keys/${enc(id)}`),

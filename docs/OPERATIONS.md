@@ -99,7 +99,7 @@ path with `AGENT_HUB_ENV_FILE`); **the real environment wins over the file**. Ke
 | `HUB_DATA_DIR` | `~/.local/share/agent-hub` | State: `hub.db`, `bootstrap-admin.key`, `locks/`, `plans/`, `snapshots/`, `backups/`. |
 | `HUB_POLICY_FILE` | `<hub>/policy/floor.yaml` | App repo, never content. |
 | `HUB_TRUST_LOOPBACK` | `false` | Leave it. See `SECURITY.md` section 4. |
-| `HUB_ALLOWED_HOSTS` | empty | Extra Host values (a list, written as JSON such as `["hub.lan:8792"]`). |
+| `HUB_ALLOWED_HOSTS` | empty | Extra Host values (a list, written as JSON such as `["hub.example:8792"]`). |
 | `HUB_KNOWLEDGE_URL` | `http://127.0.0.1:8795` | The knowledge service. |
 | `HUB_KNOWLEDGE_ADMIN_KEY` (legacy `HUB_KNOWLEDGE_TOKEN`), `KNOWLEDGE_ADMIN_KEY_FILE` | unset, `~/.local/share/agent-knowledge/admin.key` | Admin key the hub proxy sends. If no key is set the hub reads the 0600 file the knowledge service writes on first start. Secret: 0600 file only. |
 | `HUB_ALLOW_NONLOOPBACK` | unset | Must be `1` to bind a non-loopback `HUB_HOST`. Process environment. |
@@ -113,6 +113,12 @@ path with `AGENT_HUB_ENV_FILE`); **the real environment wins over the file**. Ke
 | `AGENT_HUB_APP_ROOT` | the checkout above the binary | Where `policy/`, `frontend/` and `deploy/` are. Only needed for a binary moved out of `backend/target/`. Process environment. |
 
 The systemd unit reads the same file through `EnvironmentFile=`; that syntax is plain `KEY=value` (no `export`).
+
+To write the file, start from `deploy/agent-hub.env.example`, or use **Settings > Config files** in the UI: it loads the
+template (never your current file, which can hold secrets), explains every key, checks the draft with the hub's own
+loader and shows the install commands. It writes nothing; install the file yourself (`install -D -m 600 ...`) and
+restart the hub. The same tab drafts the knowledge service config (`deploy/knowledge/config.example.yaml`) and client
+files, and shows the policy floor read-only.
 
 ### Key handling
 

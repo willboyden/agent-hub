@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.4.0
+
+### Fixed
+- Plan retention and the inbox limits saved in Settings > General now hold after a restart. The page showed the saved
+  values, but the hub ran with the configured ones until they were saved again.
+
+### Added
+- Getting started and FAQ on every page. Pages with tabs (Settings, Knowledge, Changes, a client, the editor) get two
+  more tabs; the others get a tab bar of their own ("<Page>" | Getting started | FAQ). The FAQ has a search box and a
+  shared set of hub-wide questions. Home's Getting started tab shows the live first-run checklist above the guide (the
+  checklist also stays on Home). Content: `frontend/i18n/help.en.json`, plain text only, checked by
+  `frontend/tests/help.test.mjs` (a lead, at least three steps and four questions per page, links to real tabs and
+  pages, nothing that leaves the machine).
+- Settings > Config files: draft, check and export the hub env file, the knowledge service config and a client file
+  (`clients/<id>.yaml`), and read the policy floor key by key. A Form view with an (i) pop-up per value (what it is,
+  what changing it does, what it accepts, the default, when a change takes effect; `frontend/i18n/fields.en.json`)
+  and a Text view share one draft. Check runs the hub's real loaders on the draft (the settings loader with an empty
+  environment, the knowledge service's own validator, the content loader and the generic dry run). Export shows the
+  diff against what was loaded, Copy, Download and the install commands as text. The hub writes no config file,
+  changes no permission and runs no command for this: you install the file yourself. The env file is never sent to the
+  browser (it can hold the knowledge admin key); start from the new template `deploy/agent-hub.env.example` or open
+  your own copy. The knowledge service has a host template too, `deploy/knowledge/config.example.yaml`. The policy
+  floor stays view-only: it cannot be changed through the hub (docs/ARCHITECTURE.md decision 4).
+- Rust-only routes for the editor, admin only (`backend/PORTING.md` A-18): `GET /api/v1/config-files`,
+  `GET /api/v1/config-files/{file}/templates/{name}` (a fixed table of shipped templates),
+  `GET /api/v1/config-files/{file}/current` (the policy floor only, 64 KiB cap, refused if it holds secret-looking
+  text) and `POST /api/v1/config-files/{file}/validate` (64 KiB, four checks at once, more answer 429). Every message
+  passes through the hub's secret scrubber; env-file findings name the key and the line, never a value, and loader
+  errors about a value are given in fixed words (YAML findings name keys, and a few name the adapter, a root or a spec
+  item as written). Before an env draft goes to the check, the browser replaces the values of keys named like a secret
+  (a heuristic on the name: KEY, TOKEN, SECRET, PASSW, AUTH, CRED, SESSION and the like, never a `*_FILE` path); the
+  (i) pop-up of such a key says whether it is set, not what it is, and drafts are dropped when the API key is removed.
+  The audit row of a check records the body's size and field names only.
+- The checks are bounded: an env draft over 2000 lines answers 413 `too_many_lines`; `${...}` references whose values
+  grow past 256 KiB stop the check with an error; a knowledge draft with YAML anchors or aliases, or nested
+  deeper than the strict loader reads, is not expanded (a warning says it was not checked, and such a result is not a
+  pass); merge keys (`<<`) may copy at most 1,000,000 pairs in any YAML load; at most 200 findings come back, plus a count of the rest. A check keeps its slot
+  until it ends, even when the client goes away. Templates are read as regular files only (no symbolic link) and
+  refused if they hold a token of a secret shape.
+- Settings > General: an (i) pop-up on each field (plans kept, the inbox limits, the evaluation gates).
+
+### Changed
+- The knowledge service's config model and validator moved to `hub_core::knowledge_config` (re-exported by
+  `agent_knowledge::config`, which keeps `load_config`), so the hub checks a draft with the service's own code.
+- `config::settings_from_env_text` reads a draft env file exactly as the server reads its own, without the process
+  environment; `load_settings_from` is unchanged in behaviour.
+
 ## 0.3.0
 
 Upgrading from 0.2.x: the hub, `hubctl` and the knowledge service are now Rust. Stop the 0.2.x hub (a hub that the 0.2.x

@@ -3,6 +3,7 @@
 //! `hubctl` for `HUB_API_KEY`. Values are never logged. Owner: CORE.
 
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 use regex::Regex;
 
@@ -29,7 +30,15 @@ struct Res {
     posix_var: Regex,
 }
 
-fn res() -> Option<Res> {
+/// Compiled once per process: `parse` runs per line in the config editor's check, so it must not compile 14 regexes
+/// per call.
+static RES: LazyLock<Option<Res>> = LazyLock::new(build_res);
+
+fn res() -> Option<&'static Res> {
+    RES.as_ref()
+}
+
+fn build_res() -> Option<Res> {
     let r = |p: String| Regex::new(&p).ok();
     Some(Res {
         multiline_ws: r(format!("^[{WS}]*"))?,
@@ -149,7 +158,7 @@ pub fn parse(text: &str) -> Vec<(String, Option<String>)> {
     let mut out = Vec::new();
     while rd.has_next() {
         let start = rd.pos;
-        match parse_binding(&mut rd, &re) {
+        match parse_binding(&mut rd, re) {
             Ok(Some(kv)) => out.push(kv),
             Ok(None) => {}
             Err(()) => {
@@ -173,41 +182,69 @@ pub fn parse(text: &str) -> Vec<(String, Option<String>)> {
 }
 
 /// `dotenv_values(path)` semantics on already-read text: `${NAME}` / `${NAME:-default}` interpolation against the
-/// process environment overlaid with the values defined so far (override=True). Later duplicates win.
+/// process environment overlaid with the values defined so far (override=True). Later duplicates win. Used for the
+/// operator's own env file at start (no limit, like python-dotenv).
 pub fn values(text: &str, environ: &HashMap<String, String>) -> Vec<(String, Option<String>)> {
-    let Some(re) = res() else { return Vec::new() };
+    values_bounded(text, environ, usize::MAX).unwrap_or_default()
+}
+
+/// A `${...}` expansion made the resolved values larger than the limit given to [`values_bounded`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("the values grow past {0} bytes through ${{...}} expansion")]
+pub struct ExpansionTooLarge(pub usize);
+
+/// [`values`] with a cap on the total size of the resolved values: each `${A}` copies A's value, so a chain of
+/// lines that each repeat the previous one grows exponentially. Stops as soon as the running total passes
+/// `max_total` bytes (memory and time stay bounded by it). For text that is not the operator's own file (the config
+/// editor's check of a draft).
+pub fn values_bounded(
+    text: &str,
+    environ: &HashMap<String, String>,
+    max_total: usize,
+) -> Result<Vec<(String, Option<String>)>, ExpansionTooLarge> {
+    let Some(re) = res() else { return Ok(Vec::new()) };
     let mut out: Vec<(String, Option<String>)> = Vec::new();
+    // key -> its slot in `out` (keys in `out` are unique: a later duplicate updates the slot)
+    let mut slot_of: HashMap<String, usize> = HashMap::new();
+    let mut total: usize = 0;
     for (k, v) in parse(text) {
-        let resolved = v.map(|v| {
-            let mut s = String::new();
-            let mut cursor = 0;
-            for caps in re.posix_var.captures_iter(&v) {
-                let Some(m) = caps.get(0) else { continue };
-                s.push_str(&v[cursor..m.start()]);
-                let name = caps.name("name").map_or("", |x| x.as_str());
-                let default = caps.name("default").map(|x| x.as_str());
-                let from_file = out.iter().rev().find(|(n, _)| n == name).map(|(_, val)| val.clone());
-                let val = match from_file {
-                    Some(Some(val)) => val,
-                    Some(None) => String::new(),
-                    None => environ
-                        .get(name)
-                        .cloned()
-                        .unwrap_or_else(|| default.unwrap_or("").to_string()),
-                };
-                s.push_str(&val);
-                cursor = m.end();
+        let resolved = match v {
+            None => None,
+            Some(v) => {
+                let mut s = String::new();
+                let mut cursor = 0;
+                for caps in re.posix_var.captures_iter(&v) {
+                    let Some(m) = caps.get(0) else { continue };
+                    s.push_str(&v[cursor..m.start()]);
+                    let name = caps.name("name").map_or("", |x| x.as_str());
+                    let default = caps.name("default").map(|x| x.as_str());
+                    let val: &str = match slot_of.get(name).map(|&i| &out[i].1) {
+                        Some(Some(val)) => val,
+                        Some(None) => "",
+                        None => environ.get(name).map_or_else(|| default.unwrap_or(""), String::as_str),
+                    };
+                    if total.saturating_add(s.len()).saturating_add(val.len()) > max_total {
+                        return Err(ExpansionTooLarge(max_total));
+                    }
+                    s.push_str(val);
+                    cursor = m.end();
+                }
+                s.push_str(&v[cursor..]);
+                Some(s)
             }
-            s.push_str(&v[cursor..]);
-            s
-        });
-        if let Some(slot) = out.iter_mut().find(|(n, _)| *n == k) {
-            slot.1 = resolved;
+        };
+        total = total.saturating_add(resolved.as_ref().map_or(0, String::len));
+        if total > max_total {
+            return Err(ExpansionTooLarge(max_total));
+        }
+        if let Some(&i) = slot_of.get(&k) {
+            out[i].1 = resolved;
         } else {
+            slot_of.insert(k.clone(), out.len());
             out.push((k, resolved));
         }
     }
-    out
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -228,5 +265,27 @@ mod tests {
         assert_eq!(get("F"), Some(Some("/h/x".into())));
         assert_eq!(get("G"), Some(Some("dflt".into())));
         assert_eq!(get("H"), Some(Some("v".into())));
+    }
+
+    #[test]
+    fn bounded_values_stop_an_expansion_chain() {
+        // five levels, each value repeating the previous one 100 times: 10^10 copies unbounded
+        let mut text = format!("A0={}\n", "x".repeat(100));
+        for lvl in 1..5 {
+            let rep = format!("${{A{}}}", lvl - 1).repeat(100);
+            text.push_str(&format!("A{lvl}={rep}\n"));
+        }
+        let start = std::time::Instant::now();
+        let r = values_bounded(&text, &HashMap::new(), 256 * 1024);
+        assert_eq!(r, Err(ExpansionTooLarge(256 * 1024)));
+        assert!(start.elapsed() < std::time::Duration::from_secs(1));
+        // within the limit the result is the same as the unbounded reader
+        let ok = "A=1\nB=${A}${A}\nB=${B}x\nC=${NOPE:-d}\n";
+        assert_eq!(
+            values_bounded(ok, &HashMap::new(), 1024),
+            Ok(values(ok, &HashMap::new()))
+        );
+        let got = values(ok, &HashMap::new());
+        assert_eq!(got[1], ("B".to_string(), Some("11x".to_string())));
     }
 }

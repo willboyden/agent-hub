@@ -233,7 +233,7 @@ impl Hub {
         let data_dir = cfg.data_dir.clone();
         let content_dir = cfg.content_dir.clone();
         let max_skill = u64::try_from(cfg.max_skill_bytes).unwrap_or(0);
-        Ok(Arc::new_cyclic(|weak| Hub {
+        let hub = Arc::new_cyclic(|weak| Hub {
             registry,
             floor,
             audit_svc: AuditService::new(store.clone()),
@@ -273,7 +273,34 @@ impl Hub {
                 Some(&data_dir.join("skilleval")),
             ),
             cfg: RwLock::new(cfg),
-        }))
+        });
+        hub.restore_saved_settings();
+        Ok(hub)
+    }
+
+    /// Settings saved from the Settings page outlive a restart: the stored values replace the configured ones before
+    /// anything reads them (the eval gates are always read from the store; these three are read from `cfg`). A stored
+    /// value outside the range the Settings page accepts (a hand-edited or damaged store) is skipped, so the
+    /// configured value runs.
+    fn restore_saved_settings(&self) {
+        for &(key, _, _) in &Self::EDITABLE {
+            let Some(v) = self.stored_int(key) else {
+                continue;
+            };
+            let mut c = self.cfg.write().unwrap_or_else(std::sync::PoisonError::into_inner);
+            match key {
+                "plan_retention" => c.plan_retention = v,
+                "inbox_max_per_client" => {
+                    c.inbox_max_per_client = v;
+                    self.inbox.set_max_per_client(v);
+                }
+                "inbox_rate_per_min" => {
+                    c.inbox_rate_per_min = v;
+                    self.inbox.set_rate(v);
+                }
+                _ => {}
+            }
+        }
     }
 
     /// A snapshot of the current settings.
@@ -339,19 +366,22 @@ impl Hub {
             .and_then(|s| serde_json::from_str(s).ok())
     }
 
-    /// `_setting(key)`: the stored int, else the configured one.
+    /// The stored int for an [`Self::EDITABLE`] key, when it is one and inside that key's range (None otherwise).
+    fn stored_int(&self, key: &str) -> Option<i64> {
+        let v = self.stored(key)?;
+        let n = v.as_i64().or_else(|| {
+            // Python int(float): truncation toward zero is the intended semantics
+            #[allow(clippy::cast_possible_truncation)]
+            v.as_f64().map(|f| f.trunc() as i64)
+        })?;
+        let (_, lo, hi) = Self::EDITABLE.iter().find(|(k, _, _)| *k == key)?;
+        (*lo..=*hi).contains(&n).then_some(n)
+    }
+
+    /// `_setting(key)`: the stored int, else the configured one. A stored value outside the key's range is ignored,
+    /// like [`Self::restore_saved_settings`] ignores it, so the page shows what runs.
     pub fn setting(&self, key: &str) -> i64 {
-        match self.stored(key) {
-            Some(v) => v
-                .as_i64()
-                .or_else(|| {
-                    // Python int(float): truncation toward zero is the intended semantics
-                    #[allow(clippy::cast_possible_truncation)]
-                    v.as_f64().map(|f| f.trunc() as i64)
-                })
-                .unwrap_or(0),
-            None => Self::cfg_int(&self.cfg(), key),
-        }
+        self.stored_int(key).unwrap_or_else(|| Self::cfg_int(&self.cfg(), key))
     }
 
     /// `_setting_str(key)`: the stored enum value when still allowed, else the configured default.

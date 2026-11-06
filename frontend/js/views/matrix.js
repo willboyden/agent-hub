@@ -1,6 +1,7 @@
 // Matrix: items (grouped by collection) x clients. Cells are tri-state-plus (on / off / via collection / unsupported / blocked).
 // Clicks are STAGED locally (undo-able) and only written to the content working tree when the user saves.
 import { AhView } from '../components/base.js';
+import { helpFrame } from '../components/help-tabs.js';
 import { h, icon, clear } from '../dom.js';
 import { t } from '../i18n.js';
 import { store } from '../app-context.js';
@@ -24,7 +25,9 @@ class AhMatrix extends AhView {
     this.wrap = h('div', { class: 'card mx-card' });
     this.bar = h('div', { class: 'unsaved-bar', role: 'region', 'aria-label': t('mx.unsaved_label'), hidden: true });
     this.live = h('div', { class: 'sr-only', role: 'status', 'aria-live': 'polite' });
-    this.append(this.head, this.toolbar, this.wrap, this.bar, this.live);
+    const f = helpFrame(this, { key: 'matrix', name: t('nav.matrix') });
+    f.own.append(this.toolbar, this.wrap, this.bar, this.live);
+    this.append(this.head, f.bar, f.own, f.help);
     this.listen(window, 'keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.target.closest?.('input, textarea')) { e.preventDefault(); this.undo(); } });
     this.listen(window, 'ah:changed', () => { if (!this.saving) this.load(true); });
     this.load();

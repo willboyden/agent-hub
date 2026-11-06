@@ -1,7 +1,8 @@
 // Small presentational helpers built on h(). Text always goes through i18n via t().
-import { h, icon } from '../dom.js';
+import { h, icon, copyText } from '../dom.js';
 import { t } from '../i18n.js';
 import { describeError } from '../errors.js';
+import { toast } from './toast.js';
 
 export const badge = (text, kind = 'muted', title) => h('span', { class: `badge ${kind}`, title }, text);
 export function btn(label, { icon: ic, kind = '', size = '', onClick, title, type = 'button', disabled, ariaLabel, pressed } = {}) {
@@ -81,4 +82,10 @@ export function driftDetails(c) {
   if (!list.length) return null;
   return h('details', { class: 'drift-list' }, h('summary', t('cl.drift_details', { count: list.length })),
     h('ul', list.map((f) => h('li', h('code', f.root ? `${f.root}: ${f.path}` : f.path), f.reason ? h('div', { class: 'muted small' }, f.reason) : null))));
+}
+
+// A command shown as text with a Copy button (help steps, install commands). Never run: the person copies it.
+export function fixBlock(command, label) {
+  const b = btn(t('common.copy'), { icon: 'copy', size: 'sm', onClick: async () => { const ok = await copyText(command); toast(ok ? t('common.copied') : t('common.copy_failed'), { kind: ok ? 'ok' : 'bad', timeout: 1800 }); } });
+  return h('div', { class: 'cmd-line' }, label ? h('span', { class: 'cmd-line-label' }, label) : null, h('code', { class: 'cmd-line-text' }, command), b);
 }

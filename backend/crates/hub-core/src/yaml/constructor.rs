@@ -39,6 +39,11 @@ enum Gen {
 /// memory: Python shares the objects, a PyValue tree copies them (DEVIATION D-YAML-ALIAS-EXPANSION).
 const MAX_MATERIALISED: usize = 1_000_000;
 
+/// Key/value pairs that merge keys (`<<`) may copy in one document, counted over every `flatten_mapping` call. A merge
+/// of an alias copies its pairs, so a few lines that merge the previous level several times grow exponentially before
+/// anything is materialised; past this budget the load is refused (DEVIATION D-YAML-ALIAS-EXPANSION).
+pub(crate) const MAX_MERGED_PAIRS: usize = 1_000_000;
+
 pub(crate) struct Constructor<'a> {
     nodes: &'a mut [Node],
     objs: Vec<Obj>,
@@ -47,6 +52,8 @@ pub(crate) struct Constructor<'a> {
     pending: Vec<Gen>,
     deep_construct: bool,
     strict: bool,
+    /// Pairs copied by merge keys so far (see [`MAX_MERGED_PAIRS`]).
+    merged: usize,
 }
 
 fn ctor_err(context: Option<&str>, context_mark: Option<Mark>, problem: String, mark: Mark) -> Error {
@@ -63,6 +70,7 @@ impl<'a> Constructor<'a> {
             pending: Vec::new(),
             deep_construct: false,
             strict,
+            merged: 0,
         }
     }
 
@@ -345,6 +353,7 @@ impl<'a> Constructor<'a> {
                 match &self.nodes[vn].val {
                     NodeVal::Map(_) => {
                         self.flatten_mapping(vn, depth + 1)?;
+                        self.charge_merge(vn)?;
                         if let NodeVal::Map(p) = &self.nodes[vn].val {
                             merge.extend(p.iter().copied());
                         }
@@ -362,6 +371,7 @@ impl<'a> Constructor<'a> {
                                 ));
                             }
                             self.flatten_mapping(sub, depth + 1)?;
+                            self.charge_merge(sub)?;
                             if let NodeVal::Map(p) = &self.nodes[sub].val {
                                 submerge.push(p.clone());
                             }
@@ -394,6 +404,23 @@ impl<'a> Constructor<'a> {
         {
             merge.append(p);
             *p = merge;
+        }
+        Ok(())
+    }
+
+    /// Count the pairs of mapping `node` that a merge key is about to copy; refuse the document past
+    /// [`MAX_MERGED_PAIRS`].
+    fn charge_merge(&mut self, node: NodeId) -> R<()> {
+        let n = match &self.nodes[node].val {
+            NodeVal::Map(p) => p.len(),
+            _ => 0,
+        };
+        self.merged = self.merged.saturating_add(n);
+        if self.merged > MAX_MERGED_PAIRS {
+            return Err(Error::python(
+                "MemoryError",
+                "document merges too many keys through aliases",
+            ));
         }
         Ok(())
     }
@@ -929,5 +956,41 @@ mod tests {
             Some(PyValue::BigInt("99999999999999999999".into()))
         );
         assert!(construct_yaml_int("0x").is_err());
+    }
+
+    /// `l0` has 4 pairs; each further level merges the one before ten times (the pairs copied grow tenfold a level).
+    fn merge_ladder(levels: usize) -> String {
+        let mut text = String::from("l0: &l0 {a: 1, b: 2, c: 3, d: 4}\n");
+        for i in 1..=levels {
+            let refs = vec![format!("*l{}", i - 1); 10].join(", ");
+            text.push_str(&format!("l{i}: &l{i}\n  <<: [{refs}]\n"));
+        }
+        text
+    }
+
+    #[test]
+    fn merge_keys_have_a_total_budget() {
+        // 5 levels copy 444,440 pairs: under the budget, and the result is Python's
+        let text = merge_ladder(5);
+        let v = crate::yaml::load(&text, crate::yaml::Loader::Safe);
+        let want = crate::yaml::load("{a: 1, b: 2, c: 3, d: 4}", crate::yaml::Loader::Safe);
+        assert!(want.is_ok());
+        match &v {
+            Ok(PyValue::Dict(d)) => assert_eq!(d.last().map(|(_, v)| v), want.as_ref().ok()),
+            other => panic!("{other:?}"),
+        }
+        // 8 levels would copy 444,444,440 (6 already 4,444,440): refused when the budget runs out, before the copy
+        let start = std::time::Instant::now();
+        let e = crate::yaml::load(&merge_ladder(8), crate::yaml::Loader::Safe).err();
+        assert!(
+            start.elapsed() < std::time::Duration::from_secs(2),
+            "{:?}",
+            start.elapsed()
+        );
+        assert_eq!(
+            e.as_ref().map(|e| (e.python_exception(), e.problem.as_str())),
+            Some((Some("MemoryError"), "document merges too many keys through aliases"))
+        );
+        const { assert!(MAX_MERGED_PAIRS < 4_444_440 && MAX_MERGED_PAIRS > 444_440) };
     }
 }

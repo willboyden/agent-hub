@@ -63,6 +63,13 @@ static ASSIGN: LazyLock<Regex> = LazyLock::new(|| {
     )
 });
 
+/// True when `text` holds a token of a known secret shape (`sk-…`, `ghp_…`, `Bearer …`, a private key block, …): the
+/// first half of [`scrub`], without its `name = value` heuristic (which also masks env var NAMES such as
+/// `api_key_env: SOME_KEY`).
+pub fn has_secret_token(text: &str) -> bool {
+    SECRET_VALUE.is_match(text)
+}
+
 /// `scrub(text)`: mask secret-looking tokens in free text (diffs, logs). No truncation.
 pub fn scrub(text: &str) -> String {
     let first = SECRET_VALUE.replace_all(text, "[redacted]");

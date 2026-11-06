@@ -114,6 +114,8 @@ GET  /policy/floor  (read-only)   POST /policy/check {profile-like body} -> viol
 GET  /memory/inbox  POST /memory/inbox {client, title, body, type}  (token: scope inbox:write)  POST /memory/inbox/{id}/promote|reject   (admin)
 GET  /knowledge/*   proxy to the knowledge service with the admin token (browser stays same-origin)
 GET  /audit  GET|PUT /settings  GET|POST|DELETE /keys
+GET  /config-files  GET /config-files/{file}/templates/{name}  GET /config-files/{file}/current (floor only)
+POST /config-files/{file}/validate {text}               (admin) check a draft with the real loaders; never writes
 GET  /metrics (root)
 ```
 Roles `admin` / `viewer`; client tokens (`ec_`-style random, hashed at rest) carry the scope `inbox:write` (knowledge access uses tokens issued by the knowledge service, see Addendum D); the first start writes a bootstrap admin key (0600).

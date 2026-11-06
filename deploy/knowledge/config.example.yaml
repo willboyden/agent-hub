@@ -1,0 +1,19 @@
+# agent-knowledge config for a host process (template). Install it, then start the service with it:
+#   install -D -m 600 config.yaml ~/.config/agent-knowledge/config.yaml
+#   agent-knowledge --config ~/.config/agent-knowledge/config.yaml
+# Unknown keys are refused at start. Secrets are never written here: the *_env keys name environment variables.
+# Every key is optional; the values below are the built-in defaults, and a commented key keeps its default (read its
+# note). Reference: docs/OPERATIONS.md section 9.
+host: 127.0.0.1                 # a non-loopback host needs --allow-bind-any (container use only)
+port: 8795
+allowed_hosts: []               # extra Host header values (DNS-rebinding allowlist)
+data_dir: ~/.local/share/agent-knowledge
+# lance_dir: /path/on/ssd/lance   # default: <data_dir>/lance; never tmpfs
+# qdrant_url: http://127.0.0.1:6333   # unset: the Qdrant backend is off
+qdrant_api_key_env: KNOWLEDGE_QDRANT_API_KEY
+# router_url: http://127.0.0.1:4000   # an OpenAI-compatible /v1/embeddings endpoint; unset: KNOWLEDGE_ROUTER_URL
+#                                     # from the service's environment, else this default (setting it here wins)
+router_api_key_env: KNOWLEDGE_EMBED_API_KEY   # env var NAME of an embeddings-only key, never a master key
+default_embedding_model: text-embedding-3-small   # example; use a model your endpoint serves
+ingest_roots: []                # allowlist for admin `path` ingest; empty = path ingest off
+index_roots: []                 # allowlist for the shared-index registry

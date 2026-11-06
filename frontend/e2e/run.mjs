@@ -16,7 +16,10 @@
 //     itself (2026-10-26: leaving the editor opened its "Delete <item>?" confirmation, because the view's `remove()`
 //     shadowed Element.remove() that the router calls),
 //   * an uncaught exception, a console error, an API answer of 5xx, or a frontend file that does not load,
-//   * a frontend file served without `Cache-Control: no-cache` (a stale module next to a new one breaks pages).
+//   * a frontend file served without `Cache-Control: no-cache` (a stale module next to a new one breaks pages),
+//   * the config editor (Settings > Config files) not loading the policy floor read-only with its (i) pop-ups, the
+//     shipped hub env template not passing the hub's own check, or a knowledge draft the hub could not check (YAML
+//     anchors) reading as a pass.
 // The backend gets a minimal PATH (/usr/bin:/bin: git, nothing from ~/.local/bin), so a developer's installed tools
 // (SkillEvaluator, the knowledge service) are as absent as they are in CI and on a fresh machine.
 import { spawn, spawnSync } from 'node:child_process';
@@ -270,6 +273,42 @@ export async function main(argv = process.argv.slice(2)) {
     route = '(commit)';
     await call('POST', '/changes/commit', { message: 'e2e: seed' });
     await visit(paths.filter((p) => /^\/(changes|matrix|clients|edit\/(skill|agent)\/e2e-(skill|agent))/.test(p)), 'committed');
+    // The config editor against the real loaders (Rust-only routes, PORTING.md A-18): the policy floor loads read-only
+    // with an (i) pop-up per key, and the hub env template passes the hub's own check. Nothing may be written.
+    const waitFor = async (expr, what) => {
+      for (let i = 0; i < 100; i++) { if (await evaluate(expr)) return true; await sleep(100); }
+      problems(`config editor: ${what}`); return false;
+    };
+    const clickSel = (sel) => evaluate(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); if (!e) return false; e.click(); return true; })()`);
+    route = '/settings › config [editor]';
+    await evaluate(`location.hash = '#/settings?tab=config'; true`);
+    if (await waitFor(`document.querySelectorAll('#main .cfg .seg-control button').length === 4`, 'the four config files are not listed')) {
+      await clickSel('#main .cfg .seg-control button[data-v="floor"]');
+      if (await waitFor(`document.querySelectorAll('#main .ff').length > 50`, 'the policy floor did not load as a form')) {
+        if (await evaluate(`!!document.querySelector('#main .cfg-toolbar .btn.primary')`)) problems('config editor: the policy floor offers a Check button');
+        await clickSel('#main .ff .ff-info');
+        await waitFor(`!!document.querySelector('.ff-pop:popover-open .fh-block')`, 'the (i) pop-up did not open');
+        await evaluate(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true`);
+      }
+      await clickSel('#main .cfg .seg-control button[data-v="hub-env"]');
+      await waitFor(`!!document.querySelector('#main .cfg-load .btn')`, 'no Load template button');
+      await clickSel('#main .cfg-load .btn');
+      await waitFor(`document.querySelectorAll('#main .ff').length > 0`, 'the env template did not load');
+      await clickSel('#main .cfg-toolbar .btn.primary');
+      await waitFor(`/Passes the hub/.test(document.querySelector('#main .cfg .note.ok')?.innerText || '')`, 'the env template did not pass the hub check');
+      // a knowledge draft the hub does not check (YAML anchors) must not read as a pass anywhere
+      await clickSel('#main .cfg .seg-control button[data-v="knowledge"]');
+      await waitFor(`[...document.querySelectorAll('#main .cfg-load .btn')].length >= 3`, 'no Start empty button for the knowledge file');
+      await evaluate(`(() => { const b = [...document.querySelectorAll('#main .cfg-load .btn')].at(-1); b.click(); return true; })()`);
+      if (await waitFor(`!!document.querySelector('#main .cfg textarea.code-edit')`, 'the empty knowledge draft did not open as text')) {
+        await evaluate(`(() => { const ta = document.querySelector('#main .cfg textarea.code-edit'); ta.value = 'port: &p 8795\\nother: *p\\n'; ta.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+        await clickSel('#main .cfg-toolbar .btn.primary');
+        if (await waitFor(`/Not checked/.test(document.querySelector('#main .cfg .note.warn[role=status]')?.innerText || '')`, 'an unchecked knowledge draft did not say it was not checked')) {
+          if (await evaluate(`!!document.querySelector('#main .cfg .note.ok')`)) problems('config editor: an unchecked knowledge draft shows a pass');
+        }
+      }
+      const st = await settle(); judge(st); await closeDialogs();
+    }
     route = '(static files)';
     for (const [p, cc] of seenHeaders) if (!/\bno-cache\b/.test(cc)) problems(`${p} served without Cache-Control: no-cache (got '${cc}')`);
     if (!seenHeaders.size) problems('no frontend file was observed (the page never loaded?)');

@@ -1,6 +1,7 @@
 // Editor: one item at a time. Skill (form + markdown + file tree), agent (capabilities + native tool mapping), MCP (scan, egress, per-client
 // enable), rule (guided, floor-aware), instruction (ordering), memory. A "Rendered for <client>" tab shows the exact artifact.
 import { AhView } from '../components/base.js';
+import { helpTabItems, isHelpTab, renderHelp } from '../components/help-tabs.js';
 import { h, icon, clear } from '../dom.js';
 import { t } from '../i18n.js';
 import { toast, toastError } from '../components/toast.js';
@@ -54,7 +55,8 @@ class AhEditor extends AhView {
     this.headEl = h('div', { class: 'editor-head' });
     this.issuesEl = h('div', { class: 'issues', role: 'status', 'aria-live': 'polite' });
     this.panel = h('div', { class: 'editor-panel', role: 'tabpanel' });
-    const tabBar = tabs([{ id: 'edit', label: t('editor.tab_edit') }, { id: 'rendered', label: t('editor.tab_rendered') }, { id: 'used', label: t('editor.tab_used') }], this.tab, (id) => { this.tab = id; this.paintPanel(); }, t('editor.tabs'));
+    const tabBar = tabs([{ id: 'edit', label: t('editor.tab_edit') }, { id: 'rendered', label: t('editor.tab_rendered') }, { id: 'used', label: t('editor.tab_used') }, ...helpTabItems()], this.tab, (id) => { this.tab = id; this.paintPanel(); }, t('editor.tabs'));
+    this.tabBar = tabBar;
     this.paintHead(); this.paintIssues(); this.paintPanel();
     return [this.headEl, this.issuesEl, tabBar, this.panel];
   }
@@ -88,6 +90,7 @@ class AhEditor extends AhView {
   // ---- panel switching ----
   paintPanel() {
     clear(this.panel);
+    if (isHelpTab(this.tab)) { renderHelp(this, this.panel, this.tab, { key: 'editor', name: t('help.page_editor'), bar: this.tabBar }); return; }
     if (this.tab === 'rendered') { this.panel.append(this.renderedPanel()); return; }
     if (this.tab === 'used') { this.loadInto(this.panel, () => this.usedPanel()); return; }
     this.panel.append(this[`${this.kind}Panel`]());

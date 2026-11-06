@@ -40,6 +40,8 @@ work).
 | Client status distinguishes `adopted_at` (import recorded live files) from `last_applied_at` (real applies only) and the states `in_sync / edited_outside / pending_changes / never_applied / error`, with a per-file drift breakdown | Implemented |  |
 | Undo an apply: `hubctl rollback` / `POST /clients/{id}/rollback` (records every apply, restores files only while the live hash equals the post-apply hash, conflicts skipped) | Implemented |  |
 | `hubctl doctor` / Settings, Host hardening: read-only host-exposure report with exact fixes | Implemented |  |
+| Settings, Config files: draft, check (the real loaders) and export the hub env file, the knowledge config and a client file; the policy floor view-only; (i) help per key. Writes nothing | Implemented | Unreleased; `backend/PORTING.md` A-18 |
+| Getting started and FAQ tabs on every page (FAQ search) | Implemented | Unreleased |
 | Hidden key prompt and `hubctl retire-bootstrap-key` (verify, zero-fill, delete the bootstrap file) | Implemented |  |
 | HMAC-bound MCP scan attestation (`hubctl attest-mcp`), content repo outside the project tree with `hubctl migrate-content` | Implemented |  |
 | Automatic re-apply on a schedule or on client launch | Not planned | Compile-not-serve: content is rendered only when you apply. |

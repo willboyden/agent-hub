@@ -1034,7 +1034,7 @@ pub async fn metrics(c: &Ctx, req: &mut Req) -> HResult {
     Ok(Out::Text(c.tel.render(), "text/plain; version=0.0.4; charset=utf-8"))
 }
 
-pub const VERSION: &str = "0.3.0";
+pub const VERSION: &str = "0.4.0";
 
 pub async fn health(_c: &Ctx, _req: &mut Req) -> HResult {
     Ok(Out::Json(

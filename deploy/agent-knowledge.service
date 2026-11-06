@@ -6,7 +6,7 @@
 #   1. Edit every line marked CHANGEME.
 #   2. mkdir -p ~/.local/share/agent-knowledge ~/.config/agent-knowledge
 #      Every ReadWritePaths entry must EXIST or the unit fails to start (status=226).
-#   3. Write ~/.config/agent-knowledge/config.yaml (keys: backend/crates/agent-knowledge/src/config.rs; unknown keys are rejected).
+#   3. Write ~/.config/agent-knowledge/config.yaml (keys: backend/crates/hub-core/src/knowledge_config.rs; unknown keys are rejected).
 #      Put lance_dir on an SSD path, never tmpfs. Set ingest_roots only to directories you want indexable.
 #   4. Write ~/.config/agent-knowledge/env, mode 0600, KEY=value lines (names below are the config defaults):
 #        KNOWLEDGE_EMBED_API_KEY=<an embeddings-only router VIRTUAL key, never the router master key>

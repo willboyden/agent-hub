@@ -8,15 +8,17 @@ import { btn, badge, tabs, emptyBox, errorBox, field, select, seg, bar, notifyCh
 import { confirmDialog, openModal } from '../components/dialog.js';
 import { copyText } from '../dom.js';
 import { fmtBytes, timeAgo, validName } from '../util.js';
+import { helpTabItems, isHelpTab, renderHelp } from '../components/help-tabs.js';
 
 const KEY_CMD = 'echo "HUB_KNOWLEDGE_TOKEN=$(cat ~/.local/share/agent-knowledge/admin.key)" >> ~/.config/agent-hub/env && systemctl --user restart agent-hub';
 
 class AhKnowledge extends AhView {
   setup() {
-    this.tab = this.query?.tab || 'namespaces';
+    const ids = ['namespaces', 'ingest', 'query', 'tokens', 'indexes'];
+    this.tab = [...ids, 'start', 'faq'].includes(this.query?.tab) ? this.query.tab : 'namespaces';
     this.head = h('div'); this.panel = h('div', { class: 'k-panel', role: 'tabpanel' });
-    const tabBar = tabs(['namespaces', 'ingest', 'query', 'tokens', 'indexes'].map((id) => ({ id, label: t(`k.tab_${id}`) })), this.tab, (id) => { this.tab = id; this.paint(); }, t('editor.tabs'));
-    this.append(h('div', { class: 'page-head' }, h('h1', t('k.title'))), h('p', { class: 'muted' }, t('k.intro')), this.head, tabBar, this.panel);
+    this.tabBar = tabs([...ids.map((id) => ({ id, label: t(`k.tab_${id}`) })), ...helpTabItems()], this.tab, (id) => { this.tab = id; this.paint(); }, t('editor.tabs'));
+    this.append(h('div', { class: 'page-head' }, h('h1', t('k.title'))), h('p', { class: 'muted' }, t('k.intro')), this.head, this.tabBar, this.panel);
     this.loadHealth(); this.paint();
   }
   // Setup panels for the two knowledge-side failures. They are not the hub's own auth problem, so no key dialog: just say what to do.
@@ -32,12 +34,12 @@ class AhKnowledge extends AhView {
     let state = 'ok'; let health = null;
     try { health = await this.api.kHealth(); } catch (e) { if (e.isKnowledgeSetup) health = { reachable: e.code !== 'knowledge_unavailable', authenticated: false }; else if (![404, 405].includes(e.status)) { clear(this.head).append(errorBox(e, () => this.loadHealth())); return; } }
     if (health && 'reachable' in health) state = !health.reachable ? 'down' : !health.authenticated ? 'auth' : 'ok';
-    if (state !== 'ok') { this.panel.hidden = true; clear(this.head).append(this.chip(state), this.setupPanel(state === 'down' ? 'down' : 'unauthorized')); return; }
+    if (state !== 'ok') { this.kDown = true; this.panel.hidden = !isHelpTab(this.tab); clear(this.head).append(this.chip(state), this.setupPanel(state === 'down' ? 'down' : 'unauthorized')); return; }
     try {
-      const b = await this.api.kBackends(); this.backends = b.items || b; this.panel.hidden = false;
+      const b = await this.api.kBackends(); this.backends = b.items || b; this.kDown = false; this.panel.hidden = false;
       clear(this.head).append(this.chip('ok'), h('div', { class: 'grid tiles backends' }, this.backends.map((x) => this.backendCard(x))));
     } catch (e) {
-      if (e.isKnowledgeSetup || [0, 502, 503].includes(e.status)) { const st = e.code === 'knowledge_upstream_unauthorized' ? 'auth' : 'down'; this.panel.hidden = true; clear(this.head).append(this.chip(st), this.setupPanel(st === 'auth' ? 'unauthorized' : 'down')); return; }
+      if (e.isKnowledgeSetup || [0, 502, 503].includes(e.status)) { const st = e.code === 'knowledge_upstream_unauthorized' ? 'auth' : 'down'; this.kDown = true; this.panel.hidden = !isHelpTab(this.tab); clear(this.head).append(this.chip(st), this.setupPanel(st === 'auth' ? 'unauthorized' : 'down')); return; }
       clear(this.head).append(errorBox(e, () => this.loadHealth()));
     }
   }
@@ -49,7 +51,11 @@ class AhKnowledge extends AhView {
       h('div', { class: 'card-body' }, h('p', { class: 'muted small' }, b.kind === 'embedded' ? t('k.embedded', { path: b.path }) : t('k.service', { url: b.url }), b.version ? ` · v${b.version}` : ''),
         (b.dims || []).length ? h('p', { class: 'small' }, t('k.dims', { dims: b.dims.join(', ') })) : null, b.tables != null ? h('p', { class: 'small' }, t('k.tables', { count: b.tables })) : null, bar(pct, t('k.disk_share', { name: b.name, pct, size: fmtBytes(b.disk_bytes || 0) })), h('p', { class: 'muted small' }, t('k.disk_share', { name: b.name, pct, size: fmtBytes(b.disk_bytes || 0) }))));
   }
-  paint() { this.loadInto(this.panel, async () => { try { return await this[`${this.tab}Tab`](); } catch (e) { if (e.isKnowledgeSetup) return this.setupPanel(e.code === 'knowledge_upstream_unauthorized' ? 'unauthorized' : 'down'); throw e; } }); }
+  paint() {
+    // The help tabs work while the knowledge service is down (the data tabs' panel is then hidden behind the setup box).
+    if (isHelpTab(this.tab)) { this.panel.hidden = false; renderHelp(this, this.panel, this.tab, { key: 'knowledge', name: t('nav.knowledge'), bar: this.tabBar }); return; }
+    this.panel.hidden = !!this.kDown;
+    this.loadInto(this.panel, async () => { try { return await this[`${this.tab}Tab`](); } catch (e) { if (e.isKnowledgeSetup) return this.setupPanel(e.code === 'knowledge_upstream_unauthorized' ? 'unauthorized' : 'down'); throw e; } }); }
   async namespaces() { this.ns = await this.api.kNamespaces(); return this.ns; }
 
   // ---- namespaces ----

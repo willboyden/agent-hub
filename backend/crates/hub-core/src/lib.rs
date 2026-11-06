@@ -5,6 +5,7 @@ pub mod common;
 pub mod dotenv;
 pub mod errors;
 pub mod ids;
+pub mod knowledge_config;
 pub mod models;
 pub mod pathsafe;
 pub mod py;

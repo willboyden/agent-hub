@@ -1,6 +1,7 @@
 // Clients: cards with status, "what can this client do right now" (effective config), verify / drift / audit, manage flags with a diff
 // before adopting, and an add-client wizard (pick an adapter or paste a generic spec with live validation and a dry-run preview).
 import { AhView } from '../components/base.js';
+import { helpFrame, helpTabItems, isHelpTab, renderHelp } from '../components/help-tabs.js';
 import { h, icon, clear, append } from '../dom.js';
 import { t } from '../i18n.js';
 import { toast, toastError } from '../components/toast.js';
@@ -20,7 +21,14 @@ const CONCERNS = ['skills', 'agents', 'instructions', 'mcp', 'permissions', 'mem
 class AhClients extends AhView {
   setup() {
     this.cid = this.params?.id || null; this.tab = this.query?.tab || 'overview';
-    this.host = h('div'); this.append(this.host);
+    this.host = h('div');
+    if (this.cid) this.append(this.host);
+    else {
+      // the list: its head, then "Clients" | Getting started | FAQ (the detail page has its own tabs)
+      const f = helpFrame(this, { key: 'clients', name: t('nav.clients') });
+      f.own.append(this.host);
+      this.append(h('div', { class: 'row between wrap gap page-head' }, h('h1', t('cl.title')), btn(t('cl.add'), { icon: 'plus', kind: 'primary', onClick: () => this.addWizard() })), f.bar, f.own, f.help);
+    }
     this.listen(window, 'ah:changed', () => { if (this._alive && !this.busy) this.render(true); });
     this.render();
   }
@@ -33,8 +41,7 @@ class AhClients extends AhView {
   // ---- list ----
   async list() {
     const clients = await this.api.clients();
-    return [h('div', { class: 'row between wrap gap page-head' }, h('h1', t('cl.title')), btn(t('cl.add'), { icon: 'plus', kind: 'primary', onClick: () => this.addWizard() })),
-      h('p', { class: 'muted' }, t('cl.intro')),
+    return [h('p', { class: 'muted' }, t('cl.intro')),
       clients.length ? h('div', { class: 'grid tiles client-grid' }, clients.map((c) => this.card(c))) : emptyBox(t('cl.empty_title'), t('cl.empty_hint'), btn(t('cl.add'), { icon: 'plus', kind: 'primary', onClick: () => this.addWizard() }))];
   }
   card(c) {
@@ -94,8 +101,8 @@ class AhClients extends AhView {
     const c = await this.api.client(this.cid);
     this.c = c;
     const panel = h('div', { class: 'client-panel', role: 'tabpanel' });
-    const paint = () => { clear(panel); if (this.tab === 'manage') this.loadInto(panel, () => this.managePanel(c)); else if (this.tab === 'health') panel.append(this.healthPanel(c)); else this.loadInto(panel, () => this.effectivePanel(c)); };
-    const tabBar = tabs([{ id: 'overview', label: t('cl.tab_overview') }, { id: 'manage', label: t('cl.tab_manage') }, { id: 'health', label: t('cl.tab_health') }], this.tab, (id) => { this.tab = id; paint(); }, t('editor.tabs'));
+    const paint = () => { clear(panel); if (isHelpTab(this.tab)) renderHelp(this, panel, this.tab, { key: 'clients', name: t('nav.clients'), bar: tabBar }); else if (this.tab === 'manage') this.loadInto(panel, () => this.managePanel(c)); else if (this.tab === 'health') panel.append(this.healthPanel(c)); else this.loadInto(panel, () => this.effectivePanel(c)); };
+    const tabBar = tabs([{ id: 'overview', label: t('cl.tab_overview') }, { id: 'manage', label: t('cl.tab_manage') }, { id: 'health', label: t('cl.tab_health') }, ...helpTabItems()], this.tab, (id) => { this.tab = id; paint(); }, t('editor.tabs'));
     setTimeout(paint, 0);
     return [h('nav', { class: 'crumbs', 'aria-label': t('editor.breadcrumb') }, h('a', { href: '#/clients' }, t('nav.clients')), ' / ', h('strong', c.display_name)),
       h('div', { class: 'row between wrap gap page-head' }, h('div', { class: 'row gap wrap' }, h('h1', c.display_name), clientStatusBadge(c)),

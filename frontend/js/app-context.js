@@ -17,7 +17,14 @@ export const api = createClient({
   onUnauthorized: () => store.set({ authRequired: true }),
 });
 
+// Called when the API key is removed or replaced by another one: state that belongs to the old key's session (the
+// config editor's drafts, which can hold a secret) is dropped. Registered by the modules that keep such state.
+const keyDropHooks = new Set();
+export const onApiKeyDropped = (fn) => { keyDropHooks.add(fn); };
+
 export function setApiKey(key) {
+  const prev = store.get().apiKey;
+  if (!key || key !== prev) for (const fn of keyDropHooks) { try { fn(); } catch { /* a hook never blocks sign-out */ } }
   if (key) session.set('ah.apiKey', key); else session.remove('ah.apiKey');
   api.clearAuthHold();   // a new sign-in, even with the same key, lets requests through again
   store.set({ apiKey: key || '', authRequired: false });

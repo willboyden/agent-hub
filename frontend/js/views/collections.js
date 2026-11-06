@@ -1,6 +1,7 @@
 // Collections: user-defined groups. Sidebar tree (drop targets, reorderable), collection page (members, enable-for-clients),
 // create wizard. Every drag-and-drop action has a keyboard alternative: "Move to collection..." picker and up/down buttons.
 import { AhView } from '../components/base.js';
+import { helpFrame } from '../components/help-tabs.js';
 import { h, icon, clear } from '../dom.js';
 import { t } from '../i18n.js';
 import { toast, toastError } from '../components/toast.js';
@@ -26,8 +27,10 @@ class AhCollections extends AhView {
     this.side = h('aside', { class: 'coll-side card', 'aria-label': t('coll.sidebar') });
     this.main = h('section', { class: 'coll-main' });
     this.live = h('div', { class: 'sr-only', role: 'status', 'aria-live': 'polite' });
+    const f = helpFrame(this, { key: 'collections', name: t('nav.collections') });
+    f.own.append(h('div', { class: 'coll-layout' }, this.side, this.main), this.live);
     this.append(h('div', { class: 'row between wrap gap page-head' }, h('h1', t('coll.title')), btn(t('coll.new'), { icon: 'plus', kind: 'primary', onClick: () => this.wizard() })),
-      h('div', { class: 'coll-layout' }, this.side, this.main), this.live);
+      f.bar, f.own, f.help);
     this.listen(window, 'ah:changed', () => this.reload(true));
     this.reload();
   }

@@ -279,3 +279,22 @@ test('doctor: status, findings with severities and a multi-line fix, and the sum
   const d = (await get('/doctor')).b; assert.equal(d.status, 'action_needed'); assert.ok(d.findings.some((f) => f.severity === 'ok') && d.findings.some((f) => /\n/.test(f.fix)));
   const s = (await get('/doctor/summary')).b; assert.deepEqual(s, { crit: 1, warn: 2, info: 1 });
 });
+
+test('config editor contract: list, templates, the floor only as current, checks never write', async () => {
+  const list = (await get('/config-files')).b.items;
+  assert.deepEqual(list.map((f) => f.id), ['hub-env', 'knowledge', 'client-spec', 'floor']);
+  assert.deepEqual(list.map((f) => f.editable), [true, true, true, false]);
+  const tpl = (await get('/config-files/hub-env/templates/default')).b;
+  assert.match(tpl.text, /HUB_PORT/); assert.equal(tpl.format, 'env');
+  assert.equal((await get('/config-files/client-spec/templates/nope')).r.status, 404);
+  for (const [f, n] of [['hub-env', 'constructor'], ['constructor', 'name'], ['hub-env', '__proto__'], ['toString', 'length']]) {
+    assert.equal((await get(`/config-files/${f}/templates/${n}`)).r.status, 404, `${f}/${n}`);
+  }
+  assert.match((await get('/config-files/floor/current')).b.text, /deny_path_read/);
+  assert.equal((await get('/config-files/hub-env/current')).b.code, 'not_served');
+  const bad = (await post('/config-files/hub-env/validate', { text: 'HUB_PORT=x\nHUB_PROT=1\n' })).b;
+  assert.equal(bad.ok, false); assert.deepEqual(bad.diagnostics.map((d) => [d.severity, d.line]), [['error', 1], ['warn', 2]]);
+  assert.equal((await post('/config-files/floor/validate', { text: 'x: 1' })).b.code, 'floor_locked');
+  assert.equal((await post('/config-files/knowledge/validate', {})).b.code, 'text_required');
+  for (const f of ['i18n/help.en.json', 'i18n/fields.en.json']) assert.equal((await j(`/${f}`)).r.status, 200, f);
+});

@@ -33,7 +33,9 @@ pub const MUTATING: [&str; 4] = ["POST", "PUT", "PATCH", "DELETE"];
 pub const KNOWN_METHODS: [&str; 7] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 pub const CSRF_HEADER: &str = "x-agent-hub";
 pub const INBOX: &str = "/api/v1/memory/inbox";
-pub const CONTENT_PATHS: [&str; 2] = [INBOX, "/api/v1/knowledge"];
+/// Bodies audited as metadata only (size + field names): inbox notes, knowledge documents, and config-editor drafts,
+/// which can hold secrets (A-18).
+pub const CONTENT_PATHS: [&str; 3] = [INBOX, "/api/v1/knowledge", "/api/v1/config-files"];
 pub const CSP: &str = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'";
 pub const SECURITY_HEADERS: [(&str, &str); 6] = [
     ("content-security-policy", CSP),

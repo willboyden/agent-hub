@@ -21,7 +21,7 @@ vulnerabilities.
 
 ## Supported versions
 
-Only the latest release (currently 0.3.x) receives fixes; the Python 0.2.x line does not (0.3.0 fixes three security
+Only the latest release (currently 0.4.x) receives fixes; the Python 0.2.x line does not (0.3.0 fixes three security
 problems it has: `CHANGELOG.md`). The project is pre-1.0; interfaces and the content schema may change.
 
 ## Threat model

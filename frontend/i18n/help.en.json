@@ -1,0 +1,613 @@
+{
+  "_hub": {
+    "faq": [
+      {
+        "q": "Why does every page ask me for a key?",
+        "a": "The hub requires a bearer API key on every API call, also from this machine (`HUB_TRUST_LOOPBACK` is off by default, so a local agent with a shell is not admin). Sign in with the key button at the top right; the tab keeps it in sessionStorage until you close it.\n\nThe first admin key is in `~/.local/share/agent-hub/bootstrap-admin.key`, written by `hubctl init`. Store it in a password manager, then retire the file.",
+        "cmd": "hubctl retire-bootstrap-key"
+      },
+      {
+        "q": "I changed something. Why did my client not get it?",
+        "a": "Nothing reaches a client until the full loop has run: an edit changes the content working tree, a commit approves it, a plan shows what each client would get, and Apply writes it. Open Changes to see where you are.",
+        "route": "/changes"
+      },
+      {
+        "q": "What is the difference between an admin and a viewer key?",
+        "a": "An admin key can change content, settings and keys and can apply. A viewer key can read content and status and run the dry runs (policy check, spec validation, knowledge queries), but cannot see keys, settings or the audit log, and changes nothing. Client tokens may only post to the memory inbox.",
+        "route": "/settings?tab=keys"
+      },
+      {
+        "q": "What is the policy floor?",
+        "a": "A fixed set of rules in the app repository (`policy/floor.yaml`): credential paths denied, egress deny-by-default, no unscanned MCP server, no catch-all shell allow. Content can make a client stricter, never weaker. A plan that would break the floor is blocked for that client. Read it in Settings > Policy floor, or key by key with the (i) buttons in Settings > Config files.",
+        "route": "/settings?tab=floor"
+      },
+      {
+        "q": "Where does the hub keep its data?",
+        "a": "The content repo (a git repo, default `~/.local/share/agent-hub/content`) is the source of truth. The private state (database, keys, plans, locks, backups) is in `~/.local/share/agent-hub` (0700). Optional settings are read from `~/.config/agent-hub/env`. Settings > General lists the paths this hub uses.",
+        "route": "/settings"
+      },
+      {
+        "q": "Can I undo an apply?",
+        "a": "Yes, while the files are unchanged since: `hubctl rollback` restores the files an apply replaced (from its backups) and removes the ones it created. Run it with `--dry-run` first. A content commit can be reverted in Changes > History, then planned and applied again.",
+        "cmd": "hubctl rollback --client CLIENT --dry-run"
+      },
+      {
+        "q": "Is there a command-line version of this?",
+        "a": "Yes: `hubctl` does the same loop (`status`, `validate`, `commit`, `plan`, `apply`, `verify`, `drift`, `audit`, `import`, `observe`, `evaluate`, `doctor`). It uses the same key; it prompts for it when no key file or `HUB_API_KEY` is found.",
+        "cmd": "hubctl status"
+      },
+      {
+        "q": "What does a 409 or 'plan is stale' error mean?",
+        "a": "Something changed after the plan was made: a new commit, an edited client file, or another apply. Apply refuses a stale plan so it never writes something you did not review. Make a new plan and read it again.",
+        "route": "/changes?tab=plan"
+      },
+      {
+        "q": "Is it safe to keep this page open while an agent works?",
+        "a": "Yes, with one limit. The UI holds the key only in this tab, sends a CSRF header on every change, and the hub refuses other origins and unknown Host headers, so a sandboxed agent cannot reach the UI's key. An agent that runs unsandboxed as your user can read what you can, including the browser profile and key files (docs/SECURITY.md section 4). Run `hubctl doctor` for what the host itself exposes.",
+        "cmd": "hubctl doctor"
+      }
+    ]
+  },
+  "home": {
+    "lead": "Agent Hub keeps one git repo of instructions, skills, subagents, rules, memories and MCP servers, renders it into each client's own files, and writes nothing until you have reviewed a plan. The checklist above tracks the four steps of a first setup.",
+    "steps": [
+      {
+        "title": "Import what your clients already have",
+        "body": "Pick a client (Claude Code, opencode, ...) and read its skills, agents and instructions into the hub's working tree. Nothing is written to the client.",
+        "route": "/import"
+      },
+      {
+        "title": "Organise",
+        "body": "Group items into collections and switch them on per client in the matrix. An item can sit in several collections.",
+        "route": "/collections"
+      },
+      {
+        "title": "Commit and review a plan",
+        "body": "Commit approves the content. A plan then shows, per client, every file the hub would write, with diffs, diagnostics and policy-floor findings.",
+        "route": "/changes"
+      },
+      {
+        "title": "Apply, then verify",
+        "body": "Apply writes only from the plan you reviewed, keeps a backup of every file it replaces, and verifies that the client sees the result. Start with the least risky client.",
+        "route": "/changes?tab=plan"
+      },
+      {
+        "title": "Keep an eye on the home page",
+        "body": "Needs attention lists drift (files edited outside the hub), pending changes, inbox proposals, host-hardening findings and blocked clients, each with a link to the place to fix it."
+      }
+    ],
+    "faq": [
+      {
+        "q": "The checklist says a step is not done although I did it.",
+        "a": "The checklist reads the hub's real state: Import counts items in the library, Organise needs a collection, Review needs a plan viewed for the current committed content (commit again and the review step opens again), Apply needs a client with a recorded apply."
+      },
+      {
+        "q": "What does 'edited outside the hub' mean?",
+        "a": "A file the hub delivered was changed by someone else since the last apply. The next plan shows it as a conflict and skips it unless you adopt it; nothing is overwritten silently.",
+        "route": "/clients"
+      },
+      {
+        "q": "Why is the content repo 'not initialised'?",
+        "a": "The hub has no content repo yet. Run `hubctl init` once: it creates and seeds the repo, makes the first commit and writes the bootstrap admin key.",
+        "cmd": "hubctl init"
+      },
+      {
+        "q": "Where do I start if I have no clients yet?",
+        "a": "Add one on the Clients page: pick a built-in adapter or describe a file-based client with a short `generic` spec.",
+        "route": "/clients"
+      }
+    ]
+  },
+  "library": {
+    "lead": "Every item of the content repo in one place: skills, agents, instructions, MCP servers, rules and memories. Filter, sort, select several and act on them together.",
+    "steps": [
+      {
+        "title": "Find items",
+        "body": "Type in the search box or filter by kind, collection, tag, client, source or issues. Cards or a dense list, whichever reads better."
+      },
+      {
+        "title": "Open one to edit it",
+        "body": "Click an item to open the editor; New item creates one. An edit changes the working tree only."
+      },
+      {
+        "title": "Act on several at once",
+        "body": "Select rows (Shift for a range), then add them to a collection, edit tags, or enable or disable them for clients from the bulk bar."
+      },
+      {
+        "title": "Fix issues",
+        "body": "An item with issues (a missing description, an over-long name, an unsafe file) shows a count; filter on 'Has issues' to work through them."
+      }
+    ],
+    "faq": [
+      {
+        "q": "Why are some rules missing here?",
+        "a": "The policy floor's rules are not content items: they live in the app repo and are shown read-only in Settings > Policy floor.",
+        "route": "/settings?tab=floor"
+      },
+      {
+        "q": "I deleted an item by mistake.",
+        "a": "It is only gone from the working tree. Changes > Pending changes can discard it before you commit; after a commit, revert the commit in Changes > History.",
+        "route": "/changes"
+      },
+      {
+        "q": "What does the issue count mean?",
+        "a": "Problems the hub's validator found in the item (the same as `hubctl validate`). Some block a plan, others are advice; open the item to read them.",
+        "cmd": "hubctl validate"
+      },
+      {
+        "q": "Why can I not enable an MCP server?",
+        "a": "The floor requires a clean scan and explicit egress rules for every host it reaches; until then the matrix shows it as blocked, with the reason on hover.",
+        "route": "/matrix"
+      }
+    ]
+  },
+  "evaluations": {
+    "lead": "Run NVIDIA SkillEvaluator on the hub's skills and on what clients really hold, read the verdicts, and use the result in the import gate. Optional: without SkillEvaluator installed the rest of the hub works as before.",
+    "steps": [
+      {
+        "title": "Install SkillEvaluator (once)",
+        "body": "The hub runs `skillevaluator-local` or `skillevaluator` from PATH or `~/.local/bin`. The status line shows whether it was found and which tiers can run (docs/OPERATIONS.md section 4d)."
+      },
+      {
+        "title": "Pick what to evaluate",
+        "body": "Choose the source (the hub, one client's observed skills, or all), filter, and select rows, or evaluate everything not evaluated yet."
+      },
+      {
+        "title": "Pick a tier and run",
+        "body": "`static` needs no model; `tier1` adds the LLM judge; `tier1+2` also checks duplication. Jobs run one at a time; the queue bar shows progress and can cancel."
+      },
+      {
+        "title": "Read the results",
+        "body": "Each row has a verdict, a gate (ok, warn, blocked, missing) and scores. Open a row for the per-validator table and the report. The gate ignores publication checks such as a missing author.",
+        "cmd": "hubctl evaluate --source hub --select none_or_stale --tiers static --wait"
+      }
+    ],
+    "faq": [
+      {
+        "q": "Why is a scan that did not finish shown as blocked?",
+        "a": "Deliberately: a scan that did not finish proves nothing, and skill text can be written to defeat a scanner. Give an override reason on import if you have read the skill yourself."
+      },
+      {
+        "q": "Why does an evaluated skill show 'missing' again?",
+        "a": "The gate checks the exact content hash. Editing the skill, or raising the minimum tier in Settings, makes the old run not count."
+      },
+      {
+        "q": "What does the import gate do with these results?",
+        "a": "Settings > General sets it: `off`, `advisory` (shown, never refused) or `require` (unevaluated or blocked skills are refused unless you give a reason, which is audited).",
+        "route": "/settings"
+      },
+      {
+        "q": "Can I see what a client really has, not what the hub delivered?",
+        "a": "Yes: observe the client (the Observed card on the Clients page, or `hubctl observe`). Observed skills appear here as their own source and can be evaluated before import.",
+        "cmd": "hubctl observe --client CLIENT"
+      }
+    ]
+  },
+  "collections": {
+    "lead": "Collections group items that belong together, so a whole set can be switched on for a client in one click. An item can live in several collections.",
+    "steps": [
+      {
+        "title": "Create a collection",
+        "body": "New collection: a name, an icon and the items to start with. The suggestions panel proposes groups by name prefix, source, tag or keyword."
+      },
+      {
+        "title": "Fill it",
+        "body": "Add items from the picker, or drag items onto a collection. Drag collections in the sidebar to reorder them."
+      },
+      {
+        "title": "Enable it for clients",
+        "body": "On the collection's page, enable it for clients (or use the matrix); every member follows."
+      },
+      {
+        "title": "Commit and plan",
+        "body": "Collections are content: commit them, then plan and apply as usual.",
+        "route": "/changes"
+      }
+    ],
+    "faq": [
+      {
+        "q": "An item is on for a client although I switched it off.",
+        "a": "It is probably on through a collection. The matrix shows that state separately ('on through a collection'); switch the collection off or remove the item from it.",
+        "route": "/matrix"
+      },
+      {
+        "q": "Does deleting a collection delete its items?",
+        "a": "No. Only the grouping goes; the items stay in the library."
+      },
+      {
+        "q": "Why can I not add a floor rule to a collection?",
+        "a": "Floor rules are not content items. Only items from the library can be members."
+      },
+      {
+        "q": "Where are collections stored?",
+        "a": "In the content repo, like every other item; the profiles under `profiles/<client>.yaml` record which collections each client gets."
+      }
+    ]
+  },
+  "matrix": {
+    "lead": "Which items each client gets, as a grid of clients by items. Changes are staged here first and saved to the working tree together.",
+    "steps": [
+      {
+        "title": "Toggle cells",
+        "body": "Click a cell to switch an item on or off for a client. The legend explains every state: on, on through a collection, off, blocked, not supported."
+      },
+      {
+        "title": "Read the blocked cells",
+        "body": "A blocked cell names its reason on hover, usually the policy floor or a client that cannot express the item."
+      },
+      {
+        "title": "Save",
+        "body": "The unsaved bar counts your changes; Ctrl+Z undoes the last one. Save writes them to the working tree; Save and review plan goes straight on to the plan.",
+        "route": "/changes?tab=plan"
+      }
+    ],
+    "faq": [
+      {
+        "q": "I saved, but the client did not change.",
+        "a": "Saving changes the working tree only. Commit, plan and apply to deliver it.",
+        "route": "/changes"
+      },
+      {
+        "q": "What does 'not supported by this client' mean?",
+        "a": "The client's adapter cannot express that kind of item (for example a client without subagents). A strict client turns such items into errors that block apply."
+      },
+      {
+        "q": "My unsaved changes are gone.",
+        "a": "Unsaved changes live in this browser tab only; a reload or another tab does not keep them. Save before you leave."
+      },
+      {
+        "q": "Why is an MCP server blocked for every client?",
+        "a": "The floor requires a clean scan and explicit egress rules for each of its hosts before any client may enable it.",
+        "route": "/settings?tab=floor"
+      }
+    ]
+  },
+  "editor": {
+    "lead": "Edit one item: its fields, its files (for a skill), its tags and collections. Saving writes to the working tree; nothing reaches a client before commit, plan and apply.",
+    "steps": [
+      {
+        "title": "Edit",
+        "body": "Fill in the fields. Problems are listed above the tabs as you type; Save stays disabled while there is an error. Ctrl+S saves.",
+        "tab": "edit"
+      },
+      {
+        "title": "See what a client would get",
+        "body": "Rendered for a client shows the item exactly as one client's adapter writes it (after a commit).",
+        "tab": "rendered"
+      },
+      {
+        "title": "Check where it is used",
+        "body": "Where it is used lists the collections and clients that include the item.",
+        "tab": "used"
+      },
+      {
+        "title": "Commit when you are done",
+        "body": "Changes collects every saved edit for review and commit.",
+        "route": "/changes"
+      }
+    ],
+    "faq": [
+      {
+        "q": "Why does Rendered say 'not committed yet'?",
+        "a": "The rendered view uses the committed content. Commit the item first, or use a preview plan in Changes to see the working tree.",
+        "tab": "rendered"
+      },
+      {
+        "q": "Why is Save disabled?",
+        "a": "There is an error in the list above the tabs (a required field, a bad name, a catch-all rule). Fix it and Save comes back."
+      },
+      {
+        "q": "Can I rename an item?",
+        "a": "There is no rename. For a skill, Duplicate it under the new name, add the copy to the same collections and clients, then delete the old one. Where it is used lists what to move.",
+        "tab": "used"
+      },
+      {
+        "q": "What happens if I leave with unsaved edits?",
+        "a": "The browser asks before the page unloads. Moving to another page in the hub drops the unsaved draft."
+      }
+    ]
+  },
+  "clients": {
+    "lead": "A client is an agent tool the hub delivers to: Claude Code, opencode, Hermes Agent, Turnstone, DeepSeek Harness, or any file-based tool described by a `generic` spec. Each client shows whether it is in sync and what it can do right now.",
+    "steps": [
+      {
+        "title": "Add a client",
+        "body": "Add client: pick an adapter and set its roots (the directories its files go to). For a tool without an adapter, paste a `generic` spec; it is checked as you type and dry-rendered."
+      },
+      {
+        "title": "Decide what the hub manages",
+        "body": "Per concern (skills, agents, instructions, MCP, permissions, memory): managed means the hub writes it; advisory means it only shows the diff and audits the live config. Default: skills, agents and instructions managed."
+      },
+      {
+        "title": "Import, then plan",
+        "body": "Import what the client already has, commit, and make a plan for it.",
+        "route": "/import"
+      },
+      {
+        "title": "Check its health",
+        "body": "Verify asks the client what it loaded, drift compares live files with the last apply, audit checks the live config against the floor.",
+        "cmd": "hubctl verify --client CLIENT"
+      },
+      {
+        "title": "Draft a client file offline",
+        "body": "Settings > Config files can draft and check a `clients/<id>.yaml` against the hub's own loader, with an (i) explanation for every key.",
+        "route": "/settings?tab=config"
+      }
+    ],
+    "faq": [
+      {
+        "q": "Why can I not use my home directory as a root?",
+        "a": "Roots may not be `/`, your home directory itself, or overlap the hub's state, content, credential directories or `.git`; pick the project or stage directory the client reads."
+      },
+      {
+        "q": "What is a stage root?",
+        "a": "For containerised clients (Hermes, Turnstone, DeepSeek Harness) the hub writes a stage directory on the host, and a delivery script you run copies it in. Create the stage directory before the first apply; the hub never creates a client root."
+      },
+      {
+        "q": "The client is 'edited outside'. What now?",
+        "a": "Someone changed a delivered file. The plan shows it as a conflict and skips it; read the diff, then either adopt the path (the hub overwrites it, with a backup) or copy the change into the hub's content.",
+        "cmd": "hubctl drift --client CLIENT"
+      },
+      {
+        "q": "Verify failed after an apply.",
+        "a": "The files were written but the client did not confirm it sees them. Read the checks in Health; for a container client, run its delivery script first."
+      },
+      {
+        "q": "Can a client file hold secrets?",
+        "a": "It should not. MCP servers carry environment variable names only, so a value never needs to be in one; the hub renders the names, not values."
+      }
+    ]
+  },
+  "import": {
+    "lead": "Bring in what your clients already have, so you start from your real content. Nothing is written to the client: items land in the hub's working tree for you to review.",
+    "steps": [
+      {
+        "title": "Choose a client",
+        "body": "The hub reads its skills, agents and instructions, read-only."
+      },
+      {
+        "title": "Pick items",
+        "body": "Each item is New, Already the same, or Differs from the hub. Tick what you want."
+      },
+      {
+        "title": "Decide on conflicts",
+        "body": "Identical items are linked; different ones are skipped by default so nothing is overwritten. You can import a copy under a new name or replace the hub's version."
+      },
+      {
+        "title": "Review and commit",
+        "body": "The import is a pending change: review it in Changes and commit it.",
+        "route": "/changes",
+        "cmd": "hubctl import --client CLIENT --all"
+      }
+    ],
+    "faq": [
+      {
+        "q": "Why was a skill refused at import?",
+        "a": "The evaluation gate is set to `require` and the skill has no evaluation or a blocked one. Evaluate it first, or give an override reason (audited).",
+        "route": "/evaluations"
+      },
+      {
+        "q": "Does import change the client?",
+        "a": "No. It also records what the client has now as its last-applied state, so the first plan shows ordinary diffs instead of a wall of conflicts. That is a record, not an apply."
+      },
+      {
+        "q": "The client has nothing to import.",
+        "a": "The adapter found no skills, agents or instructions under the client's roots. Check the roots on the client's page."
+      },
+      {
+        "q": "Can I undo an import?",
+        "a": "Before you commit, discard the pending changes in Changes. After a commit, revert it in History.",
+        "route": "/changes?tab=history"
+      }
+    ]
+  },
+  "changes": {
+    "lead": "The approval loop. Edits change the working tree; a commit approves the content; a plan shows exactly what each client would get; Apply delivers it.",
+    "steps": [
+      {
+        "title": "Review pending changes",
+        "body": "Every uncommitted edit, with its diff. Discard what you did not mean.",
+        "tab": "pending"
+      },
+      {
+        "title": "Commit",
+        "body": "Write a short message; the commit is your approval of this content.",
+        "tab": "pending",
+        "cmd": "hubctl commit -m \"why\""
+      },
+      {
+        "title": "Make a plan",
+        "body": "Pick clients and plan. Read every file diff, the diagnostics and the policy-floor findings. A preview plan of the uncommitted tree shows the effect but can never be applied.",
+        "tab": "plan"
+      },
+      {
+        "title": "Apply",
+        "body": "Apply writes only from the plan you reviewed, after you confirm. It backs up every replaced file, refuses if anything moved since the plan, and verifies the result.",
+        "tab": "plan"
+      },
+      {
+        "title": "Look back",
+        "body": "History lists content commits; reverting one makes a new commit you can plan and apply.",
+        "tab": "history"
+      }
+    ],
+    "faq": [
+      {
+        "q": "Why is a client blocked in the plan?",
+        "a": "An error in its content (a diagnostic) or a floor violation. The finding names the rule; fix the content or leave that item off for the client."
+      },
+      {
+        "q": "What is a conflict?",
+        "a": "A live file differs from what the hub last wrote (someone edited it). Apply skips it unless you adopt that path; read the diff before you do.",
+        "cmd": "hubctl apply --client CLIENT --yes --adopt root:path"
+      },
+      {
+        "q": "Why can I not apply the preview plan?",
+        "a": "A preview renders the uncommitted working tree. Only committed content can be applied, so commit first and plan again."
+      },
+      {
+        "q": "Where are the backups of replaced files?",
+        "a": "Under `~/.local/share/agent-hub/backups/<client>/<timestamp>/`. `hubctl rollback` restores the last apply from them.",
+        "cmd": "hubctl applies --client CLIENT"
+      },
+      {
+        "q": "Revert says dirty_tree.",
+        "a": "A revert needs a clean working tree: commit or discard the pending changes first, then revert.",
+        "tab": "history"
+      }
+    ]
+  },
+  "inbox": {
+    "lead": "Agents propose memories here with their client token. Nothing becomes a memory until you promote it, because a memory is remembered by every future agent.",
+    "steps": [
+      {
+        "title": "Read each proposal",
+        "body": "Proposals are untrusted text written by an agent. Flags mark the risky patterns: overrides, exfiltration, secrets, URLs, piping to a shell, disabling a guard, standing orders."
+      },
+      {
+        "title": "Promote or reject",
+        "body": "Promote turns a proposal into a memory item in the working tree; reject drops it."
+      },
+      {
+        "title": "Commit and apply",
+        "body": "Promoted memories are content: commit, plan and apply to deliver them.",
+        "route": "/changes"
+      }
+    ],
+    "faq": [
+      {
+        "q": "How does an agent post here?",
+        "a": "With a client token (Settings > API keys, role client, scope `inbox:write`). Client tokens can do nothing else.",
+        "route": "/settings?tab=keys"
+      },
+      {
+        "q": "Why were an agent's proposals refused?",
+        "a": "It hit the per-client limits: too many pending proposals or too many per minute. Both are in Settings > General.",
+        "route": "/settings"
+      },
+      {
+        "q": "Is a promoted memory delivered at once?",
+        "a": "No. It is a pending change in the working tree until you commit, plan and apply."
+      },
+      {
+        "q": "Should I promote a proposal that tells agents to do something?",
+        "a": "Be careful: a standing order in memory steers every future session. The flags point such text out; reject anything you would not write yourself."
+      }
+    ]
+  },
+  "knowledge": {
+    "lead": "The knowledge plane: vector stores and shared indexes that agents read through scoped tokens. It is a separate service (`agent-knowledge`, 127.0.0.1:8795); the hub proxies it, so the browser never talks to it directly.",
+    "steps": [
+      {
+        "title": "Start the service",
+        "body": "Run it on the host (or as the systemd unit). The status chip shows reachable, authenticated and backends.",
+        "cmd": "systemctl --user start agent-knowledge"
+      },
+      {
+        "title": "Create a namespace",
+        "body": "A name, a backend (lancedb embedded, or Qdrant) and an embedding model your endpoint serves.",
+        "tab": "namespaces"
+      },
+      {
+        "title": "Ingest documents",
+        "body": "Paste a document (with optional JSON metadata), or ingest the files of a path under the service's `ingest_roots` (admin only). Progress streams live.",
+        "tab": "ingest"
+      },
+      {
+        "title": "Try a query",
+        "body": "The playground runs a query against a namespace, so you see what an agent would get.",
+        "tab": "query"
+      },
+      {
+        "title": "Give a client a token",
+        "body": "A token lets one client read (or write) chosen namespaces. It is shown once. Keep new tokens read-only.",
+        "tab": "tokens"
+      }
+    ],
+    "faq": [
+      {
+        "q": "The page says the service is not running.",
+        "a": "Start it (`make run-knowledge` in the checkout, or the systemd unit). The hub reaches it at `HUB_KNOWLEDGE_URL`.",
+        "cmd": "systemctl --user start agent-knowledge"
+      },
+      {
+        "q": "The page says the hub is not authorised.",
+        "a": "The hub sends the service's admin key, read from `~/.local/share/agent-knowledge/admin.key` unless `HUB_KNOWLEDGE_ADMIN_KEY` is set in the hub env file. Check that file exists, then restart the hub."
+      },
+      {
+        "q": "How do I write the knowledge service's config?",
+        "a": "Settings > Config files has a template and checks a draft with the service's own validator; the (i) buttons explain every key. Unknown keys are refused at start.",
+        "route": "/settings?tab=config"
+      },
+      {
+        "q": "LanceDB or Qdrant?",
+        "a": "LanceDB (embedded) for up to a few hundred thousand chunks; Qdrant for large, shared or heavily filtered corpora. Qdrant must enforce an API key."
+      },
+      {
+        "q": "Why was a query refused with scan_cap?",
+        "a": "A filtered query on a large LanceDB table would scan more rows than `lance_max_scan_rows`. Filter by `doc_id`, narrow the namespace, or raise the limit in the service config."
+      }
+    ]
+  },
+  "settings": {
+    "lead": "The hub's own settings and records: the limits you can change while it runs, host hardening, API keys, the policy floor, the audit log, and a config editor that drafts and checks config files without writing them.",
+    "steps": [
+      {
+        "title": "Adjust the running limits",
+        "body": "Plans kept, inbox limits and the evaluation gate. Each field has an (i) button that says what it does and when a change takes effect.",
+        "tab": "general"
+      },
+      {
+        "title": "Check the host",
+        "body": "Host hardening lists what is exposed on this machine, each finding with a fix to copy.",
+        "tab": "doctor",
+        "cmd": "hubctl doctor"
+      },
+      {
+        "title": "Manage keys",
+        "body": "Create admin, viewer or client keys; a secret is shown once. Delete a key that leaked.",
+        "tab": "keys"
+      },
+      {
+        "title": "Draft a config file",
+        "body": "Config files: start from a template, edit in a form with (i) help or as text, check it with the hub's own loader, then download it and install it yourself with the commands shown.",
+        "tab": "config"
+      },
+      {
+        "title": "Read the record",
+        "body": "The audit log has every change made through the API, with the actor and the result; bodies are redacted.",
+        "tab": "audit"
+      }
+    ],
+    "faq": [
+      {
+        "q": "Why can I not edit the policy floor here?",
+        "a": "On purpose: the floor lives in the app repo, not content, so a leaked key or a compromised browser cannot lower it. Change `policy/floor.yaml` in git, with review, and restart the hub. Config files shows it read-only with an explanation of every key.",
+        "tab": "config"
+      },
+      {
+        "q": "Why does Config files not load my env file?",
+        "a": "It can hold secrets (the knowledge admin key, `HUB_API_KEY`), so the hub never sends it to a browser. Open your copy from disk in the editor instead: it is read in the browser, and only the check sees it. Before a draft goes to the check, the browser replaces the values of keys named like a secret, a heuristic on the name (KEY, TOKEN, SECRET, PASSWORD, AUTH, CRED, SESSION and the like; never a path ending in `_FILE`), so give a secret such a name. The check never writes, and its findings name the key and the line, not a value.",
+        "tab": "config"
+      },
+      {
+        "q": "Does Config files change anything on this machine?",
+        "a": "No. It loads templates, checks drafts and shows commands. You download the file and run the install commands yourself; restart the service afterwards."
+      },
+      {
+        "q": "Which wins: the env file or Settings > General?",
+        "a": "A value saved in Settings > General wins: it applies at once and is kept in the hub's database, so it also holds after a restart. The env file (`HUB_PLAN_RETENTION`, `HUB_INBOX_MAX_PER_CLIENT`, `HUB_INBOX_RATE_PER_MIN`, the `HUB_EVAL_GATE*` values) sets the value used until one is saved there.",
+        "tab": "config"
+      },
+      {
+        "q": "I lost the admin key.",
+        "a": "There is no reset link. Use a second admin key if you made one; otherwise read docs/OPERATIONS.md, Lost admin key."
+      },
+      {
+        "q": "What does the audit log record for a config check?",
+        "a": "Only the size and the field names of the request, never the draft, because a draft env file can hold a secret.",
+        "tab": "audit"
+      }
+    ]
+  }
+}

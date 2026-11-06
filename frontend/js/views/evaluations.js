@@ -2,6 +2,7 @@
 // filters, a dense multi-select table, a FIFO queue bar (polled every 2 s only while it is non-empty), a detail drawer and a bulk
 // "Import into hub..." for observed skills. Reads never start a process; only the buttons enqueue work.
 import { AhView } from '../components/base.js';
+import { helpFrame } from '../components/help-tabs.js';
 import { h, icon, clear, append } from '../dom.js';
 import { t } from '../i18n.js';
 import { local } from '../store.js';
@@ -33,7 +34,9 @@ class AhEvaluations extends AhView {
     this.queueBar = h('div', { class: 'ev-queue', role: 'status', 'aria-live': 'polite', hidden: true });
     this.list = h('div', { class: 'ev-list' });
     this.live = h('div', { class: 'sr-only', role: 'status', 'aria-live': 'polite' });
-    this.append(this.head, this.statusLine, this.queueBar, this.chips, this.toolbar, this.actions, this.list, this.live);
+    const f = helpFrame(this, { key: 'evaluations', name: t('nav.evaluations') });
+    f.own.append(this.statusLine, this.queueBar, this.chips, this.toolbar, this.actions, this.list, this.live);
+    this.append(this.head, f.bar, f.own, f.help);
     this.own(() => this.stopPolling());
     this.listen(this, 'keydown', (e) => { if (e.key === 'Escape' && this.sel.ids.size && !document.querySelector('dialog[open]')) { this.sel = { ids: new Set(), anchor: null }; this.paint(); } });
     this.init();

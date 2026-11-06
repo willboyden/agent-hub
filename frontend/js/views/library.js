@@ -1,5 +1,6 @@
 // Library: every skill/agent/instruction/MCP server/rule/memory in one searchable, filterable, multi-selectable place.
 import { AhView } from '../components/base.js';
+import { helpFrame } from '../components/help-tabs.js';
 import { h, icon, clear } from '../dom.js';
 import { t } from '../i18n.js';
 import { local } from '../store.js';
@@ -29,7 +30,9 @@ class AhLibrary extends AhView {
     this.list = h('div', { class: 'lib-list-wrap' });
     this.bulk = h('div', { class: 'bulkbar', role: 'region', 'aria-label': t('lib.bulk_label'), hidden: true });
     this.status = h('div', { class: 'sr-only', role: 'status', 'aria-live': 'polite' });
-    this.append(this.head, this.toolbar, this.list, this.bulk, this.status);
+    const f = helpFrame(this, { key: 'library', name: t('nav.library') });
+    f.own.append(this.toolbar, this.list, this.bulk, this.status);
+    this.append(this.head, f.bar, f.own, f.help);
     this.listen(window, 'ah:changed', () => { if (this._alive) this.reload(true); });
     this.listen(this, 'keydown', (e) => { if (e.key === 'Escape' && this.sel.ids.size) { this.sel = { ids: new Set(), anchor: null }; this.paint(); } });
     this.reload();

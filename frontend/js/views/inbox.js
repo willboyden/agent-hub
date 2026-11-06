@@ -1,5 +1,6 @@
 // Memory inbox: agents propose memories, only a human promotes them into content/memory/. Text is untrusted and shown as plain text.
 import { AhView } from '../components/base.js';
+import { helpFrame } from '../components/help-tabs.js';
 import { h, clear } from '../dom.js';
 import { t } from '../i18n.js';
 import { toast, toastError } from '../components/toast.js';
@@ -12,7 +13,9 @@ class AhInbox extends AhView {
   setup() {
     this.client = '';
     this.host = h('div'); this.filter = h('div');
-    this.append(h('div', { class: 'page-head' }, h('h1', t('inbox.title'))), h('p', { class: 'muted' }, t('inbox.intro')), this.filter, this.host);
+    const f = helpFrame(this, { key: 'inbox', name: t('nav.inbox') });
+    f.own.append(h('p', { class: 'muted' }, t('inbox.intro')), this.filter, this.host);
+    this.append(h('div', { class: 'page-head' }, h('h1', t('inbox.title'))), f.bar, f.own, f.help);
     this.load();
   }
   async load() {

@@ -11,22 +11,23 @@ import { diffView, statsText } from '../components/diff-view.js';
 import { suggestMessage, validMessage, applyTotals, canApply, isBlocked, fileCounts, conflicts, stale } from '../plan.js';
 import { timeAgo } from '../util.js';
 import { rememberPlanViewed } from '../checklist.js';
+import { helpTabItems, isHelpTab, renderHelp } from '../components/help-tabs.js';
 
 const ACTION_KIND = { add: 'ok', change: 'warn', remove: 'bad', unchanged: 'muted', conflict: 'bad', advisory: 'info' };
 
 class AhChanges extends AhView {
   setup() {
-    this.tab = ['pending', 'plan', 'history'].includes(this.query?.tab) ? this.query.tab : 'pending';
+    this.tab = ['pending', 'plan', 'history', 'start', 'faq'].includes(this.query?.tab) ? this.query.tab : 'pending';
     this.selClients = new Set(this.query?.client ? [this.query.client] : []);
     this.adopt = new Set(); this.reviewed = false; this.plan = null; this.result = null; this.hideUnchanged = true;
     this.panel = h('div', { class: 'changes-panel', role: 'tabpanel' });
-    this.tabBar = tabs([{ id: 'pending', label: t('chg.tab_pending') }, { id: 'plan', label: t('chg.tab_plan') }, { id: 'history', label: t('chg.tab_history') }], this.tab, (id) => { this.tab = id; this.paint(); }, t('editor.tabs'));
+    this.tabBar = tabs([{ id: 'pending', label: t('chg.tab_pending') }, { id: 'plan', label: t('chg.tab_plan') }, { id: 'history', label: t('chg.tab_history') }, ...helpTabItems()], this.tab, (id) => { this.tab = id; this.paint(); }, t('editor.tabs'));
     this.append(h('div', { class: 'page-head' }, h('h1', t('chg.title'))), h('p', { class: 'muted' }, t('chg.intro')), this.tabBar, this.panel);
     this.listen(window, 'ah:changed', () => { if (this.tab === 'pending' && !this.busy) this.paint(); });
     // ?tab=plan: build a plan straight away so "Review plan" from the matrix lands on something useful.
     if (this.tab === 'plan' && this.query?.tab === 'plan') this.planTab().then(() => this._alive && this.makePlan()); else this.paint();
   }
-  paint() { if (this.tab === 'pending') this.loadInto(this.panel, () => this.pending()); else if (this.tab === 'plan') this.planTab(); else this.loadInto(this.panel, () => this.historyTab()); }
+  paint() { if (isHelpTab(this.tab)) renderHelp(this, this.panel, this.tab, { key: 'changes', name: t('nav.changes'), bar: this.tabBar }); else if (this.tab === 'pending') this.loadInto(this.panel, () => this.pending()); else if (this.tab === 'plan') this.planTab(); else this.loadInto(this.panel, () => this.historyTab()); }
 
   // ---- pending ----
   async pending() {

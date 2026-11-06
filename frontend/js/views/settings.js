@@ -1,5 +1,7 @@
-// Settings and audit: runtime limits (the few settings the backend lets you change), read-only info, API keys (admin / viewer / per-client
-// tokens), the read-only policy floor, and the audit log. Secrets are shown once at creation and never round-tripped.
+// Settings and audit: runtime limits (the few settings the backend lets you change, each with an (i) pop-up), read-only
+// info, API keys (admin / viewer / per-client tokens), the read-only policy floor, the audit log, the config editor
+// (draft, validate, export; config-editor.js) and the Getting started / FAQ tabs. Secrets are shown once at creation
+// and never round-tripped.
 import { AhView } from '../components/base.js';
 import { h, icon, clear, copyText } from '../dom.js';
 import { t } from '../i18n.js';
@@ -9,18 +11,45 @@ import { confirmDialog, openModal } from '../components/dialog.js';
 import { isRedacted, listOf } from '../data.js';
 import { floorRows, isFloorKey, groupFindings } from '../adapt.js';
 import { timeAgo } from '../util.js';
+import { helpTabItems, isHelpTab, renderHelp } from '../components/help-tabs.js';
+import { createInfoPop, fillEntry, infoButton } from '../components/info-pop.js';
+import { loadFieldHelp, catalogFor, lookupHelp } from '../cfg-help.js';
+import { configEditor } from '../components/config-editor.js';
 
 const ENUMS = { eval_gate: ['off', 'advisory', 'require'], eval_gate_observed: ['off', 'advisory', 'require'], eval_gate_min_tiers: ['static', 'tier1', 'tier1+2'] };
 const EDITABLE = { plan_retention: [1, 200], inbox_max_per_client: [1, 5000], inbox_rate_per_min: [1, 600] };
 
 class AhSettings extends AhView {
   setup() {
-    this.tab = this.query?.tab || 'general';
+    const ids = ['general', 'doctor', 'keys', 'floor', 'audit', 'config'];
+    this.tab = [...ids, 'start', 'faq'].includes(this.query?.tab) ? this.query.tab : 'general';
     this.panel = h('div', { role: 'tabpanel' });
-    this.append(h('div', { class: 'page-head' }, h('h1', t('set.title'))), tabs(['general', 'doctor', 'keys', 'floor', 'audit'].map((id) => ({ id, label: t(`set.tab_${id}`) })), this.tab, (id) => { this.tab = id; this.paint(); }, t('editor.tabs')), this.panel);
+    this.tabBar = tabs([...ids.map((id) => ({ id, label: t(`set.tab_${id}`) })), ...helpTabItems()], this.tab, (id) => { this.tab = id; this.paint(); }, t('editor.tabs'));
+    this.append(h('div', { class: 'page-head' }, h('h1', t('set.title'))), this.tabBar, this.panel);
     this.paint();
   }
-  paint() { this.loadInto(this.panel, async () => this[`${this.tab}Tab`]()); }
+  paint() {
+    this.info?.close(false);
+    if (isHelpTab(this.tab)) { renderHelp(this, this.panel, this.tab, { key: 'settings', name: t('nav.settings'), bar: this.tabBar }); return; }
+    if (this.tab === 'config') { clear(this.panel).append(configEditor(this)); return; }
+    this.loadInto(this.panel, async () => this[`${this.tab}Tab`]());
+  }
+  // A settings field with its (i) button: the pop-up explains the value from i18n/fields.en.json (catalog `settings`).
+  infoField(key, control, hint) {
+    this.info ||= createInfoPop();
+    const b = infoButton(t('form.info', { key }), (el) => this.showInfo(el, key));
+    const f = field(t(`set.f_${key}`), control, hint);
+    const lab = f.querySelector('label'), head = h('div', { class: 'field-head' });
+    lab.replaceWith(head); head.append(lab, b);
+    return f;
+  }
+  async showInfo(el, key) {
+    let entry = null, failed = false;
+    try { entry = lookupHelp(catalogFor(await loadFieldHelp(), 'settings'), [key]); } catch { failed = true; }
+    if (!this._alive || !el.isConnected) return;
+    if (!this.info.el.isConnected) this.panel.append(this.info.el);
+    this.info.toggle(el, fillEntry(entry, { title: key, missing: failed ? t('fh.unavailable') : t('fh.missing') }));
+  }
 
   async generalTab() {
     const s = await this.api.settings();
@@ -40,7 +69,7 @@ class AhSettings extends AhView {
         for (const [k, v] of Object.entries(body)) { const [lo, hi] = EDITABLE[k] || [1, 100000]; if (!Number.isInteger(v) || v < lo || v > hi) { err.textContent = t('set.range', { name: t(`set.f_${k}`), lo, hi }); return; } }
         try { await this.api.saveSettings(body); toast(t('set.saved'), { kind: 'ok' }); notifyChanged(); this.paint(); } catch (x) { err.textContent = x.message; toastError(x); } } },
       h('header', { class: 'card-head' }, h('h2', t('set.limits'))), h('div', { class: 'card-body' }, h('p', { class: 'hint' }, t('set.limits_hint')),
-        ...Object.entries(inputs).map(([k, el]) => field(t(`set.f_${k}`), el, t(`set.f_${k}_hint`))), err, h('div', btn(t('common.save'), { icon: 'check', kind: 'primary', type: 'submit' })))) : null,
+        ...Object.entries(inputs).map(([k, el]) => this.infoField(k, el, t(`set.f_${k}_hint`))), err, h('div', btn(t('common.save'), { icon: 'check', kind: 'primary', type: 'submit' })))) : null,
       this.gateCard(s),
       h('section', { class: 'card' }, h('header', { class: 'card-head' }, h('h2', t('set.related'))), h('div', { class: 'card-body' },
         // the loopback address is content, not code: it comes from i18n (the source tree itself
@@ -57,7 +86,7 @@ class AhSettings extends AhView {
     return h('form', { class: 'card', onSubmit: async (e) => { e.preventDefault(); err.textContent = '';
       try { await this.api.saveSettings({ eval_gate: sel.eval_gate.value, ...(sel.eval_gate_observed.value && s.editable.eval_gate_observed ? { eval_gate_observed: sel.eval_gate_observed.value } : {}), eval_gate_min_tiers: sel.eval_gate_min_tiers.value }); toast(t('set.saved'), { kind: 'ok' }); notifyChanged(); this.paint(); } catch (x) { err.textContent = x.message; toastError(x); } } },
       h('header', { class: 'card-head' }, h('h2', t('set.gate_title'))), h('div', { class: 'card-body' }, h('p', { class: 'hint' }, t('set.gate_hint')),
-        ...Object.entries(sel).map(([k, el]) => field(t(`set.f_${k}`), el, t(`set.f_${k}_hint`))), err, h('div', btn(t('common.save'), { icon: 'check', kind: 'primary', type: 'submit' }))));
+        ...Object.entries(sel).map(([k, el]) => this.infoField(k, el, t(`set.f_${k}_hint`))), err, h('div', btn(t('common.save'), { icon: 'check', kind: 'primary', type: 'submit' }))));
   }
 
   // Host hardening: what the hub's doctor found on this machine. Fixes are commands or JSON lines: shown as plain text with a copy button.

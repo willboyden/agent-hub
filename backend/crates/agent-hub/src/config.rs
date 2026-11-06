@@ -223,17 +223,20 @@ pub enum SettingsError {
     Invalid(#[from] ValidationError),
     #[error("error parsing value for field \"{0}\" from source \"{1}\"")]
     Parse(String, &'static str),
+    /// A draft's `${...}` expansion grew past [`MAX_DRAFT_EXPANSION`] (the config editor's check only).
+    #[error("{0}")]
+    Expansion(#[from] dotenv::ExpansionTooLarge),
 }
+
+/// The total size the resolved values of a checked draft may reach through `${...}` (four times the editor's 64 KiB
+/// draft cap). The operator's own file at start is read without a limit, like python-dotenv.
+pub const MAX_DRAFT_EXPANSION: usize = 256 * 1024;
 
 /// Explicit values (like `Settings(**overrides)` / `load_settings(**overrides)`), as strings or JSON for lists.
 pub type Overrides = Vec<(String, PyValue)>;
 
 /// `load_settings(**overrides)` with the given environment (normally `std::env::vars()`).
 pub fn load_settings_from(environ: &HashMap<String, String>, overrides: &Overrides) -> Result<Settings, SettingsError> {
-    let model = settings_model();
-    let field_names: Vec<&str> = model.fields.iter().map(|f| f.name).collect();
-    let mut raw: Vec<(String, PyValue, &'static str)> = Vec::new();
-
     // env file (lowest of the sources), then real env (wins); keys are case-insensitive
     let ef = env_file_from(environ);
     let mut file_vals: Vec<(String, Option<String>)> = Vec::new();
@@ -242,14 +245,49 @@ pub fn load_settings_from(environ: &HashMap<String, String>, overrides: &Overrid
     {
         file_vals = dotenv::values(&text, environ);
     }
+    settings_from_sources(environ, file_vals, overrides)
+}
+
+/// The settings a draft env file gives on its own, read exactly as [`load_settings_from`] reads the real one but with
+/// an empty environment: nothing of the server's own environment is merged in or interpolated (`${VAR}` stays
+/// unset), so a check of a draft can never reveal it. Used by the config editor's dry run; nothing is read from or
+/// written to disk. A `${...}` expansion whose values grow past [`MAX_DRAFT_EXPANSION`] bytes is refused.
+pub fn settings_from_env_text(text: &str) -> Result<Settings, SettingsError> {
+    let environ: HashMap<String, String> = HashMap::new();
+    let vals = dotenv::values_bounded(text, &environ, MAX_DRAFT_EXPANSION)?;
+    settings_from_sources(&environ, vals, &vec![])
+}
+
+/// The env var names the server reads for a settings field (`HUB_<FIELD>`; `knowledge_admin_key_file` also
+/// `KNOWLEDGE_ADMIN_KEY_FILE`), lower-case like the lookup. Every name the hub's settings read, in field order.
+pub fn settings_env_names() -> Vec<(&'static str, Vec<String>)> {
+    settings_model()
+        .fields
+        .iter()
+        .map(|f| (f.name, env_keys(f.name)))
+        .collect()
+}
+
+fn env_keys(name: &str) -> Vec<String> {
+    if name == "knowledge_admin_key_file" {
+        vec!["knowledge_admin_key_file".into(), "hub_knowledge_admin_key_file".into()]
+    } else {
+        vec![format!("hub_{name}")]
+    }
+}
+
+fn settings_from_sources(
+    environ: &HashMap<String, String>,
+    file_vals: Vec<(String, Option<String>)>,
+    overrides: &Overrides,
+) -> Result<Settings, SettingsError> {
+    let model = settings_model();
+    let field_names: Vec<&str> = model.fields.iter().map(|f| f.name).collect();
+    let mut raw: Vec<(String, PyValue, &'static str)> = Vec::new();
     let lower_env: HashMap<String, &String> = environ.iter().map(|(k, v)| (k.to_lowercase(), v)).collect();
     let file_map: HashMap<String, Option<String>> = file_vals.into_iter().map(|(k, v)| (k.to_lowercase(), v)).collect();
     for name in &field_names {
-        let keys: Vec<String> = if *name == "knowledge_admin_key_file" {
-            vec!["knowledge_admin_key_file".into(), "hub_knowledge_admin_key_file".into()]
-        } else {
-            vec![format!("hub_{name}")]
-        };
+        let keys = env_keys(name);
         let found_env = keys
             .iter()
             .find_map(|k| lower_env.get(k).map(|v| ((*v).clone(), "EnvSettingsSource")));

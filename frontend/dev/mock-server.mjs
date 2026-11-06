@@ -599,6 +599,36 @@ route('PUT', '/settings', (r) => {
   for (const [k, v] of Object.entries(b)) { if (ENUM_LIMITS[k]) { if (!ENUM_LIMITS[k].includes(v)) return r.problem(422, 'Unprocessable', `${k} must be one of ${ENUM_LIMITS[k].join(', ')}`, 'validation_error'); continue; } const [lo, hi] = RANGE[k]; if (!Number.isInteger(v) || v < lo || v > hi) return r.problem(422, 'Unprocessable', `${k} must be an integer in ${lo}..${hi}`, 'validation_error'); }
   Object.assign(limits, b); r.json(200, { editable: limits, info: {} });
 });
+// Config editor (Settings > Config files): the same contract as the Rust routes. Templates are the repo's own files;
+// the check is a small contract mock (the real one runs the hub's loaders). Nothing is written.
+const REPO = path.resolve(ROOT, '..');
+const CFG_TEMPLATES = { 'hub-env': { default: 'deploy/agent-hub.env.example' }, knowledge: { host: 'deploy/knowledge/config.example.yaml', container: 'deploy/knowledge/container-config.yaml' }, 'client-spec': { cursor: 'examples/clients/cursor.yaml', 'codex-cli': 'examples/clients/codex-cli.yaml', 'gemini-cli': 'examples/clients/gemini-cli.yaml' } };
+const CFG_FILES = ['hub-env', 'knowledge', 'client-spec', 'floor'];
+route('GET', '/config-files', (r) => r.json(200, { items: CFG_FILES.map((id) => ({ id, format: id === 'hub-env' ? 'env' : 'yaml', editable: id !== 'floor', current: id === 'floor', path: { 'hub-env': '~/.config/agent-hub/env', knowledge: '', 'client-spec': '~/work/hub/content/clients', floor: 'hub/policy/floor.yaml' }[id], templates: Object.entries(CFG_TEMPLATES[id] || {}).map(([tid, p]) => ({ id: tid, path: p })), max_bytes: 65536 })) }));
+route('GET', '/config-files/:file/templates/:name', (r) => {
+  // own keys only: `constructor` or `__proto__` must not resolve through the prototype
+  const tpl = Object.hasOwn(CFG_TEMPLATES, r.p.file) ? CFG_TEMPLATES[r.p.file] : null;
+  const rel = tpl && Object.hasOwn(tpl, r.p.name) ? tpl[r.p.name] : null; if (typeof rel !== 'string') return nf(r, 'no such template');
+  r.json(200, { file: r.p.file, template: r.p.name, path: rel, format: r.p.file === 'hub-env' ? 'env' : 'yaml', text: fs.readFileSync(path.join(REPO, rel), 'utf8') });
+});
+route('GET', '/config-files/:file/current', (r) => {
+  if (!CFG_FILES.includes(r.p.file)) return nf(r, 'no such config file');
+  if (r.p.file !== 'floor') return r.problem(403, 'Forbidden', 'this file can hold secrets or lives outside the hub, so the hub never serves it', 'not_served');
+  r.json(200, { file: 'floor', format: 'yaml', path: 'hub/policy/floor.yaml', text: fs.readFileSync(path.join(REPO, 'policy/floor.yaml'), 'utf8'), editable: false });
+});
+route('POST', '/config-files/:file/validate', (r) => {
+  const f = r.p.file, text = String(r.body?.text ?? ''); const d = [];
+  if (f === 'floor') return r.problem(403, 'Forbidden', 'the policy floor is not editable through the hub', 'floor_locked');
+  if (!CFG_FILES.includes(f)) return nf(r, 'no such config file');
+  if (typeof r.body?.text !== 'string') return r.problem(422, 'Unprocessable', '`text` (a string) is required', 'text_required');
+  const lines = text.split('\n');
+  if (f === 'hub-env') lines.forEach((l, i) => { const m = /^\s*(?:export\s+)?([^=#\s]+)\s*=\s*(.*)$/.exec(l); if (!m) { if (l.trim() && !l.trim().startsWith('#')) d.push({ severity: 'warn', message: 'this line is not KEY=value, so it is skipped when the file is read', line: i + 1 }); return; }
+    if (/^HUB_PORT$/i.test(m[1]) && !/^\d+$/.test(m[2].trim())) d.push({ severity: 'error', message: 'HUB_PORT: Input should be a valid integer, unable to parse string as an integer', line: i + 1, path: [m[1]] });
+    else if (/^HUB_/i.test(m[1]) && !/^HUB_(HOST|PORT|CONTENT_DIR|DATA_DIR|POLICY_FILE|FRONTEND_DIR|GIT_\w+|ALLOWED_HOSTS|TRUST_LOOPBACK|\w*_BYTES|MAX_SSE_CONNECTIONS|SSE_IDLE_TIMEOUT_S|KNOWLEDGE_\w+|DISCOVER_EXTRA_ROOTS|INBOX_\w+|PLAN_RETENTION|EVAL_\w+|ENABLE_METRICS)$/i.test(m[1])) d.push({ severity: 'warn', message: `${m[1]} is not a setting the hub reads, so it is ignored (check the spelling)`, line: i + 1, path: [m[1]] }); });
+  if (f === 'knowledge') lines.forEach((l, i) => { if (/^port:\s*\D/.test(l)) d.push({ severity: 'error', message: 'port: Input should be a valid integer, unable to parse string as an integer', line: i + 1, path: ['port'] }); });
+  if (f === 'client-spec' && !/^id:\s*\S/m.test(text)) d.push({ severity: 'error', message: 'id is required: it must equal the file name (clients/<id>.yaml)', path: ['id'] });
+  r.json(200, { file: f, ok: !d.some((x) => x.severity === 'error'), diagnostics: d, summary: f === 'client-spec' ? { id: (/^id:\s*(\S+)/m.exec(text) || [])[1] || null, artifacts: [] } : {} });
+});
 const DOCTOR = [
   { id: 'loopback_trust', severity: 'crit', title: 'Loopback trust is ON', detail: 'Any local process, including an agent with a shell, is treated as admin without a key.', fix: '# ~/.config/agent-hub/env\nHUB_TRUST_LOOPBACK=0\nsystemctl --user restart agent-hub' },
   { id: 'env_perms', severity: 'warn', title: 'Env file is readable by other users', detail: '~/.config/agent-hub/env has mode 0644; it holds the hub keys.', fix: 'chmod 600 ~/.config/agent-hub/env' },

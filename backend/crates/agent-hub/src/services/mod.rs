@@ -20,6 +20,7 @@ pub mod suggest;
 // WS-B2 (delivery: git, plan, merge, apply, rollback) and WS-F (policy floor, targets, content guard, doctor)
 pub mod applier;
 pub mod applylog;
+pub mod config_files;
 pub mod contentguard;
 pub mod difflib;
 pub mod doctor;

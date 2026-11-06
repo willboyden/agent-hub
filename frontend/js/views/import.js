@@ -1,6 +1,7 @@
 // Import wizard: choose a client -> see what it already has (conflicts with per-item choices) -> preview -> import into the working tree.
 // A conflicting item can be LINKED to the existing canonical item (default when equal), kept separate (rename), replaced, or skipped.
 import { AhView } from '../components/base.js';
+import { helpFrame } from '../components/help-tabs.js';
 import { h, clear, append } from '../dom.js';
 import { t } from '../i18n.js';
 import { badge, kindBadge, emptyBox, notifyChanged, skeleton, errorBox, btn, seg } from '../components/ui.js';
@@ -13,7 +14,10 @@ const fresh = (client = '') => ({ client, items: [], sel: new Set(), choices: {}
 class AhImport extends AhView {
   setup() {
     this.st = fresh(this.query?.client || '');
-    this.host = h('div'); this.append(h('div', { class: 'page-head' }, h('h1', t('imp.title'))), h('p', { class: 'muted' }, t('imp.intro')), this.host);
+    this.host = h('div');
+    const f = helpFrame(this, { key: 'import', name: t('nav.import') });
+    f.own.append(h('p', { class: 'muted' }, t('imp.intro')), this.host);
+    this.append(h('div', { class: 'page-head' }, h('h1', t('imp.title'))), f.bar, f.own, f.help);
     this.loadInto(this.host, async () => { this.clients = await this.api.clients(); return this.build(); }, { skeletonRows: 3 });
   }
   build() {
