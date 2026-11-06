@@ -2,7 +2,16 @@
 import { fuzzyScore } from './fuzzy.js';
 
 export const itemId = (it) => `${it.kind}/${it.name}`;
-export const EMPTY_FILTERS = { q: '', kind: '', collection: '', tag: '', client: '', enabled: '', source: '', issues: '' };
+export const EMPTY_FILTERS = {
+  q: '',
+  kind: '',
+  collection: '',
+  tag: '',
+  client: '',
+  enabled: '',
+  source: '',
+  issues: '',
+};
 
 const hay = (it) => [it.name, it.title, it.description, (it.tags || []).join(' ')].filter(Boolean).join(' ');
 // Name matches count more than description matches; tags in between.
@@ -53,7 +62,11 @@ const cmp = {
 export function sortItems(items, sort = 'name', q = '') {
   const out = items.slice();
   // With a search query, relevance wins unless the user picked an explicit sort other than the default.
-  if (q.trim() && sort === 'relevance') return out.map((it) => ({ it, s: searchScore(q, it) })).sort((a, b) => b.s - a.s || a.it.name.localeCompare(b.it.name)).map((x) => x.it);
+  if (q.trim() && sort === 'relevance')
+    return out
+      .map((it) => ({ it, s: searchScore(q, it) }))
+      .sort((a, b) => b.s - a.s || a.it.name.localeCompare(b.it.name))
+      .map((x) => x.it);
   return out.sort(cmp[sort] || cmp.name);
 }
 
@@ -64,6 +77,10 @@ export function facets(items) {
     for (const it of items) for (const v of get(it)) m.set(v, (m.get(v) || 0) + 1);
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([value, n]) => ({ value, n }));
   };
-  return { tags: count((i) => i.tags || []), sources: count((i) => [i.source || 'local']), kinds: count((i) => [i.kind]) };
+  return {
+    tags: count((i) => i.tags || []),
+    sources: count((i) => [i.source || 'local']),
+    kinds: count((i) => [i.kind]),
+  };
 }
 export const activeFilterCount = (f) => Object.entries(f).filter(([k, v]) => k !== 'q' && v).length;

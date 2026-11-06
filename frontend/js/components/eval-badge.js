@@ -8,6 +8,16 @@ import { badgeModel, badgeText } from '../skilleval.js';
 export function evalBadge(entry, name) {
   const m = badgeModel(entry);
   const { short, long } = badgeText(m, t);
-  return h('a', { class: `badge eval-badge ${m.tone} ev-${m.state}`, href: `#/evaluations?source=hub&q=${encodeURIComponent(name)}`,
-    title: long, dataset: { evState: m.state } }, icon(m.icon, 12), h('span', short), h('span', { class: 'sr-only' }, `. ${long}`));
+  return h(
+    'a',
+    {
+      class: `badge eval-badge ${m.tone} ev-${m.state}`,
+      href: `#/evaluations?source=hub&q=${encodeURIComponent(name)}`,
+      title: long,
+      dataset: { evState: m.state },
+    },
+    icon(m.icon, 12),
+    h('span', short),
+    h('span', { class: 'sr-only' }, `. ${long}`)
+  );
 }

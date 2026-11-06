@@ -2,7 +2,8 @@
 // Edits are STAGED locally (with undo) and only written to the working tree when the user saves.
 export const cellKey = (client, kind, name) => `${client}|${kind}|${name}`;
 export const isEnabledState = (s) => s === 'on' || s === 'via_collection';
-export const isToggleable = (cell) => !!cell && (cell.state === 'on' || cell.state === 'off' || cell.state === 'via_collection');
+export const isToggleable = (cell) =>
+  !!cell && (cell.state === 'on' || cell.state === 'off' || cell.state === 'via_collection');
 
 // What an unstaged click would set. via_collection -> false means an explicit per-client override (profile.disable).
 export const nextEnabled = (cell) => (isToggleable(cell) ? !isEnabledState(cell.state) : null);
@@ -18,7 +19,8 @@ export function displayState(cell, staged, key) {
 const withEntry = (staged, key, entry, original) => {
   const next = { ...staged };
   // Staging back to what the server already has means "no change": drop the entry rather than keep a no-op.
-  if (entry.enabled === original) delete next[key]; else next[key] = entry;
+  if (entry.enabled === original) delete next[key];
+  else next[key] = entry;
   return next;
 };
 
@@ -41,7 +43,10 @@ export function stageMany(model, targets, enabled) {
     const original = isEnabledState(t.cell.state);
     if ((staged[key] ? staged[key].enabled : original) === enabled) continue; // already there: not a change
     const next = withEntry(staged, key, { client: t.client, kind: t.kind, name: t.name, enabled }, original);
-    if (next !== staged) { staged = next; changed = true; }
+    if (next !== staged) {
+      staged = next;
+      changed = true;
+    }
   }
   return changed ? { staged, undo: [...model.undo, model.staged] } : model;
 }
@@ -82,7 +87,8 @@ export function toBulkCalls(staged) {
 
 // Human summary counts for the unsaved bar / plan preview.
 export function summarize(staged) {
-  let on = 0, off = 0;
+  let on = 0,
+    off = 0;
   for (const e of Object.values(staged)) e.enabled ? on++ : off++;
   return { on, off, total: on + off };
 }

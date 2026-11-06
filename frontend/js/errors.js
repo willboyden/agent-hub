@@ -2,9 +2,24 @@
 import { t } from './i18n.js';
 
 // Backend `code`s that deserve their own explanation (read from the backend's domain errors), checked before the generic status mapping.
-const CODE_KEYS = { knowledge_unavailable: 'err.knowledge_unavailable', knowledge_upstream_unauthorized: 'err.knowledge_unauthorized', cell_blocked: 'err.cell', cell_unsupported: 'err.cell', never_applied: 'err.never_applied', client_not_committed: 'err.client_not_committed',
-  content_not_initialised: 'err.content_not_initialised', content_invalid: 'err.content_invalid', dirty_tree: 'err.dirty_tree', already_exists: 'err.exists',
-  confirm_required: 'err.confirm', floor_locked: 'err.floor_locked', unknown_adapter: 'err.adapter', adapter_missing: 'err.adapter', not_observed: 'err.not_observed', unknown_source: 'err.unknown_source' };
+const CODE_KEYS = {
+  knowledge_unavailable: 'err.knowledge_unavailable',
+  knowledge_upstream_unauthorized: 'err.knowledge_unauthorized',
+  cell_blocked: 'err.cell',
+  cell_unsupported: 'err.cell',
+  never_applied: 'err.never_applied',
+  client_not_committed: 'err.client_not_committed',
+  content_not_initialised: 'err.content_not_initialised',
+  content_invalid: 'err.content_invalid',
+  dirty_tree: 'err.dirty_tree',
+  already_exists: 'err.exists',
+  confirm_required: 'err.confirm',
+  floor_locked: 'err.floor_locked',
+  unknown_adapter: 'err.adapter',
+  adapter_missing: 'err.adapter',
+  not_observed: 'err.not_observed',
+  unknown_source: 'err.unknown_source',
+};
 
 export function errorKey(e) {
   if (!e) return 'common.error';
@@ -14,7 +29,8 @@ export function errorKey(e) {
   if (status === 0 || code === 'network') return 'err.network';
   if (status === 401) return 'err.unauthorized';
   if (status === 403) return code === 'csrf_header_required' ? 'err.csrf' : 'err.forbidden';
-  if (status === 409) return code === 'plan_stale' ? 'err.plan_stale' : code === 'conflict' ? 'err.conflict' : 'err.conflict_generic';
+  if (status === 409)
+    return code === 'plan_stale' ? 'err.plan_stale' : code === 'conflict' ? 'err.conflict' : 'err.conflict_generic';
   if (status === 413) return 'err.too_large';
   if (status === 415) return 'err.unsupported_media';
   if (status === 421) return 'err.bad_host';
@@ -29,11 +45,15 @@ export function describeError(e) {
   if (k) {
     const base = t(k);
     // Keep the server's own detail when it adds information (e.g. which file conflicted), never for auth problems.
-    return e.message && e.status !== 401 && e.status !== 0 && !/^HTTP \d+$/.test(e.message) && e.message !== base ? `${base} (${e.message})` : base;
+    return e.message && e.status !== 401 && e.status !== 0 && !/^HTTP \d+$/.test(e.message) && e.message !== base
+      ? `${base} (${e.message})`
+      : base;
   }
   if (e.status === 422) {
-    const errs = (e.problem?.errors || []).map((x) => `${(x.loc || []).filter((p) => p !== 'body').join('.')}: ${x.msg}`).filter(Boolean);
-    return errs.length ? `${t('err.invalid')} ${errs.join('; ')}` : (e.message || t('err.invalid'));
+    const errs = (e.problem?.errors || [])
+      .map((x) => `${(x.loc || []).filter((p) => p !== 'body').join('.')}: ${x.msg}`)
+      .filter(Boolean);
+    return errs.length ? `${t('err.invalid')} ${errs.join('; ')}` : e.message || t('err.invalid');
   }
   return e.message || t('common.error');
 }

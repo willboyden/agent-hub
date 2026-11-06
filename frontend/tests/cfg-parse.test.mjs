@@ -4,20 +4,62 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseConfig, parseToml, parseYaml, yamlPlainType, entryOf } from '../js/cfg-parse.js';
 
-const val = (n) => (n.kind === 'map' ? Object.fromEntries(n.entries.map((e) => [e.key, val(e.node)])) : n.kind === 'seq' ? n.items.map(val) : n.value);
-const ok = (fmt, text) => { const r = parseConfig(fmt, text); assert.equal(r.errors.length, 0, JSON.stringify(r.errors)); assert.equal(r.unsupported, null); return val(r.root); };
-const err = (fmt, text) => { const r = parseConfig(fmt, text); assert.equal(r.root, null, 'expected a syntax error'); assert.equal(r.errors.length, 1); return r.errors[0]; };
-const unsup = (text) => { const r = parseYaml(text); assert.equal(r.root, null); assert.equal(r.errors.length, 0, 'a valid file must never be reported broken'); return r.unsupported; };
+const val = (n) =>
+  n.kind === 'map'
+    ? Object.fromEntries(n.entries.map((e) => [e.key, val(e.node)]))
+    : n.kind === 'seq'
+      ? n.items.map(val)
+      : n.value;
+const ok = (fmt, text) => {
+  const r = parseConfig(fmt, text);
+  assert.equal(r.errors.length, 0, JSON.stringify(r.errors));
+  assert.equal(r.unsupported, null);
+  return val(r.root);
+};
+const err = (fmt, text) => {
+  const r = parseConfig(fmt, text);
+  assert.equal(r.root, null, 'expected a syntax error');
+  assert.equal(r.errors.length, 1);
+  return r.errors[0];
+};
+const unsup = (text) => {
+  const r = parseYaml(text);
+  assert.equal(r.root, null);
+  assert.equal(r.errors.length, 0, 'a valid file must never be reported broken');
+  return r.unsupported;
+};
 
 test('TOML: tables, dotted keys, arrays of tables, inline tables, every scalar kind', () => {
-  assert.deepEqual(ok('toml', `title = "x"\n[a.b]\nc = 1\nd.e = true\n[[r]]\nn = 1\n[[r]]\nn = 2\n[t]\ni = { x = 1, y = "z" }\narr = [ 1, 2,\n  3, # c\n]\n`),
-    { title: 'x', a: { b: { c: 1, d: { e: true } } }, r: [{ n: 1 }, { n: 2 }], t: { i: { x: 1, y: 'z' }, arr: [1, 2, 3] } });
-  assert.deepEqual(ok('toml', `s = "tab\\there \\u00e9"\nl = 'C:\\\\no\\\\escape'\nm = """\nline1\nline2"""\nml = '''\nraw\\n'''\n`), { s: 'tab\there é', l: 'C:\\\\no\\\\escape', m: 'line1\nline2', ml: 'raw\\n' });
-  assert.deepEqual(ok('toml', `i = 1_000\nh = 0xff\no = 0o17\nb = 0b101\nf = 3.5e2\nn = -0.5\ninf = inf\nd = 1979-05-27\ndt = 1979-05-27T07:32:00Z\n`), { i: 1000, h: 255, o: 15, b: 5, f: 350, n: -0.5, inf: Infinity, d: '1979-05-27', dt: '1979-05-27T07:32:00Z' });
+  assert.deepEqual(
+    ok(
+      'toml',
+      `title = "x"\n[a.b]\nc = 1\nd.e = true\n[[r]]\nn = 1\n[[r]]\nn = 2\n[t]\ni = { x = 1, y = "z" }\narr = [ 1, 2,\n  3, # c\n]\n`
+    ),
+    {
+      title: 'x',
+      a: { b: { c: 1, d: { e: true } } },
+      r: [{ n: 1 }, { n: 2 }],
+      t: { i: { x: 1, y: 'z' }, arr: [1, 2, 3] },
+    }
+  );
+  assert.deepEqual(
+    ok('toml', `s = "tab\\there \\u00e9"\nl = 'C:\\\\no\\\\escape'\nm = """\nline1\nline2"""\nml = '''\nraw\\n'''\n`),
+    { s: 'tab\there é', l: 'C:\\\\no\\\\escape', m: 'line1\nline2', ml: 'raw\\n' }
+  );
+  assert.deepEqual(
+    ok(
+      'toml',
+      `i = 1_000\nh = 0xff\no = 0o17\nb = 0b101\nf = 3.5e2\nn = -0.5\ninf = inf\nd = 1979-05-27\ndt = 1979-05-27T07:32:00Z\n`
+    ),
+    { i: 1000, h: 255, o: 15, b: 5, f: 350, n: -0.5, inf: Infinity, d: '1979-05-27', dt: '1979-05-27T07:32:00Z' }
+  );
   const r = parseToml('[x]\nk = "v"  # note\n');
   const k = entryOf(entryOf(r.root, 'x').node, 'k').node;
-  assert.equal(r.root.entries[0].node.line, 1); assert.equal(k.line, 2); assert.equal(k.raw, '"v"'); assert.equal(k.style, 'basic');
-  ok('toml', '[a.b.c]\nx = 1\n[a]\ny = 2\n');                         // an implicit table may be defined later
+  assert.equal(r.root.entries[0].node.line, 1);
+  assert.equal(k.line, 2);
+  assert.equal(k.raw, '"v"');
+  assert.equal(k.style, 'basic');
+  ok('toml', '[a.b.c]\nx = 1\n[a]\ny = 2\n'); // an implicit table may be defined later
 });
 
 test('TOML: errors carry the line and say what to do', () => {
@@ -35,30 +77,54 @@ test('TOML: errors carry the line and say what to do', () => {
 });
 
 test('YAML: block mappings and lists, list-of-mappings, flow collections, quoting', () => {
-  assert.deepEqual(ok('yaml', 'a: 1\nb:\n  c: x\n  d: [1, two, "3"]\nlist:\n- p\n- q: 1\n  r: 2\nnested:\n  - 1\n'),
-    { a: 1, b: { c: 'x', d: [1, 'two', '3'] }, list: ['p', { q: 1, r: 2 }], nested: [1] });
-  assert.deepEqual(ok('yaml', `s: 'it''s'\nd: "a\\tb \\u00e9"\ne:\nf: {k: v, n: 1}\nurl: http://x:1/y # c\n`), { s: "it's", d: 'a\tb é', e: null, f: { k: 'v', n: 1 }, url: 'http://x:1/y' });
+  assert.deepEqual(ok('yaml', 'a: 1\nb:\n  c: x\n  d: [1, two, "3"]\nlist:\n- p\n- q: 1\n  r: 2\nnested:\n  - 1\n'), {
+    a: 1,
+    b: { c: 'x', d: [1, 'two', '3'] },
+    list: ['p', { q: 1, r: 2 }],
+    nested: [1],
+  });
+  assert.deepEqual(ok('yaml', `s: 'it''s'\nd: "a\\tb \\u00e9"\ne:\nf: {k: v, n: 1}\nurl: http://x:1/y # c\n`), {
+    s: "it's",
+    d: 'a\tb é',
+    e: null,
+    f: { k: 'v', n: 1 },
+    url: 'http://x:1/y',
+  });
   assert.deepEqual(ok('yaml', '---\nk: v\n'), { k: 'v' });
   assert.deepEqual(ok('yaml', '# only a comment\n'), {});
 });
 
 test('YAML: block scalars keep their lines; chomping as PyYAML', () => {
-  assert.deepEqual(ok('yaml', 'a: |\n  one\n  two\nb: |-\n  x\nc: >\n  folded\n  text\n\n  para\nd: x\n'), { a: 'one\ntwo\n', b: 'x', c: 'folded text\npara\n', d: 'x' });
+  assert.deepEqual(ok('yaml', 'a: |\n  one\n  two\nb: |-\n  x\nc: >\n  folded\n  text\n\n  para\nd: x\n'), {
+    a: 'one\ntwo\n',
+    b: 'x',
+    c: 'folded text\npara\n',
+    d: 'x',
+  });
   const n = entryOf(parseYaml('k: |\n    deep\n    text\nz: 1\n').root, 'k').node;
-  assert.equal(n.style, 'block'); assert.equal(n.block.indent, 4); assert.deepEqual(n.block.lines, ['deep', 'text']);
+  assert.equal(n.style, 'block');
+  assert.equal(n.block.indent, 4);
+  assert.deepEqual(n.block.lines, ['deep', 'text']);
 });
 
 test('YAML: plain scalars are typed the way PyYAML (YAML 1.1) types them', () => {
   const T = (s) => yamlPlainType(s);
-  assert.deepEqual([T('yes'), T('Off'), T('true')].map((x) => x.value), [true, false, true]);
-  assert.equal(T('~').type, 'null'); assert.equal(T('').type, 'null'); assert.equal(T('null').type, 'null');
-  assert.deepEqual(T('0755'), { type: 'int', value: 493 });          // octal in YAML 1.1
+  assert.deepEqual(
+    [T('yes'), T('Off'), T('true')].map((x) => x.value),
+    [true, false, true]
+  );
+  assert.equal(T('~').type, 'null');
+  assert.equal(T('').type, 'null');
+  assert.equal(T('null').type, 'null');
+  assert.deepEqual(T('0755'), { type: 'int', value: 493 }); // octal in YAML 1.1
   assert.deepEqual(T('0x1f'), { type: 'int', value: 31 });
   assert.deepEqual(T('1_000'), { type: 'int', value: 1000 });
-  assert.deepEqual(T('1:30'), { type: 'int', value: 90 });           // sexagesimal
-  assert.equal(T('1e3').type, 'string');                             // no dot: text to PyYAML
+  assert.deepEqual(T('1:30'), { type: 'int', value: 90 }); // sexagesimal
+  assert.equal(T('1e3').type, 'string'); // no dot: text to PyYAML
   assert.deepEqual(T('1.0e+3'), { type: 'float', value: 1000 });
-  assert.equal(T('.inf').value, Infinity); assert.equal(T('2026-11-04').type, 'date'); assert.equal(T('v1.2').type, 'string');
+  assert.equal(T('.inf').value, Infinity);
+  assert.equal(T('2026-11-04').type, 'date');
+  assert.equal(T('v1.2').type, 'string');
 });
 
 test('YAML: warnings for duplicate keys (the last one wins) and for keys PyYAML reads as booleans', () => {
@@ -70,7 +136,7 @@ test('YAML: warnings for duplicate keys (the last one wins) and for keys PyYAML 
 
 test('YAML: syntax errors PyYAML raises, with the line', () => {
   assert.match(err('yaml', 'a:\n\tb: 1\n').message, /tab is used for indentation/);
-  assert.match(err('yaml', 'a: b\tc\n').message, /tab character here/);           // PyYAML refuses this too
+  assert.match(err('yaml', 'a: b\tc\n').message, /tab character here/); // PyYAML refuses this too
   assert.match(err('yaml', 'a: 1\n  b: 2\n').message, /indented more than the key above it/);
   assert.match(err('yaml', 'a: b: c\n').message, /quote the value if it contains ': '/);
   assert.match(err('yaml', 'a: "open\n').message, /never closed/);
@@ -100,9 +166,14 @@ test('other formats are not parsed', () => {
 });
 
 test('0.9.0 audit: absurd nesting is "unsupported", never a crash; real depth is fine', () => {
-  for (const [fmt, text] of [['yaml', `a: ${'['.repeat(20000)}`], ['toml', `a = ${'['.repeat(20000)}${']'.repeat(20000)}`], ['yaml', `a: ${'['.repeat(100)}${']'.repeat(100)}`]]) {
+  for (const [fmt, text] of [
+    ['yaml', `a: ${'['.repeat(20000)}`],
+    ['toml', `a = ${'['.repeat(20000)}${']'.repeat(20000)}`],
+    ['yaml', `a: ${'['.repeat(100)}${']'.repeat(100)}`],
+  ]) {
     const r = parseConfig(fmt, text);
-    assert.equal(r.root, null); assert.match(r.unsupported || r.errors[0]?.message || '', /nesting deeper|never closed/);
+    assert.equal(r.root, null);
+    assert.match(r.unsupported || r.errors[0]?.message || '', /nesting deeper|never closed/);
   }
   ok('yaml', 'a:\n  b:\n    c:\n      - d: [1, [2, {e: 3}]]\n');
 });
@@ -110,12 +181,25 @@ test('0.9.0 audit: absurd nesting is "unsupported", never a crash; real depth is
 test('YAML (Agent Hub): a [ ] or { } list over several lines, with comments, parses with exact spans', () => {
   const text = 'a: [one,  # first\n  "two",\n  three]\nb: {x: 1,\n  y: 2}\nc: z\n';
   const r = parseConfig('yaml', text);
-  assert.equal(r.unsupported, null); assert.deepEqual(r.errors, []);
+  assert.equal(r.unsupported, null);
+  assert.deepEqual(r.errors, []);
   const a = entryOf(r.root, 'a').node;
-  assert.deepEqual(a.items.map((x) => x.value), ['one', 'two', 'three']);
+  assert.deepEqual(
+    a.items.map((x) => x.value),
+    ['one', 'two', 'three']
+  );
   for (const x of a.items) assert.equal(text.slice(x.start, x.end), x.raw);
-  assert.deepEqual(entryOf(r.root, 'b').node.entries.map((e) => [e.key, e.node.value]), [['x', 1], ['y', 2]]);
+  assert.deepEqual(
+    entryOf(r.root, 'b').node.entries.map((e) => [e.key, e.node.value]),
+    [
+      ['x', 1],
+      ['y', 2],
+    ]
+  );
   assert.equal(entryOf(r.root, 'c').node.value, 'z');
   assert.match(JSON.stringify(parseConfig('yaml', 'a: [1,\n  2\n').errors), /never closed/);
-  assert.match(JSON.stringify(parseConfig('yaml', 'a: [1,\n  2] x\n').errors), /unexpected text after the closing bracket/);
+  assert.match(
+    JSON.stringify(parseConfig('yaml', 'a: [1,\n  2] x\n').errors),
+    /unexpected text after the closing bracket/
+  );
 });

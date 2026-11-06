@@ -2,7 +2,12 @@
 // markup is generated, and the only tags emitted are the fixed ones below. Link targets are allow-listed
 // by scheme. Never pass the output of anything else to innerHTML.
 export function escapeHtml(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Relative links may not start with `//` or `/\` (browsers read both as protocol-relative) and no URL may contain a backslash.
@@ -16,9 +21,11 @@ function inline(src) {
     return `\u0000${codes.length - 1}\u0000`;
   });
   s = escapeHtml(s);
-  s = s.replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, (m, text, url) => (SAFE_URL.test(url)
-    ? `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>` : m));
-  s = s.replace(/\*\*([^\s*](?:[\s\S]*?[^\s*])?)\*\*/g, '<strong>$1</strong>')
+  s = s.replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, (m, text, url) =>
+    SAFE_URL.test(url) ? `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>` : m
+  );
+  s = s
+    .replace(/\*\*([^\s*](?:[\s\S]*?[^\s*])?)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[^\w])__([^\s_](?:[\s\S]*?[^\s_])?)__(?!\w)/g, '$1<strong>$2</strong>')
     .replace(/(^|[^*\w])\*([^\s*](?:[^*]*?[^\s*])?)\*(?!\*)/g, '$1<em>$2</em>')
     .replace(/(^|[^\w])_([^\s_](?:[^_]*?[^\s_])?)_(?!\w)/g, '$1<em>$2</em>')
@@ -51,21 +58,39 @@ function blocks(lines, opts) {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
-    if (!line.trim()) { i++; continue; }
+    if (!line.trim()) {
+      i++;
+      continue;
+    }
     let m = RE.fence.exec(line);
     if (m) {
-      const fence = m[1], lang = m[2];
+      const fence = m[1],
+        lang = m[2];
       const body = [];
       i++;
       // Unterminated fence (common while streaming) runs to the end of input.
-      while (i < lines.length && !(lines[i].trim().startsWith(fence[0].repeat(fence.length)) && lines[i].trim().replace(/[`~]/g, '') === '')) body.push(lines[i++]);
+      while (
+        i < lines.length &&
+        !(lines[i].trim().startsWith(fence[0].repeat(fence.length)) && lines[i].trim().replace(/[`~]/g, '') === '')
+      )
+        body.push(lines[i++]);
       i++;
       const label = lang ? escapeHtml(lang) : 'text';
-      out.push(`<div class="codeblock"><div class="codehead"><span>${label}</span><button type="button" class="btn ghost sm" data-action="copy-code">${escapeHtml(opts.copyLabel)}</button></div><pre><code>${escapeHtml(body.join('\n'))}</code></pre></div>`);
+      out.push(
+        `<div class="codeblock"><div class="codehead"><span>${label}</span><button type="button" class="btn ghost sm" data-action="copy-code">${escapeHtml(opts.copyLabel)}</button></div><pre><code>${escapeHtml(body.join('\n'))}</code></pre></div>`
+      );
       continue;
     }
-    if ((m = RE.heading.exec(line))) { out.push(`<h${m[1].length + 2} class="md-h">${inline(m[2])}</h${m[1].length + 2}>`); i++; continue; }
-    if (RE.hr.test(line)) { out.push('<hr>'); i++; continue; }
+    if ((m = RE.heading.exec(line))) {
+      out.push(`<h${m[1].length + 2} class="md-h">${inline(m[2])}</h${m[1].length + 2}>`);
+      i++;
+      continue;
+    }
+    if (RE.hr.test(line)) {
+      out.push('<hr>');
+      i++;
+      continue;
+    }
     if (RE.quote.test(line)) {
       const q = [];
       while (i < lines.length && RE.quote.test(lines[i])) q.push(RE.quote.exec(lines[i++])[1]);
@@ -79,7 +104,9 @@ function blocks(lines, opts) {
       const rows = [];
       while (i < lines.length && lines[i].trim() && lines[i].includes('|')) rows.push(splitRow(lines[i++]));
       const cell = (tag, c, k) => `<${tag}${aligns[k] ? ` class="al-${aligns[k]}"` : ''}>${inline(c)}</${tag}>`;
-      out.push(`<div class="tablewrap"><table><thead><tr>${head.map((c, k) => cell('th', c, k)).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${head.map((_, k) => cell('td', r[k] ?? '', k)).join('')}</tr>`).join('')}</tbody></table></div>`);
+      out.push(
+        `<div class="tablewrap"><table><thead><tr>${head.map((c, k) => cell('th', c, k)).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${head.map((_, k) => cell('td', r[k] ?? '', k)).join('')}</tr>`).join('')}</tbody></table></div>`
+      );
       continue;
     }
     if ((m = RE.item.exec(line))) {
@@ -92,9 +119,17 @@ function blocks(lines, opts) {
         const body = [im[3]];
         i++;
         const sub = [];
-        while (i < lines.length && lines[i].trim() && (lines[i].match(/^\s*/)[0].length > base)) sub.push(lines[i++].slice(Math.min(base + 2, lines[i - 1].match(/^\s*/)[0].length)));
+        while (i < lines.length && lines[i].trim() && lines[i].match(/^\s*/)[0].length > base)
+          sub.push(lines[i++].slice(Math.min(base + 2, lines[i - 1].match(/^\s*/)[0].length)));
         lis.push(`<li>${inline(body[0])}${sub.length ? blocks(sub, opts) : ''}</li>`);
-        while (i < lines.length && !lines[i].trim() && i + 1 < lines.length && RE.item.test(lines[i + 1]) && RE.item.exec(lines[i + 1])[1].length === base) i++;
+        while (
+          i < lines.length &&
+          !lines[i].trim() &&
+          i + 1 < lines.length &&
+          RE.item.test(lines[i + 1]) &&
+          RE.item.exec(lines[i + 1])[1].length === base
+        )
+          i++;
       }
       out.push(`<${ordered ? 'ol' : 'ul'}>${lis.join('')}</${ordered ? 'ol' : 'ul'}>`);
       continue;
@@ -108,5 +143,10 @@ function blocks(lines, opts) {
 
 export function renderMarkdown(md, opts = {}) {
   const o = { copyLabel: 'Copy', ...opts };
-  return blocks(String(md ?? '').replace(/\r\n?/g, '\n').split('\n'), o);
+  return blocks(
+    String(md ?? '')
+      .replace(/\r\n?/g, '\n')
+      .split('\n'),
+    o
+  );
 }

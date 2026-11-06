@@ -2,7 +2,10 @@
 const PROPS = new Set(['value', 'checked', 'selected', 'indeterminate', 'disabled', 'open']);
 export function h(tag, attrs, ...children) {
   const el = document.createElement(tag);
-  if (attrs && (typeof attrs !== 'object' || attrs instanceof Node || Array.isArray(attrs))) { children.unshift(attrs); attrs = null; }
+  if (attrs && (typeof attrs !== 'object' || attrs instanceof Node || Array.isArray(attrs))) {
+    children.unshift(attrs);
+    attrs = null;
+  }
   for (const [k, v] of Object.entries(attrs || {})) {
     if (v == null || v === false) continue;
     if (k === 'class') el.className = v;
@@ -21,7 +24,10 @@ export function append(el, children) {
   }
   return el;
 }
-export const clear = (el) => { el.replaceChildren(); return el; };
+export const clear = (el) => {
+  el.replaceChildren();
+  return el;
+};
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -37,13 +43,16 @@ const ICONS = {
   chat: 'M4 5h16v11H9l-5 4z',
   arena: 'M4 20L20 4M14 4h6v6M4 4l16 16M4 14v6h6',
   usage: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
-  settings: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19 12l2-1-2-4-2 1-2-1-1-2H9L8 7 6 8 4 7 2 11l2 1v0l-2 1 2 4 2-1 2 1 1 2h4l1-2 2-1 2 1 2-4z',
+  settings:
+    'M12 15a3 3 0 100-6 3 3 0 000 6zM19 12l2-1-2-4-2 1-2-1-1-2H9L8 7 6 8 4 7 2 11l2 1v0l-2 1 2 4 2-1 2 1 1 2h4l1-2 2-1 2 1 2-4z',
   search: 'M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-5-5',
   sun: 'M12 8a4 4 0 100 8 4 4 0 000-8zM12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5',
   moon: 'M20 14A8 8 0 1110 4a7 7 0 0010 10z',
   key: 'M14 10a4 4 0 11-3 4l-8 0v-3h2v-2h2l2-2M17 8h.01',
   close: 'M6 6l12 12M18 6L6 18',
-  play: 'M7 4l13 8-13 8z', stop: 'M6 6h12v12H6z', pause: 'M8 5v14M16 5v14',
+  play: 'M7 4l13 8-13 8z',
+  stop: 'M6 6h12v12H6z',
+  pause: 'M8 5v14M16 5v14',
   restart: 'M4 12a8 8 0 108-8M4 4v6h6',
   trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
   copy: 'M9 9h11v11H9zM5 15V4h11',
@@ -67,7 +76,8 @@ const ICONS = {
   import: 'M12 3v12M7 10l5 5 5-5M4 20h16',
   changes: 'M6 3v12M6 19a2 2 0 100-.01M18 5a2 2 0 100-.01M18 7v4a4 4 0 01-4 4H9',
   inbox: 'M3 13l3-8h12l3 8v6H3zM3 13h5l1 3h6l1-3h5',
-  knowledge: 'M12 3c5 0 8 1.5 8 3.5S17 10 12 10 4 8.5 4 6.5 7 3 12 3zM4 6.5v5C4 13.5 7 15 12 15s8-1.5 8-3.5v-5M4 11.5v5C4 18.5 7 20 12 20s8-1.5 8-3.5v-5',
+  knowledge:
+    'M12 3c5 0 8 1.5 8 3.5S17 10 12 10 4 8.5 4 6.5 7 3 12 3zM4 6.5v5C4 13.5 7 15 12 15s8-1.5 8-3.5v-5M4 11.5v5C4 18.5 7 20 12 20s8-1.5 8-3.5v-5',
   folder: 'M3 6a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z',
   star: 'M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z',
   branch: 'M6 3v12M6 19a2 2 0 100-.01M18 6a2 2 0 100-.01M18 8c0 5-6 4-12 7',
@@ -101,28 +111,50 @@ const ICONS = {
 export function icon(name, size = 18) {
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', size); svg.setAttribute('height', size);
-  svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '1.8');
-  svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
-  svg.setAttribute('aria-hidden', 'true'); svg.classList.add('icon');
-  const p = document.createElementNS(ns, 'path'); p.setAttribute('d', ICONS[name] || ICONS.dashboard);
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('width', size);
+  svg.setAttribute('height', size);
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-width', '1.8');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('icon');
+  const p = document.createElementNS(ns, 'path');
+  p.setAttribute('d', ICONS[name] || ICONS.dashboard);
   svg.append(p);
   return svg;
 }
 // Only for markup produced by markdown.js / charts.js (both escape all dynamic text).
-export function setTrustedHtml(el, html) { el.innerHTML = html; return el; }
+export function setTrustedHtml(el, html) {
+  el.innerHTML = html;
+  return el;
+}
 
 export function download(filename, text, type = 'text/plain') {
   const url = URL.createObjectURL(new Blob([text], { type }));
   const a = h('a', { href: url, download: filename });
-  document.body.append(a); a.click(); a.remove();
+  document.body.append(a);
+  a.click();
+  a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export async function copyText(text) {
-  try { await navigator.clipboard.writeText(text); return true; } catch {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
     const ta = h('textarea', { value: text, class: 'sr-only' });
-    document.body.append(ta); ta.select();
-    let ok = false; try { ok = document.execCommand('copy'); } catch { /* ignore */ }
-    ta.remove(); return ok;
+    document.body.append(ta);
+    ta.select();
+    let ok = false;
+    try {
+      ok = document.execCommand('copy');
+    } catch {
+      /* ignore */
+    }
+    ta.remove();
+    return ok;
   }
 }

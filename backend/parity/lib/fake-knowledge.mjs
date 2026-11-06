@@ -12,13 +12,17 @@ export function startFakeKnowledge() {
       res.end(typeof body === 'string' ? body : JSON.stringify(body));
     };
     let body = '';
-    req.on('data', (c) => { body += c; });
+    req.on('data', (c) => {
+      body += c;
+    });
     req.on('end', () => {
       if (url.pathname === '/health') return send(200, { ok: true, version: 'fake' });
       if (req.headers.authorization !== `Bearer ${FAKE_KNOWLEDGE_KEY}`) return send(401, { code: 'unauthorized' });
       if (url.pathname === '/backends') return send(200, { backends: { lancedb: { ok: true } } });
-      if (url.pathname === '/namespaces' && req.method === 'GET') return send(200, { items: [{ name: 'docs', backend: 'lancedb' }], next_cursor: null });
-      if (url.pathname === '/namespaces/docs/query' && req.method === 'POST') return send(200, { hits: [], echo_bytes: body.length });
+      if (url.pathname === '/namespaces' && req.method === 'GET')
+        return send(200, { items: [{ name: 'docs', backend: 'lancedb' }], next_cursor: null });
+      if (url.pathname === '/namespaces/docs/query' && req.method === 'POST')
+        return send(200, { hits: [], echo_bytes: body.length });
       if (url.pathname === '/tokens') return send(200, { items: [] });
       if (url.pathname === '/jobs/j1/stream') {
         res.writeHead(200, { 'content-type': 'text/event-stream' });
@@ -30,5 +34,7 @@ export function startFakeKnowledge() {
       return send(404, { code: 'not_found', detail: `fake has no ${req.method} ${url.pathname}` });
     });
   });
-  return new Promise((resolve) => server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port })));
+  return new Promise((resolve) =>
+    server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port }))
+  );
 }

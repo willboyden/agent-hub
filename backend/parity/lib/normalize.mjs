@@ -17,9 +17,26 @@ export const RULES = [
   'N7 file trees: names containing an apply id / backup stamp / plan id normalised as N2; JSON state files normalised as values',
 ];
 
-const TS_KEYS = new Set(['ts', 'time', 'created', 'updated', 'created_at', 'last_used_at', 'revoked_at', 'applied_at',
-  'adopted_at', 'verified_at', 'observed_at', 'started_at', 'finished_at', 'rolled_back_at', 'duration_ms', 'mtime',
-  'started', 'finished']);
+const TS_KEYS = new Set([
+  'ts',
+  'time',
+  'created',
+  'updated',
+  'created_at',
+  'last_used_at',
+  'revoked_at',
+  'applied_at',
+  'adopted_at',
+  'verified_at',
+  'observed_at',
+  'started_at',
+  'finished_at',
+  'rolled_back_at',
+  'duration_ms',
+  'mtime',
+  'started',
+  'finished',
+]);
 const SHA_KEYS = new Set(['commit', 'head', 'reverted']);
 const HEXID_KEYS = new Set(['id', 'token_id', 'job_id', 'jid']);
 
@@ -61,28 +78,52 @@ export function normValue(v, key = '') {
 }
 
 export function normMetrics(text) {
-  return text.split('\n').map((line) => {
-    if (line.startsWith('#') || !line.trim()) return line;
-    const m = line.match(/^(\S+?)(\{.*\})? (\S+)$/);
-    if (!m) return line;
-    const [, name, labels = ''] = m;
-    if (/_(bucket|sum|created)$/.test(name)) return `${name}${labels} <V>`;
-    return line;
-  }).join('\n');
+  return text
+    .split('\n')
+    .map((line) => {
+      if (line.startsWith('#') || !line.trim()) return line;
+      const m = line.match(/^(\S+?)(\{.*\})? (\S+)$/);
+      if (!m) return line;
+      const [, name, labels = ''] = m;
+      if (/_(bucket|sum|created)$/.test(name)) return `${name}${labels} <V>`;
+      return line;
+    })
+    .join('\n');
 }
 
 /** SSE text: every `data:` line that holds JSON is normalised as a value (N3/N9 apply inside events). */
 export function normSse(text) {
-  return text.split('\n').map((line) => {
-    if (!line.startsWith('data: ')) return normString(line);
-    try { return `data: ${JSON.stringify(normValue(JSON.parse(line.slice(6))))}`; } catch { return normString(line); }
-  }).join('\n');
+  return text
+    .split('\n')
+    .map((line) => {
+      if (!line.startsWith('data: ')) return normString(line);
+      try {
+        return `data: ${JSON.stringify(normValue(JSON.parse(line.slice(6))))}`;
+      } catch {
+        return normString(line);
+      }
+    })
+    .join('\n');
 }
 
 export function normHeaders(h) {
-  const keep = ['content-type', 'cache-control', 'content-security-policy', 'x-content-type-options', 'referrer-policy',
-    'x-frame-options', 'permissions-policy', 'cross-origin-resource-policy', 'etag', 'last-modified', 'x-accel-buffering',
-    'accept-ranges', 'location', 'retry-after', 'content-range'];
+  const keep = [
+    'content-type',
+    'cache-control',
+    'content-security-policy',
+    'x-content-type-options',
+    'referrer-policy',
+    'x-frame-options',
+    'permissions-policy',
+    'cross-origin-resource-policy',
+    'etag',
+    'last-modified',
+    'x-accel-buffering',
+    'accept-ranges',
+    'location',
+    'retry-after',
+    'content-range',
+  ];
   const out = {};
   for (const k of keep) {
     const v = h.get(k);

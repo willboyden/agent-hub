@@ -11,10 +11,15 @@ export const ENTRY_KEYS = ['what', 'change', 'accepts', 'default', 'effect', 'ch
 let pending = null;
 /** The catalog document, fetched once per page load (a failed fetch is retried next time). */
 export function loadFieldHelp(url = FIELDS_URL) {
-  pending ||= fetch(url).then((r) => {
-    if (!r.ok) throw new Error(`field help load failed: ${r.status}`);
-    return r.json();
-  }).catch((e) => { pending = null; throw e; });
+  pending ||= fetch(url)
+    .then((r) => {
+      if (!r.ok) throw new Error(`field help load failed: ${r.status}`);
+      return r.json();
+    })
+    .catch((e) => {
+      pending = null;
+      throw e;
+    });
   return pending;
 }
 
@@ -22,7 +27,10 @@ export function loadFieldHelp(url = FIELDS_URL) {
 export function catalogFor(doc, id) {
   const cat = doc?.catalogs?.[id];
   if (!cat) return null;
-  return { entries: Object.entries(cat).map(([pat, entry], order) => ({ segs: pat.split('.'), entry, order })), upper: id === 'hub-env' };
+  return {
+    entries: Object.entries(cat).map(([pat, entry], order) => ({ segs: pat.split('.'), entry, order })),
+    upper: id === 'hub-env',
+  };
 }
 
 /** How well a pattern fits a path: -1 = no match; higher = more specific. */
@@ -33,9 +41,13 @@ export function matchScore(segs, path) {
     if (s === '**') return i === segs.length - 1 && path.length > i ? score + 1 : -1;
     if (i >= path.length) return -1;
     const p = path[i];
-    if (s === '#') { if (typeof p !== 'number') return -1; score += 2; }
-    else if (s === '*') { if (typeof p !== 'string') return -1; score += 2; }
-    else if (String(p) !== s || typeof p === 'number') return -1;
+    if (s === '#') {
+      if (typeof p !== 'number') return -1;
+      score += 2;
+    } else if (s === '*') {
+      if (typeof p !== 'string') return -1;
+      score += 2;
+    } else if (String(p) !== s || typeof p === 'number') return -1;
     else score += 4;
   }
   return segs.length === path.length ? score + 2 : -1;
@@ -45,10 +57,14 @@ export function matchScore(segs, path) {
 export function lookupHelp(cat, path) {
   if (!cat) return null;
   const p = cat.upper ? path.map((x) => (typeof x === 'string' ? x.toUpperCase() : x)) : path;
-  let best = null, bestScore = -1;
+  let best = null,
+    bestScore = -1;
   for (const e of cat.entries) {
     const sc = matchScore(e.segs, p);
-    if (sc > bestScore || (sc === bestScore && best && e.order < best.order)) { best = e; bestScore = sc; }
+    if (sc > bestScore || (sc === bestScore && best && e.order < best.order)) {
+      best = e;
+      bestScore = sc;
+    }
   }
   return bestScore >= 0 ? best.entry : null;
 }

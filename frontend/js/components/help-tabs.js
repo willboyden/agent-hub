@@ -17,9 +17,15 @@ export const helpTabItems = () => HELP_TABS.map((id) => ({ id, label: t(`tab.${i
  */
 export function renderHelp(view, panel, id, { key, name, bar, extra }) {
   const button = (x) => bar?.querySelector(`[role=tab][data-id="${x}"]`);
-  const nav = { hasTab: (x) => !!button(x), tabLabel: (x) => button(x)?.firstChild?.textContent ?? x, goTab: (x) => button(x)?.click() };
+  const nav = {
+    hasTab: (x) => !!button(x),
+    tabLabel: (x) => button(x)?.firstChild?.textContent ?? x,
+    goTab: (x) => button(x)?.click(),
+  };
   const alive = () => view._alive;
-  clear(panel).append(id === 'start' ? gettingStartedPanel(alive, { key, name, nav, extra }) : faqPanel(alive, { key, name, nav }));
+  clear(panel).append(
+    id === 'start' ? gettingStartedPanel(alive, { key, name, nav, extra }) : faqPanel(alive, { key, name, nav })
+  );
 }
 
 /** The tab bar and the two panels for a page that has no tabs of its own. Append `bar`, `own`, `help`; fill `own`. */
@@ -29,8 +35,12 @@ export function helpFrame(view, { key, name, extra }) {
   const active = isHelpTab(view.query?.tab) ? view.query.tab : 'page';
   const show = (id) => {
     const mine = id === 'page';
-    own.hidden = !mine; help.hidden = mine;
-    if (mine) { clear(help); return; }
+    own.hidden = !mine;
+    help.hidden = mine;
+    if (mine) {
+      clear(help);
+      return;
+    }
     help.setAttribute('aria-labelledby', `tab-${id}`);
     renderHelp(view, help, id, { key, name, bar, extra });
   };

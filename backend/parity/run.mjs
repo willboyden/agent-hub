@@ -32,7 +32,16 @@ import { CASES as KNOWLEDGE_CASES } from './corpus/knowledge.mjs';
 import { FAKE_KNOWLEDGE_KEY, startFakeKnowledge } from './lib/fake-knowledge.mjs';
 import { RULES, normHeaders, normMetrics, normSse, normValue, normString } from './lib/normalize.mjs';
 import {
-  PARITY, freePort, hubCommand, hubEnv, knowledgeCommand, readKey, resetTmp, seedWithPython, startServer, stopServer,
+  PARITY,
+  freePort,
+  hubCommand,
+  hubEnv,
+  knowledgeCommand,
+  readKey,
+  resetTmp,
+  seedWithPython,
+  startServer,
+  stopServer,
   writeKnowledgeConfig,
 } from './lib/servers.mjs';
 import { snapshot } from './lib/snapshot.mjs';
@@ -52,7 +61,8 @@ function args(argv) {
 // against a reference without the adapter (the default, c419f1e) still allows those cases, but checks the Rust side of
 // each against this record, so a changed Rust answer is a difference, not an allowance.
 const RUST_EXPECT = join(PARITY, 'expect', 'rust-dsh.json');
-const loadRustExpect = () => (existsSync(RUST_EXPECT) ? JSON.parse(readFileSync(RUST_EXPECT, 'utf8')).cases ?? {} : null);
+const loadRustExpect = () =>
+  existsSync(RUST_EXPECT) ? (JSON.parse(readFileSync(RUST_EXPECT, 'utf8')).cases ?? {}) : null;
 /** The run's temp dir -> `<TMP>` in every string and key (both sides of one run share it; records outlive the run). A
  *  file snapshot entry that keeps its text gets `size` and `sha256` of the rewritten text, so they stay comparable; a
  *  plan's `digest` (a hash over rendered files that name the temp dir) becomes `<DIGEST>`. Only for the recorded Rust
@@ -61,10 +71,12 @@ function untmp(v, tmp) {
   if (typeof v === 'string') return v.split(tmp).join('<TMP>');
   if (Array.isArray(v)) return v.map((x) => untmp(x, tmp));
   if (!v || typeof v !== 'object') return v;
-  const out = Object.fromEntries(Object.entries(v).map(([k, x]) => [
-    untmp(k, tmp),
-    k === 'digest' && typeof x === 'string' && /^[0-9a-f]{64}$/.test(x) ? '<DIGEST>' : untmp(x, tmp),
-  ]));
+  const out = Object.fromEntries(
+    Object.entries(v).map(([k, x]) => [
+      untmp(k, tmp),
+      k === 'digest' && typeof x === 'string' && /^[0-9a-f]{64}$/.test(x) ? '<DIGEST>' : untmp(x, tmp),
+    ])
+  );
   if (typeof v.text === 'string' && v.text.includes(tmp) && typeof v.sha256 === 'string') {
     const bytes = Buffer.from(out.text, 'utf8');
     out.size = bytes.length;
@@ -78,7 +90,15 @@ function send(port, { method, path, headers, body }) {
     const req = httpRequest({ host: '127.0.0.1', port, method, path, headers, agent: false }, (res) => {
       const chunks = [];
       res.on('data', (c) => chunks.push(c));
-      res.on('end', () => resolve({ status: res.statusCode, headers: new Headers(Object.entries(res.headers).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : String(v)])), body: Buffer.concat(chunks) }));
+      res.on('end', () =>
+        resolve({
+          status: res.statusCode,
+          headers: new Headers(
+            Object.entries(res.headers).map(([k, v]) => [k, Array.isArray(v) ? v.join(', ') : String(v)])
+          ),
+          body: Buffer.concat(chunks),
+        })
+      );
       res.on('error', reject);
     });
     req.on('error', reject);
@@ -88,9 +108,14 @@ function send(port, { method, path, headers, body }) {
   });
 }
 
-const fill = (s, vars) => (typeof s === 'string' ? s.replace(/\$\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : `\${${k}}`)) : s);
-const fillDeep = (v, vars) => (Array.isArray(v) ? v.map((x) => fillDeep(x, vars)) : v && typeof v === 'object'
-  ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fillDeep(x, vars)])) : fill(v, vars));
+const fill = (s, vars) =>
+  typeof s === 'string' ? s.replace(/\$\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : `\${${k}}`)) : s;
+const fillDeep = (v, vars) =>
+  Array.isArray(v)
+    ? v.map((x) => fillDeep(x, vars))
+    : v && typeof v === 'object'
+      ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fillDeep(x, vars)]))
+      : fill(v, vars);
 
 function pick(json, path) {
   let cur = json;
@@ -116,22 +141,52 @@ async function runCases(cases, port, keys, vars, tmp, only, csrfHeader) {
     if (c.origin) headers.origin = fill(c.origin, vars);
     for (const [k, v] of Object.entries(c.headers ?? {})) headers[k] = fill(v, vars);
     let body = null;
-    if (c.raw != null) { body = Buffer.from(fill(c.raw, vars)); headers['content-type'] = c.ctype ?? 'application/json'; }
-    else if (c.body !== undefined) { body = Buffer.from(JSON.stringify(fillDeep(c.body, vars))); headers['content-type'] = c.ctype ?? 'application/json'; }
+    if (c.raw != null) {
+      body = Buffer.from(fill(c.raw, vars));
+      headers['content-type'] = c.ctype ?? 'application/json';
+    } else if (c.body !== undefined) {
+      body = Buffer.from(JSON.stringify(fillDeep(c.body, vars)));
+      headers['content-type'] = c.ctype ?? 'application/json';
+    }
     if (body != null) headers['content-length'] = String(body.length);
     let res;
-    try { res = await send(port, { method, path, headers, body }); } catch (e) { out.push({ id: c.id, error: String(e.message) }); continue; }
+    try {
+      res = await send(port, { method, path, headers, body });
+    } catch (e) {
+      out.push({ id: c.id, error: String(e.message) });
+      continue;
+    }
     const ctype = res.headers.get('content-type') || '';
     let parsed;
     const text = res.body.toString('utf8');
-    if (c.text) parsed = c.p === '/metrics' ? normMetrics(text) : ctype.includes('event-stream') ? normSse(text) : normString(text);
-    else if (ctype.includes('json') && text) { try { parsed = JSON.parse(text); } catch { parsed = `<invalid json> ${text.slice(0, 200)}`; } }
-    else parsed = text.length > 4000 ? `<${text.length} bytes sha:${(await import('node:crypto')).createHash('sha256').update(res.body).digest('hex')}>` : text;
+    if (c.text)
+      parsed =
+        c.p === '/metrics' ? normMetrics(text) : ctype.includes('event-stream') ? normSse(text) : normString(text);
+    else if (ctype.includes('json') && text) {
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = `<invalid json> ${text.slice(0, 200)}`;
+      }
+    } else
+      parsed =
+        text.length > 4000
+          ? `<${text.length} bytes sha:${(await import('node:crypto')).createHash('sha256').update(res.body).digest('hex')}>`
+          : text;
     for (const [v, from] of Object.entries(c.save ?? {})) {
-      const val = from.startsWith('@header:') ? res.headers.get(from.slice(8)) : (parsed && typeof parsed === 'object' ? pick(parsed, from) : undefined);
+      const val = from.startsWith('@header:')
+        ? res.headers.get(from.slice(8))
+        : parsed && typeof parsed === 'object'
+          ? pick(parsed, from)
+          : undefined;
       if (val != null) vars[v] = val;
     }
-    const rec = { id: c.id, status: res.status, headers: normHeaders(res.headers), body: typeof parsed === 'string' ? parsed : normValue(parsed) };
+    const rec = {
+      id: c.id,
+      status: res.status,
+      headers: normHeaders(res.headers),
+      body: typeof parsed === 'string' ? parsed : normValue(parsed),
+    };
     if (c.snap) rec.files = snapshot(tmp);
     out.push(rec);
   }
@@ -150,7 +205,8 @@ const ALLOWED = {
   'core.body.deep-json-200': { what: 'headers', deviation: 'D-500-HEADERS' },
   'b1.skills.put-files-not-dict': { what: 'headers', deviation: 'D-500-HEADERS' },
   'core.inbox.client-traversal': {
-    what: 'all', deviation: 'D-INBOX-CLIENT (Python security bug SB-3)',
+    what: 'all',
+    deviation: 'D-INBOX-CLIENT (Python security bug SB-3)',
     rust: { status: 200, body: { items: [], next_cursor: null } },
   },
   // Python's own result varies between runs (it also fails python-vs-python): uvicorn may reset the connection while
@@ -163,10 +219,12 @@ const ALLOWED = {
 // comparing (every other field is still compared) and the dsh.* cases are reported as allowed. When both sides have it
 // (`--a python@<tree with the adapter>`) or neither does, nothing changes.
 const NEW_ADAPTER = 'deepseek-harness';
-const hasNewAdapter = (side) => side.some((r) => r.id === 'adapters' && r.body?.items?.some((i) => i?.id === NEW_ADAPTER));
+const hasNewAdapter = (side) =>
+  side.some((r) => r.id === 'adapters' && r.body?.items?.some((i) => i?.id === NEW_ADAPTER));
 function withoutNewAdapter(rec) {
   const r = structuredClone(rec);
-  const drop = (list) => list.filter((x) => x !== NEW_ADAPTER && !(x && typeof x === 'object' && x.id === NEW_ADAPTER && 'caps' in x));
+  const drop = (list) =>
+    list.filter((x) => x !== NEW_ADAPTER && !(x && typeof x === 'object' && x.id === NEW_ADAPTER && 'caps' in x));
   if (Array.isArray(r.body?.adapters)) r.body.adapters = drop(r.body.adapters); // /health
   if (Array.isArray(r.body?.info?.adapters)) r.body.info.adapters = drop(r.body.info.adapters); // /settings
   if (Array.isArray(r.body?.items)) r.body.items = drop(r.body.items); // /adapters
@@ -188,31 +246,51 @@ function firstDiff(a, b, path = '') {
 async function runSide(app, impl, port, tmp, fakeK, only, seedImpl) {
   resetTmp(tmp);
   if (app === 'hub') {
-    const env = hubEnv(tmp, port, { HUB_KNOWLEDGE_URL: `http://127.0.0.1:${fakeK.port}`, HUB_KNOWLEDGE_ADMIN_KEY: FAKE_KNOWLEDGE_KEY });
+    const env = hubEnv(tmp, port, {
+      HUB_KNOWLEDGE_URL: `http://127.0.0.1:${fakeK.port}`,
+      HUB_KNOWLEDGE_ADMIN_KEY: FAKE_KNOWLEDGE_KEY,
+    });
     seedWithPython(env, seedImpl);
     const s = await startServer(hubCommand(impl), env, port, '/api/v1/health');
     try {
       const vars = { HOME: env.HOME, PORT: port };
       return await runCases(HUB_CASES, port, { admin: readKey(tmp) }, vars, tmp, only, 'x-agent-hub');
-    } finally { await stopServer(s); }
+    } finally {
+      await stopServer(s);
+    }
   }
   const cfgFile = writeKnowledgeConfig(tmp, port);
-  const env = { PATH: '/usr/bin:/bin', HOME: join(tmp, 'home'), LANG: 'C.UTF-8', KNOWLEDGE_EMBED_API_KEY: 'parity-embed-key' };
+  const env = {
+    PATH: '/usr/bin:/bin',
+    HOME: join(tmp, 'home'),
+    LANG: 'C.UTF-8',
+    KNOWLEDGE_EMBED_API_KEY: 'parity-embed-key',
+  };
   const s = await startServer(knowledgeCommand(impl, cfgFile), env, port, '/health');
   try {
     let admin = '';
-    try { admin = readFileSync(join(tmp, 'kdata', 'admin.key'), 'utf8').trim(); } catch { /* not written by a stub */ }
+    try {
+      admin = readFileSync(join(tmp, 'kdata', 'admin.key'), 'utf8').trim();
+    } catch {
+      /* not written by a stub */
+    }
     const vars = { HOME: env.HOME, PORT: port };
     return await runCases(KNOWLEDGE_CASES, port, { admin, token: undefined }, vars, tmp, only, 'x-agent-knowledge');
-  } finally { await stopServer(s); }
+  } finally {
+    await stopServer(s);
+  }
 }
 
 function coverage(app, cases) {
-  const routes = JSON.parse(readFileSync(join(PARITY, app === 'hub' ? 'routes.python.json' : 'routes.knowledge.json'), 'utf8')).routes;
+  const routes = JSON.parse(
+    readFileSync(join(PARITY, app === 'hub' ? 'routes.python.json' : 'routes.knowledge.json'), 'utf8')
+  ).routes;
   const uncovered = [];
   for (const r of routes) {
     const re = new RegExp(r.path_regex.replace(/\(\?P</g, '(?<'));
-    const hit = cases.some((c) => r.methods.includes(c.m) && re.test(decodeURIComponent(c.p.replace(/\$\{\w+\}/g, 'x'))));
+    const hit = cases.some(
+      (c) => r.methods.includes(c.m) && re.test(decodeURIComponent(c.p.replace(/\$\{\w+\}/g, 'x')))
+    );
     if (!hit) uncovered.push(`${r.methods.join(',')} ${r.path}`);
   }
   return { routes: routes.length, uncovered };
@@ -231,23 +309,37 @@ export async function main(argv = process.argv.slice(2)) {
     const A = await runSide(o.app, o.a, port, tmp, fakeK, o.only, seedImpl);
     const B = await runSide(o.app, o.b, port, tmp, fakeK, o.only, seedImpl);
     const byId = new Map(B.map((r) => [r.id, r]));
-    const equal = []; const unported = []; const diffs = []; const allowed = [];
+    const equal = [];
+    const unported = [];
+    const diffs = [];
+    const allowed = [];
     const newAdapterGap = hasNewAdapter(A) !== hasNewAdapter(B);
     for (const ra of A) {
       const rb = byId.get(ra.id);
       const { id, ...ca } = newAdapterGap ? withoutNewAdapter(ra) : ra;
       const { id: _id, ...cb } = (newAdapterGap && rb ? withoutNewAdapter(rb) : rb) ?? {};
       const d = firstDiff(ca, cb);
-      const gapAllow = newAdapterGap && id.startsWith('dsh.') ? { what: 'all', deviation: `${NEW_ADAPTER} is on one side only (A-15)` } : undefined;
+      const gapAllow =
+        newAdapterGap && id.startsWith('dsh.')
+          ? { what: 'all', deviation: `${NEW_ADAPTER} is on one side only (A-15)` }
+          : undefined;
       const allow = o.a !== o.b ? (ALLOWED[id] ?? gapAllow) : undefined;
       if (!d) equal.push(id);
       else if (rb?.status === 501 && rb?.body?.code === 'not_ported') unported.push({ id, detail: rb.body.detail });
-      else if (allow?.what === 'all' || (allow?.what === 'headers' && !firstDiff({ ...ca, headers: null }, { ...cb, headers: null }))) {
+      else if (
+        allow?.what === 'all' ||
+        (allow?.what === 'headers' && !firstDiff({ ...ca, headers: null }, { ...cb, headers: null }))
+      ) {
         allowed.push({ id, deviation: allow.deviation, diff: d });
       } else diffs.push({ id, diff: d });
     }
     const recorded = o.app === 'hub' ? loadRustExpect() : {};
-    for (const [side, recs] of o.a === o.b ? [[o.a, A]] : [[o.a, A], [o.b, B]]) {
+    for (const [side, recs] of o.a === o.b
+      ? [[o.a, A]]
+      : [
+          [o.a, A],
+          [o.b, B],
+        ]) {
       if (side !== 'rust') continue;
       for (const r of recs) {
         const want = ALLOWED[r.id]?.rust;
@@ -256,32 +348,67 @@ export async function main(argv = process.argv.slice(2)) {
         if (!r.id.startsWith('dsh.') || o.writeRustExpect) continue;
         const { id: _rid, ...got } = untmp(r, tmp);
         if (!recorded || !(r.id in recorded)) {
-          if (newAdapterGap) diffs.push({ id: r.id, diff: `no recorded Rust answer in ${RUST_EXPECT} (--write-rust-expect)` });
+          if (newAdapterGap)
+            diffs.push({ id: r.id, diff: `no recorded Rust answer in ${RUST_EXPECT} (--write-rust-expect)` });
         } else {
           const dr = firstDiff(recorded[r.id], got);
-          if (dr) diffs.push({ id: r.id, diff: `the Rust answer differs from the recorded one (parity/expect/rust-dsh.json): ${dr}` });
+          if (dr)
+            diffs.push({
+              id: r.id,
+              diff: `the Rust answer differs from the recorded one (parity/expect/rust-dsh.json): ${dr}`,
+            });
         }
       }
     }
     if (o.writeRustExpect) {
       const dsh = B.filter((r) => r.id.startsWith('dsh.'));
       const unproven = dsh.filter((r) => !equal.includes(r.id)).map((r) => r.id);
-      if (o.b !== 'rust' || !o.a.startsWith('python') || newAdapterGap || !dsh.length || unproven.length || diffs.length) {
-        throw new Error(`--write-rust-expect needs --b rust against a Python tree with ${NEW_ADAPTER}, every dsh.* case equal `
-          + `and no difference (not equal: ${unproven.join(', ') || 'none'}; differences: ${diffs.length})`);
+      if (
+        o.b !== 'rust' ||
+        !o.a.startsWith('python') ||
+        newAdapterGap ||
+        !dsh.length ||
+        unproven.length ||
+        diffs.length
+      ) {
+        throw new Error(
+          `--write-rust-expect needs --b rust against a Python tree with ${NEW_ADAPTER}, every dsh.* case equal ` +
+            `and no difference (not equal: ${unproven.join(', ') || 'none'}; differences: ${diffs.length})`
+        );
       }
       const cases = Object.fromEntries(dsh.map((r) => untmp(r, tmp)).map(({ id, ...rec }) => [id, rec]));
       mkdirSync(join(PARITY, 'expect'), { recursive: true });
-      writeFileSync(RUST_EXPECT, `${JSON.stringify({
-        _note: `Rust's answers to the dsh.* cases, recorded by run.mjs --write-rust-expect from a run in which a Python tree with the ${NEW_ADAPTER} adapter gave the same answers`,
-        cases,
-      }, null, 1)}\n`);
+      writeFileSync(
+        RUST_EXPECT,
+        `${JSON.stringify(
+          {
+            _note: `Rust's answers to the dsh.* cases, recorded by run.mjs --write-rust-expect from a run in which a Python tree with the ${NEW_ADAPTER} adapter gave the same answers`,
+            cases,
+          },
+          null,
+          1
+        )}\n`
+      );
       console.log(`parity: recorded ${dsh.length} Rust answers in ${RUST_EXPECT}`);
     }
-    const report = { app: o.app, a: o.a, b: o.b, cases: A.length, equal: equal.length, unported, allowed, diffs, coverage: cov, rules: RULES };
+    const report = {
+      app: o.app,
+      a: o.a,
+      b: o.b,
+      cases: A.length,
+      equal: equal.length,
+      unported,
+      allowed,
+      diffs,
+      coverage: cov,
+      rules: RULES,
+    };
     if (o.json) writeFileSync(o.json, `${JSON.stringify(report, null, 1)}\n`);
-    if (o.dump) writeFileSync(o.dump, `${JSON.stringify({ [o.a]: A, [`${o.b}${o.a === o.b ? '2' : ''}`]: B }, null, 1)}\n`);
-    console.log(`parity ${o.app}: ${o.a} vs ${o.b}: ${A.length} cases, ${equal.length} equal, ${unported.length} not ported on ${o.b}, ${allowed.length} allowed deviations, ${diffs.length} differences; routes ${cov.routes}, uncovered ${cov.uncovered.length}`);
+    if (o.dump)
+      writeFileSync(o.dump, `${JSON.stringify({ [o.a]: A, [`${o.b}${o.a === o.b ? '2' : ''}`]: B }, null, 1)}\n`);
+    console.log(
+      `parity ${o.app}: ${o.a} vs ${o.b}: ${A.length} cases, ${equal.length} equal, ${unported.length} not ported on ${o.b}, ${allowed.length} allowed deviations, ${diffs.length} differences; routes ${cov.routes}, uncovered ${cov.uncovered.length}`
+    );
     for (const x of allowed) console.log(`  ALLOWED ${x.id} (${x.deviation}): ${x.diff}`);
     for (const u of cov.uncovered) console.log(`  UNCOVERED ${u}`);
     for (const d of diffs) console.log(`  DIFF ${d.id}: ${d.diff}`);

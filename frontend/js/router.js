@@ -18,12 +18,15 @@ export function buildHash(path, query) {
 // ':name' matches one segment; ':name*' matches the rest (joined with '/').
 export function compileRoute(pattern) {
   const keys = [];
-  const parts = pattern.split('/').filter(Boolean).map((seg) => {
-    const m = /^:(\w+)(\*)?$/.exec(seg);
-    if (!m) return seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    keys.push(m[1]);
-    return m[2] ? '(.+)' : '([^/]+)';
-  });
+  const parts = pattern
+    .split('/')
+    .filter(Boolean)
+    .map((seg) => {
+      const m = /^:(\w+)(\*)?$/.exec(seg);
+      if (!m) return seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      keys.push(m[1]);
+      return m[2] ? '(.+)' : '([^/]+)';
+    });
   return { re: new RegExp('^/' + parts.join('/') + '$'), keys };
 }
 
@@ -33,7 +36,13 @@ export function matchRoutes(routes, path) {
     const m = c.re.exec(path);
     if (m) {
       const params = {};
-      c.keys.forEach((k, i) => { try { params[k] = decodeURIComponent(m[i + 1]); } catch { params[k] = m[i + 1]; } });
+      c.keys.forEach((k, i) => {
+        try {
+          params[k] = decodeURIComponent(m[i + 1]);
+        } catch {
+          params[k] = m[i + 1];
+        }
+      });
       return { route, params };
     }
   }
@@ -50,7 +59,11 @@ export function createRouter({ routes, onNavigate, win = globalThis.window, notF
   return {
     start: resolve,
     refresh: resolve,
-    go(path, query) { win.location.hash = buildHash(path, query); },
-    stop() { win.removeEventListener('hashchange', resolve); },
+    go(path, query) {
+      win.location.hash = buildHash(path, query);
+    },
+    stop() {
+      win.removeEventListener('hashchange', resolve);
+    },
   };
 }

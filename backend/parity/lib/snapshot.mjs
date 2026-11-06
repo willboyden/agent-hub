@@ -9,23 +9,45 @@ import { normString, normValue } from './normalize.mjs';
 
 function walk(dir, base, out, skip) {
   let names;
-  try { names = readdirSync(dir).sort(); } catch { return; }
+  try {
+    names = readdirSync(dir).sort();
+  } catch {
+    return;
+  }
   for (const n of names) {
     const p = join(dir, n);
     const rel = relative(base, p);
     if (skip(rel)) continue;
     const st = lstatSync(p);
-    if (st.isSymbolicLink()) { out[normString(rel)] = { link: readlinkSync(p) }; continue; }
-    if (st.isDirectory()) { out[`${normString(rel)}/`] = { mode: (st.mode & 0o777).toString(8) }; walk(p, base, out, skip); continue; }
+    if (st.isSymbolicLink()) {
+      out[normString(rel)] = { link: readlinkSync(p) };
+      continue;
+    }
+    if (st.isDirectory()) {
+      out[`${normString(rel)}/`] = { mode: (st.mode & 0o777).toString(8) };
+      walk(p, base, out, skip);
+      continue;
+    }
     const data = readFileSync(p);
-    const entry = { mode: (st.mode & 0o777).toString(8), size: data.length, sha256: createHash('sha256').update(data).digest('hex') };
+    const entry = {
+      mode: (st.mode & 0o777).toString(8),
+      size: data.length,
+      sha256: createHash('sha256').update(data).digest('hex'),
+    };
     if (/\.json$/.test(n) && /^(locks|applies|plans)\//.test(rel)) {
-      try { entry.json = normValue(JSON.parse(data.toString('utf8'))); delete entry.sha256; delete entry.size; } catch { /* keep bytes */ }
+      try {
+        entry.json = normValue(JSON.parse(data.toString('utf8')));
+        delete entry.sha256;
+        delete entry.size;
+      } catch {
+        /* keep bytes */
+      }
     } else if (data.length < 64 * 1024 && !data.includes(0)) {
       entry.text = data.toString('utf8');
       if (/^created: [0-9.]+$/m.test(entry.text)) {
         entry.text = normString(entry.text.replace(/^created: [0-9.]+$/m, 'created: <TS>'));
-        delete entry.sha256; delete entry.size;
+        delete entry.sha256;
+        delete entry.size;
       }
     }
     const key = normString(rel);
@@ -39,10 +61,25 @@ function walk(dir, base, out, skip) {
 
 /** { home: {...}, content: {...}, state: {...} } */
 export function snapshot(tmp) {
-  const home = {}; const content = {}; const state = {};
+  const home = {};
+  const content = {};
+  const state = {};
   walk(join(tmp, 'home'), join(tmp, 'home'), home, () => false);
-  walk(join(tmp, 'data', 'content'), join(tmp, 'data', 'content'), content, (rel) => rel === '.git' || rel.startsWith('.git/'));
-  walk(join(tmp, 'data'), join(tmp, 'data'), state, (rel) => /^(content|snapshots|skilleval|observed)(\/|$)/.test(rel)
-    || /^hub\.db/.test(rel) || /\.key$/.test(rel) || rel === 'hub.log');
+  walk(
+    join(tmp, 'data', 'content'),
+    join(tmp, 'data', 'content'),
+    content,
+    (rel) => rel === '.git' || rel.startsWith('.git/')
+  );
+  walk(
+    join(tmp, 'data'),
+    join(tmp, 'data'),
+    state,
+    (rel) =>
+      /^(content|snapshots|skilleval|observed)(\/|$)/.test(rel) ||
+      /^hub\.db/.test(rel) ||
+      /\.key$/.test(rel) ||
+      rel === 'hub.log'
+  );
   return { home, content, state };
 }

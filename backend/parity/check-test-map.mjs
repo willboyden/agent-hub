@@ -36,9 +36,15 @@ for (const line of md.split('\n')) {
   const rust = rustRaw.trim().replace(/^`|`$/g, '');
   if (status === 'mapped') {
     const [file, fn] = rust.split('::');
-    if (!file || !fn) { problems.push(`${id}: mapped row without <file>::<fn>`); continue; }
+    if (!file || !fn) {
+      problems.push(`${id}: mapped row without <file>::<fn>`);
+      continue;
+    }
     const p = join(REPO, file);
-    if (!existsSync(p)) { problems.push(`${id}: ${file} does not exist`); continue; }
+    if (!existsSync(p)) {
+      problems.push(`${id}: ${file} does not exist`);
+      continue;
+    }
     if (!sources.has(p)) sources.set(p, readFileSync(p, 'utf8'));
     if (!new RegExp(`fn ${fn}\\s*\\(`).test(sources.get(p))) problems.push(`${id}: no fn ${fn} in ${file}`);
   } else if (status === 'N/A' && !/^N\/A: .{10,}/.test(rust)) problems.push(`${id}: N/A without a reason`);
@@ -48,12 +54,20 @@ for (const id of ids) {
   if (n !== 1) problems.push(`${id}: ${n} rows (want exactly 1)`);
 }
 
-let pending = 0; let mapped = 0; let na = 0;
+let pending = 0;
+let mapped = 0;
+let na = 0;
 for (const [o, c] of Object.entries(counts).sort()) {
   if (only && o !== only) continue;
-  console.log(`${o.padEnd(6)} mapped ${String(c.mapped).padStart(4)}  pending ${String(c.pending).padStart(4)}  N/A ${String(c['N/A']).padStart(3)}`);
-  pending += c.pending; mapped += c.mapped; na += c['N/A'];
+  console.log(
+    `${o.padEnd(6)} mapped ${String(c.mapped).padStart(4)}  pending ${String(c.pending).padStart(4)}  N/A ${String(c['N/A']).padStart(3)}`
+  );
+  pending += c.pending;
+  mapped += c.mapped;
+  na += c['N/A'];
 }
-console.log(`total: ${mapped} mapped, ${na} N/A, ${pending} unmapped (pending)${only ? ` for ${only}` : ''}; ${ids.size} pytest ids`);
+console.log(
+  `total: ${mapped} mapped, ${na} N/A, ${pending} unmapped (pending)${only ? ` for ${only}` : ''}; ${ids.size} pytest ids`
+);
 for (const p of problems.slice(0, 50)) console.log(`PROBLEM ${p}`);
 process.exit(problems.length || (strict && pending) ? 1 : 0);
