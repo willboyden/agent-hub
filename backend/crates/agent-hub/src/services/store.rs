@@ -111,7 +111,7 @@ impl Store {
             return Ok(Vec::new());
         };
         let mut st = conn.prepare(sql)?;
-        let names: Vec<String> = st.column_names().iter().map(|s| (*s).to_string()).collect();
+        let names: Vec<String> = st.column_names().map(str::to_string).collect();
         let rows = st.query_map(params_from_iter(params.iter()), |r| {
             let mut m = Map::new();
             for (i, n) in names.iter().enumerate() {
