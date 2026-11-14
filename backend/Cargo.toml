@@ -1,9 +1,11 @@
 # Rust port of Agent Hub (backend + hubctl) and its knowledge service. Contract: PORTING.md (LOCKED; numbered addenda only).
 [workspace]
 resolver = "3"
-members = ["crates/hub-core", "crates/agent-hub", "crates/agent-knowledge"]
+members = ["crates/hub-core", "crates/agent-hub", "crates/agent-knowledge", "crates/hub-wasm"]
 # agent-knowledge pulls in lance (~500 crates, ~4 min cold build): it is a member, but not a default one, so
-# `cargo build`/`cargo test` in a hub workstream stays fast. The gates run with --workspace.
+# `cargo build`/`cargo test` in a hub workstream stays fast. The gates run with --workspace. hub-wasm (hub-core's checks
+# for the browser, built for wasm32 by `make web`) is not a default member either; natively it builds as a plain library
+# for its tests.
 default-members = ["crates/hub-core", "crates/agent-hub"]
 
 [workspace.package]
@@ -59,6 +61,9 @@ toml = "1.1.8"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter", "fmt"] }
 url = "2.5.8"
+# hub-wasm only: the exact version harness2-workbench vets and its CI installs as wasm-bindgen-cli (the CLI and the
+# crate must match; `make web` checks it).
+wasm-bindgen = "=0.2.129"
 wiremock = "0.6.5"
 # agent-knowledge only (LanceDB backend). lance =12.0.0 is the exact Lance engine inside Python lancedb 0.39.0
 # (knowledge/uv.lock), proven to read and write the Python service's tables both ways (PORTING.md "Knowledge: LanceDB").
@@ -99,3 +104,9 @@ uninlined_format_args = "warn"
 lto = "thin"
 codegen-units = 1
 strip = "symbols"
+
+# hub-wasm for the browser (`make web`): small rather than fast, and a panic traps (the page re-instantiates the module).
+[profile.release-web]
+inherits = "release"
+opt-level = "z"
+panic = "abort"

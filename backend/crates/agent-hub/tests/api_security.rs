@@ -328,7 +328,10 @@ async fn test_security_headers_on_every_response_including_errors_and_static() -
     for r in &rs {
         let csp = r.h("content-security-policy");
         assert!(
-            csp.contains("default-src 'none'") && csp.contains("script-src 'self'") && !csp.contains("'unsafe-inline'")
+            csp.contains("default-src 'none'")
+                && csp.contains("script-src 'self' 'wasm-unsafe-eval';")
+                && !csp.contains("'unsafe-inline'")
+                && !csp.contains(" 'unsafe-eval'")
         );
         assert!(csp.contains("frame-ancestors 'none'"));
         assert_eq!(r.h("x-content-type-options"), "nosniff");
@@ -725,6 +728,28 @@ async fn test_static_allowlist_and_spa_fallback() -> R {
         let r = req(&t, "GET", p, &[], None).await;
         assert_eq!(r.status, 404, "{p}");
         assert!(!r.text().contains("secret dev file") && r.text() != "outside");
+    }
+    Ok(())
+}
+
+/// A-19: `make web`'s output (frontend/wasm/) is served like js/: `application/wasm` (instantiateStreaming needs it),
+/// revalidated on every load, nothing outside the directory.
+#[tokio::test]
+async fn test_wasm_module_is_served_as_application_wasm() -> R {
+    let t = setup()?;
+    let fe = t.root.join("frontend");
+    std::fs::create_dir_all(fe.join("wasm"))?;
+    std::fs::write(fe.join("wasm/hub_wasm_bg.wasm"), b"\0asm\x01\0\0\0")?;
+    std::fs::write(fe.join("wasm/hub_wasm.js"), "export default {}")?;
+    let r = req(&t, "GET", "/wasm/hub_wasm_bg.wasm", &[], None).await;
+    assert_eq!(r.status, 200);
+    assert_eq!(r.h("content-type"), "application/wasm");
+    assert_eq!(r.h("cache-control"), "no-cache");
+    assert_eq!(r.h("x-content-type-options"), "nosniff");
+    let r = req(&t, "GET", "/wasm/hub_wasm.js", &[], None).await;
+    assert_eq!(r.h("content-type"), "text/javascript; charset=utf-8");
+    for p in ["/wasm/missing.wasm", "/wasm/", "/wasm/%2e%2e/package.json"] {
+        assert_eq!(req(&t, "GET", p, &[], None).await.status, 404, "{p}");
     }
     Ok(())
 }

@@ -38,6 +38,12 @@ impl From<LoadError> for YamlError {
     }
 }
 
+/// The strict loader's shape limits ([`MAX_DEPTH`] levels, [`MAX_NODES`] nodes) on a value loaded some other way (the
+/// browser's spec paste loads with the safe loader, which expands anchors, then applies these).
+pub fn check_limits(obj: &PyValue) -> Result<(), YamlError> {
+    walk(obj, 0, &mut 0)
+}
+
 fn walk(obj: &PyValue, depth: usize, counter: &mut usize) -> Result<(), YamlError> {
     *counter += 1;
     if depth > MAX_DEPTH {
