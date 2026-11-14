@@ -2,9 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { hubWasm, wasmStatus, wrapModule } from '../js/hubwasm.js';
+import { RETRY_MS, hubWasm, hubWasmWithin, loadHubWasm, wasmStatus, wrapModule } from '../js/hubwasm.js';
 import { createClient } from '../js/api.js';
-import { SKIP_WASM, loadWasm } from './wasm-helper.mjs';
+import { SKIP_WASM, WASM_FILE, loadWasm } from './wasm-helper.mjs';
 
 const cargo = readFileSync(new URL('../../backend/Cargo.toml', import.meta.url), 'utf8');
 const WORKSPACE_VERSION = /\[workspace\.package\][^[]*?version = "([^"]+)"/.exec(cargo)[1];
@@ -157,3 +157,35 @@ test("cfg-parse's yamlPlainType agrees with hub-core's YAML resolver", { skip: S
     .filter(([s, a, b]) => a !== b && !(s === '=' || s === '<<'));
   assert.deepEqual(diff, []);
 });
+
+test(
+  'a failed load is tried again on a later call (not before RETRY_MS), and hubWasmWithin never waits past its time',
+  {
+    skip: SKIP_WASM,
+  },
+  async () => {
+    const good = readFileSync(WASM_FILE);
+    const bytes = Uint8Array.from(good); // a copy (Buffer#slice would share the memory)
+    bytes[1] = 0; // not a WebAssembly module (the magic is \0asm)
+    assert.equal(await loadHubWasm(bytes), null);
+    assert.equal(wasmStatus().state, 'failed');
+    bytes[1] = good[1]; // the file is fixed (a rebuild, a network that came back)
+    assert.equal(await hubWasm(), null, 'right after a failure the failure is reused');
+    const now = Date.now;
+    try {
+      Date.now = () => now() + RETRY_MS;
+      const api = await hubWasm();
+      assert.ok(api?.alive, 'a later call loads again');
+      assert.equal(wasmStatus().state, 'ready');
+    } finally {
+      Date.now = now;
+    }
+    assert.ok((await hubWasmWithin(1000))?.alive);
+    // a fetch that never answers (the glue awaits module_or_path): hubWasmWithin gives up, the view is not held
+    loadHubWasm(new Promise(() => {}));
+    const t0 = now();
+    assert.equal(await hubWasmWithin(50), null);
+    assert.ok(now() - t0 < 1000, `${now() - t0} ms`);
+    await loadWasm();
+  }
+);

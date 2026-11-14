@@ -42,7 +42,7 @@ test(
     );
   }
 );
-test('skill validation without the module: hints only, nothing blocks (the server checks on Save)', () => {
+test('skill validation without the module: hints only, nothing blocks, and the editor says the checks are missing', () => {
   const issues = validateSkill({ name: 'Bad Name', description: '', body: '' });
   assert.ok(
     issues.every((i) => i.severity === 'warn'),
@@ -50,14 +50,37 @@ test('skill validation without the module: hints only, nothing blocks (the serve
   );
   assert.deepEqual(
     validateSkill({ name: 'a', description: 'short', body: 'b' }).map((i) => i.key),
-    ['val.desc_short']
+    ['wasm.editor_unavailable', 'val.desc_short']
   );
-  // a trapped module (validateMeta answers null) is the same as none
+  // a trapped module (validateMeta answers null) is never a silent clean state: the same note
   assert.deepEqual(
-    validateSkill({ name: 'a', description: 'short', body: 'b' }, () => null).map((i) => i.key),
-    ['val.desc_short']
+    validateSkill({ name: 'a', description: 'Review a diff for bugs before merging', body: 'b' }, () => null).map(
+      (i) => i.key
+    ),
+    ['wasm.editor_unavailable']
+  );
+  assert.deepEqual(
+    validateAgent({ name: 'a', description: 'd', capabilities: ['read'] }, () => null).map((i) => i.key),
+    ['wasm.editor_unavailable']
   );
 });
+test(
+  'a description of only spaces gets a suggestion (the server accepts it), never an error',
+  { skip: SKIP_WASM },
+  async () => {
+    const meta = (await loadWasm()).validateMeta;
+    const issues = validateSkill({ name: 'a-skill', description: '   ', body: 'b' }, meta);
+    assert.deepEqual(
+      issues.map((i) => [i.severity, i.key]),
+      [['warn', 'val.desc_blank']]
+    );
+    // an empty one is the model's error, with no extra suggestion
+    assert.deepEqual(
+      validateSkill({ name: 'a-skill', description: '', body: 'b' }, meta).map((i) => i.key),
+      ['val.desc_required']
+    );
+  }
+);
 test('agent validation', { skip: SKIP_WASM }, async () => {
   const meta = (await loadWasm()).validateMeta;
   assert.equal(

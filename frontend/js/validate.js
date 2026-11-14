@@ -1,7 +1,8 @@
 // Editor checks. Blocking ERRORS come only from the hub's own content models: hub-core compiled to WebAssembly
-// (hubwasm.js `validateMeta`, the same rules the server applies when the item is saved). Without the module there are
-// none here, and Save shows the server's answer. WARNINGS are UX hints with no server rule: they never block Save.
-// Messages are i18n keys with variables.
+// (hubwasm.js `validateMeta`, the same rules the server applies when the item is saved). Without the module, or when it
+// trapped (validateMeta answers null), there are none here: a `wasm.editor_unavailable` warning says so, and Save shows
+// the server's answer. WARNINGS are UX hints with no server rule: they never block Save. Messages are i18n keys with
+// variables.
 export const CAPABILITIES = [
   'read',
   'write',
@@ -38,10 +39,19 @@ export function modelIssues(errors) {
   });
 }
 
+/** The item model's issues, or one "the in-browser checks are unavailable" warning when there is no module or it
+ *  answered null (a trap): never a silent clean state. */
+function modelCheck(validateMeta, kind, fields) {
+  const errors = validateMeta ? validateMeta(kind, fields) : null;
+  return Array.isArray(errors) ? modelIssues(errors) : [issue('warn', 'wasm.editor_unavailable')];
+}
+
 /** `validateMeta` is hubwasm's (or null when the module is unavailable). */
 export function validateSkill({ name, description, body }, validateMeta = null) {
-  const out = validateMeta ? modelIssues(validateMeta('skill', { name, description: description ?? '' })) : [];
+  const out = modelCheck(validateMeta, 'skill', { name, description: description ?? '' });
   const d = String(description ?? '').trim();
+  // only blanks: the server accepts it (1..1024 characters), but it says nothing; an empty one is the model's error
+  if (!d && String(description ?? '') !== '') out.push(issue('warn', 'val.desc_blank', {}, 'description'));
   if (d && d.length < DESC_HINT_MIN)
     out.push(issue('warn', 'val.desc_short', { min: DESC_HINT_MIN, n: d.length }, 'description'));
   if (/\n/.test(String(description ?? '').trim())) out.push(issue('warn', 'val.desc_multiline', {}, 'description'));
@@ -55,19 +65,15 @@ export function validateAgent(
   { name, description, capabilities, model_tier, mode, read_only, tags },
   validateMeta = null
 ) {
-  const out = validateMeta
-    ? modelIssues(
-        validateMeta('agent', {
-          name,
-          description: description ?? '',
-          capabilities: capabilities ?? [],
-          model_tier: model_tier || null,
-          mode,
-          read_only,
-          tags,
-        })
-      )
-    : [];
+  const out = modelCheck(validateMeta, 'agent', {
+    name,
+    description: description ?? '',
+    capabilities: capabilities ?? [],
+    model_tier: model_tier || null,
+    mode,
+    read_only,
+    tags,
+  });
   if (!capabilities?.length) out.push(issue('warn', 'val.agent_no_caps', {}, 'capabilities'));
   return out;
 }

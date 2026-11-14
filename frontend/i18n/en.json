@@ -454,6 +454,7 @@
   "editor.disabled_for": "Disabled for {client}",
   "val.name_bad": "The identifier must be 1 to 64 characters: lowercase letters, digits, dot, dash, underscore.",
   "val.desc_required": "A description is required.",
+  "val.desc_blank": "Suggestion: the description is only spaces, so it says nothing about when to use this. This does not block saving.",
   "val.desc_short": "Suggestion: the description is short ({n} characters). About {min} or more usually says when an agent should use it. This does not block saving.",
   "val.model": "{field}: {msg}",
   "val.desc_long": "The description is too long (maximum {max} characters).",

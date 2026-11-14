@@ -49,6 +49,32 @@ export function parseSpec(text, yamlLoad = null) {
   return { spec: r.value };
 }
 
+/** The wizard's starting spec from the generic adapter's defaults (null when it has none). */
+export function defaultSpec(spec) {
+  if (!spec) return null;
+  return {
+    skills: {
+      root: spec.skills?.root || 'home',
+      dir: spec.skills?.dir || 'skills',
+      layout: spec.skills?.layout || 'dir/SKILL.md',
+    },
+    instructions: {
+      root: spec.instructions?.root || 'home',
+      target: spec.instructions?.target || 'INSTRUCTIONS.md',
+      merge: spec.instructions?.merge || 'block',
+    },
+  };
+}
+/** That spec as text: YAML when the hub's YAML reader is in the tab, else JSON (which parseSpec reads without it), so
+ *  the wizard's own default never blocks Next. */
+export function defaultSpecText(spec, yaml = true) {
+  const d = defaultSpec(spec);
+  if (!d) return '';
+  if (!yaml) return `${JSON.stringify(d, null, 2)}\n`;
+  const { skills: k, instructions: i } = d;
+  return `skills:\n  root: ${k.root}\n  dir: ${k.dir}\n  layout: ${k.layout}\ninstructions:\n  root: ${i.root}\n  target: ${i.target}\n  merge: ${i.merge}\n`;
+}
+
 const sev = (d) => (d.severity === 'error' ? 'error' : 'warn');
 export function mapSpecResult(resp) {
   const diags = resp?.diagnostics || resp?.preview?.diagnostics || [];

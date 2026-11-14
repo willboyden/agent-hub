@@ -36,7 +36,10 @@ import { validName } from '../util.js';
 import { parseUnified } from '../diff.js';
 import { detailDraft, toPutBody, validTag, floorRows, isFloorKey } from '../adapt.js';
 import { diffView } from '../components/diff-view.js';
-import { hubWasm } from '../hubwasm.js';
+import { hubWasmWithin } from '../hubwasm.js';
+
+/** How long the editor waits for the in-browser checks before it opens without them (they keep loading). */
+const CHECKS_WAIT_MS = 3000;
 
 const CONCERN = {
   skill: 'skills',
@@ -137,9 +140,10 @@ class AhEditor extends AhView {
           this.api.clients(),
           this.api.collections(),
           this.creating ? null : this.api.item(this.kind, this.name),
-          hubWasm(), // the hub's own item models, in the tab (null = unavailable: Save still checks on the hub)
+          // the hub's own item models, in the tab (null = unavailable or slow: Save still checks on the hub)
+          hubWasmWithin(CHECKS_WAIT_MS),
         ]);
-        this.validateMeta = checks ? checks.validateMeta : null;
+        this.checks = checks;
         this.clients = clients;
         this.collections = collections;
         this.item = item;
@@ -218,12 +222,28 @@ class AhEditor extends AhView {
     );
   }
   // ---- validation ----
+  /** The item model's check through the in-browser module. null (no module, or it trapped) makes validate.js show the
+   *  "unavailable" note, and a fresh module is loaded in the background; the issues are repainted when it arrives. */
+  validateMeta = (kind, fields) => {
+    const r = this.checks ? this.checks.validateMeta(kind, fields) : null;
+    if (r === null) this.reloadChecks();
+    return r;
+  };
+  reloadChecks() {
+    if (this.checksReload) return;
+    this.checksReload = hubWasmWithin(CHECKS_WAIT_MS).then((api) => {
+      this.checksReload = null;
+      if (api && api !== this.checks && this.isConnected) {
+        this.checks = api;
+        if (this.issuesEl) this.paintIssues();
+      }
+    });
+  }
   localIssues() {
     const d = this.d;
-    // without the in-browser checks, say so once: problems are then reported by the hub on Save
-    const noChecks = this.validateMeta ? [] : [{ severity: 'warn', key: 'wasm.editor_unavailable', vars: {} }];
-    if (this.kind === 'skill') return [...validateSkill(d, this.validateMeta), ...noChecks];
-    if (this.kind === 'agent') return [...validateAgent(d, this.validateMeta), ...noChecks];
+    // without the in-browser checks validate.js adds one warning: problems are then reported by the hub on Save
+    if (this.kind === 'skill') return validateSkill(d, this.validateMeta);
+    if (this.kind === 'agent') return validateAgent(d, this.validateMeta);
     if (this.kind === 'rule')
       return [
         ...(!d.match.trim() ? [{ severity: 'error', key: 'val.rule_match', vars: {} }] : []),

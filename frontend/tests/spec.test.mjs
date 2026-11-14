@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mapSpecResult, issueMessage, parseSpec, specErrorResult } from '../js/spec.js';
+import { defaultSpecText, mapSpecResult, issueMessage, parseSpec, specErrorResult } from '../js/spec.js';
 import { SKIP_WASM, loadWasm } from './wasm-helper.mjs';
 import { ApiError } from '../js/api.js';
 
@@ -102,4 +102,23 @@ test('parseSpec without the module: JSON still works, YAML says the reader is un
   assert.equal(parseSpec('{oops').error.code, 'yaml_syntax');
   assert.equal(parseSpec('skills:\n  dir: s\n').error.code, 'yaml_unavailable');
   assert.equal(parseSpec('a: 1', () => null).error.code, 'yaml_unavailable', 'a trapped module');
+});
+
+test("the wizard's default spec never blocks Next: JSON without the YAML reader, YAML with it", async (t) => {
+  const defaults = { skills: { root: 'project', dir: 'skills' }, instructions: { target: 'AGENTS.md' } };
+  const want = {
+    skills: { root: 'project', dir: 'skills', layout: 'dir/SKILL.md' },
+    instructions: { root: 'home', target: 'AGENTS.md', merge: 'block' },
+  };
+  // without the module (or after a trap) the default is JSON, which parseSpec reads on its own
+  const json = defaultSpecText(defaults, false);
+  assert.deepEqual(parseSpec(json).spec, want);
+  assert.deepEqual(parseSpec(json, () => null).spec, want);
+  assert.equal(defaultSpecText(null, false), '');
+  assert.equal(defaultSpecText(null), '');
+  // the YAML default needs the reader, and reads as the same object with it
+  assert.equal(parseSpec(defaultSpecText(defaults, true)).error.code, 'yaml_unavailable');
+  if (SKIP_WASM) return t.skip(SKIP_WASM);
+  const load = (await loadWasm()).yamlLoad;
+  assert.deepEqual(parseSpec(defaultSpecText(defaults, true), load).spec, want);
 });

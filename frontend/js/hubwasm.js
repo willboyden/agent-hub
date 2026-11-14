@@ -4,7 +4,9 @@
 // spec is read by the server's own YAML loader (a PyYAML port), and the editor's blocking errors are the server's
 // model rules. The server stays authoritative: it checks again on every write.
 //
-//   hubWasm() -> Promise<Api | null>   loads the module once (never rejects); null = unavailable (see wasmStatus())
+//   hubWasm() -> Promise<Api | null>   loads the module once (never rejects); null = unavailable (see wasmStatus()).
+//                                     After a failed load a later call tries again, at most every RETRY_MS.
+//   hubWasmWithin(ms) -> Promise<Api | null>   the same, but null after `ms` (a stalled fetch never holds a view)
 //   loadHubWasm(bytes) -> Promise<Api | null>   the same from bytes (Node: the mock server and the tests)
 //
 // Api (every call is synchronous and returns null if the module traps; the next hubWasm() then loads a fresh copy):
@@ -20,6 +22,9 @@ const EXPORTS = ['version', 'check_config', 'yaml_load', 'yaml_scalar_type', 'va
 
 let current = null; // Promise<Api | null> of the module in use
 let generation = 0;
+let failedAt = 0; // when the last load failed (0 = it did not)
+/** A failed load (a missing or stale file, a network error) is tried again on a later call, not more often than this. */
+export const RETRY_MS = 5000;
 let source = null; // the module's bytes when loaded from bytes (Node), reused after a trap
 const status = { state: 'idle', reason: '' };
 
@@ -72,16 +77,28 @@ async function load(bytes) {
   } catch (e) {
     status.state = 'failed';
     status.reason = String(e?.message || e);
+    failedAt = Date.now();
     return null;
   }
 }
 
 /** The module, loaded once per page (or again after a trap). Never rejects. */
 export async function hubWasm() {
+  // a failed load is not kept forever: once RETRY_MS has passed, the next call loads again (a new module URL)
+  if (current && status.state === 'failed' && Date.now() - failedAt >= RETRY_MS) current = null;
   if (!current) current = load(source);
   const api = await current;
   if (!api) return null;
   return api.alive ? api : hubWasm();
+}
+
+/** hubWasm(), but null when it has not answered within `ms` (the load goes on and later calls get it). */
+export function hubWasmWithin(ms) {
+  let timer;
+  const late = new Promise((resolve) => {
+    timer = setTimeout(() => resolve(null), ms);
+  });
+  return Promise.race([hubWasm(), late]).finally(() => clearTimeout(timer));
 }
 
 /** Load from the module's bytes (Node has no fetch for file URLs). Replaces the module in use. */
