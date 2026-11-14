@@ -2,6 +2,7 @@
 //! the knowledge service. Module ownership is in backend/PORTING.md (one owner per file).
 
 pub mod common;
+pub mod config_check;
 pub mod dotenv;
 pub mod errors;
 pub mod ids;
@@ -10,6 +11,7 @@ pub mod models;
 pub mod pathsafe;
 pub mod py;
 pub mod pyd;
+pub mod settings;
 pub mod value;
 pub mod yaml;
 pub mod yamlsafe;

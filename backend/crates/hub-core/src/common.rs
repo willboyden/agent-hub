@@ -1,19 +1,28 @@
 //! services/common.py: clock, ids, hashing, redaction, atomic file writes. Security controls: `scrub`/`redact`
 //! (secrets never reach audit rows or diffs) and the 0600/0700 writers. Owner: CORE (LOCKED).
 
+// The file helpers and random ids need the OS (unix permissions, O_NOFOLLOW, getrandom): native builds only. The
+// scrubber and hashing are pure and also compile for wasm32 (the browser-side checks, crates/hub-wasm).
+#[cfg(not(target_arch = "wasm32"))]
 use std::fs::{self, OpenOptions};
+#[cfg(not(target_arch = "wasm32"))]
 use std::io::{self, Write};
+#[cfg(not(target_arch = "wasm32"))]
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 use std::sync::LazyLock;
+#[cfg(not(target_arch = "wasm32"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(not(target_arch = "wasm32"))]
 use base64::Engine as _;
 use regex::Regex;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-/// `time.time()`.
+/// `time.time()` (native only: wasm32-unknown-unknown has no clock and would trap).
+#[cfg(not(target_arch = "wasm32"))]
 pub fn now() -> f64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -21,6 +30,7 @@ pub fn now() -> f64 {
         .unwrap_or(0.0)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn random_bytes(n: usize) -> Vec<u8> {
     let mut b = vec![0u8; n];
     // getrandom only fails if the OS has no entropy source at all; zero bytes would then be the visible symptom.
@@ -28,16 +38,19 @@ fn random_bytes(n: usize) -> Vec<u8> {
     b
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// `secrets.token_hex(n)`.
 pub fn token_hex(n: usize) -> String {
     hex::encode(random_bytes(n))
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// `secrets.token_urlsafe(n)`: base64url without padding of n random bytes.
 pub fn token_urlsafe(n: usize) -> String {
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(random_bytes(n))
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// `new_id(prefix)`: prefix + 12 hex chars.
 pub fn new_id(prefix: &str) -> String {
     format!("{prefix}{}", token_hex(6))
@@ -116,6 +129,7 @@ fn redact_at(obj: &Value, depth: usize) -> Value {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// `_mkdirs(d, mode)`: mkdir -p where every directory THIS call creates gets `mode` (chmod'ed, so umask cannot loosen it).
 pub fn mkdirs(d: &Path, mode: u32) -> io::Result<()> {
     let mut missing = Vec::new();
@@ -138,6 +152,7 @@ pub fn mkdirs(d: &Path, mode: u32) -> io::Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// `fsync_dir(d)` (best effort).
 pub fn fsync_dir(d: &Path) {
     if let Ok(f) = fs::File::open(d) {
@@ -145,6 +160,7 @@ pub fn fsync_dir(d: &Path) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// `atomic_write(path, data, mode, dir_mode)`: temp file `.hub-tmp-<12 hex>` in the SAME directory (O_EXCL|O_NOFOLLOW,
 /// 0600), write, fsync, fchmod(mode), rename over the target, fsync the directory. The temp file is removed on error.
 pub fn atomic_write(path: &Path, data: &[u8], mode: u32, dir_mode: u32) -> io::Result<()> {
@@ -172,6 +188,7 @@ pub fn atomic_write(path: &Path, data: &[u8], mode: u32, dir_mode: u32) -> io::R
     Ok(())
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// `harden_tree(root)`: chmod 0700 on root and every directory below it; symlinks are never followed.
 pub fn harden_tree(root: &Path) {
     let Ok(meta) = fs::symlink_metadata(root) else { return };
@@ -194,6 +211,7 @@ pub fn harden_tree(root: &Path) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 /// `write_secret_file(path, text)`: 0600 from the first byte (O_NOFOLLOW, fchmod for a pre-existing looser file).
 pub fn write_secret_file(path: &Path, text: &str) -> io::Result<()> {
     if let Some(parent) = path.parent()
