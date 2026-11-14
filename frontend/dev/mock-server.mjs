@@ -806,7 +806,7 @@ const KIND_OF = {
 route('GET', '/health', (r) =>
   r.json(200, {
     status: 'ok',
-    version: HUB_WASM?.version ?? '0.1.0-mock', // the module's own version, so the page's version check passes
+    version: HUB_WASM?.version ?? '0.1.0-mock', // the version of the module the mock loaded (0.1.0-mock: none)
     content_initialised: true,
     adapters: D.ADAPTERS.map((a) => a.id),
     trust_loopback: TRUST,

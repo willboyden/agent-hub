@@ -134,7 +134,7 @@ parity: build  ## differential run against the last Python backend (needs uv + P
 	node $(BACKEND)/parity/run.mjs
 	node $(BACKEND)/parity/run.mjs --app knowledge
 
-frontend-test:  ## node --test on the pure-logic modules (no npm install needed)
+frontend-test: web  ## node --test on the pure-logic modules and on hub-core's module (no npm install needed)
 	cd $(FRONTEND) && node --test tests/*.test.mjs
 
 e2e: web  ## browser end-to-end: real backend + headless Chrome, every page and tab; records a pass for the pre-push hook

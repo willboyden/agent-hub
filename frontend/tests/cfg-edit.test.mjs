@@ -74,27 +74,16 @@ test('numbers keep their kind; a value of the wrong kind is refused, not written
   assert.equal(edit('yaml', T, ['f'], '1e-3').node.value, 0.001); // rewritten so PyYAML reads a number
   assert.equal(edit('yaml', T, ['f'], '2e3').node.type, 'float');
   assert.equal(edit('yaml', T, ['i'], '0.25', { t: 'num' }).node.value, 0.25); // the schema allows any number
-  assert.equal(edit('toml', 'n = 3\nx = 1.5\n', ['n'], '1_000').node.value, 1000);
-  assert.match(edit('toml', 'n = 3\n', ['n'], '012').error, /not a whole number/);
 });
 
 test('booleans keep their spelling; empty values', () => {
   assert.equal(edit('yaml', 'a: yes\nb: True\nc: ON\n', ['a'], false).out.split('\n')[0], 'a: no');
   assert.equal(edit('yaml', 'a: yes\nb: True\nc: ON\n', ['b'], false).out.split('\n')[1], 'b: False');
   assert.equal(edit('yaml', 'a: yes\nb: True\nc: ON\n', ['c'], false).out.split('\n')[2], 'c: OFF');
-  assert.equal(edit('toml', 'x = true\n', ['x'], false).out, 'x = false\n');
   assert.match(encodeValue('yaml', nodeAt('yaml', 'n: 1\n', ['n']), true).error, /not a true\/false field/);
   assert.equal(edit('yaml', 'e:\nz: 1\n', ['e'], 'text').out, 'e: text\nz: 1\n'); // the space is added
   assert.equal(edit('yaml', 'e:\nz: 1\n', ['e'], '').out, 'e:\nz: 1\n'); // still empty
   assert.equal(edit('yaml', 'e: ~\n', ['e'], '5', { t: 'int' }).node.value, 5);
-});
-
-test('TOML strings keep their style when they can', () => {
-  assert.equal(edit('toml', "p = 'C:\\x'\n", ['p'], 'D:\\y').out, "p = 'D:\\y'\n");
-  assert.equal(edit('toml', "p = 'x'\n", ['p'], "it's").out, 'p = "it\'s"\n');
-  assert.equal(edit('toml', 's = "a"  # c\n', ['s'], 'tab\t"q"').out, 's = "tab\\t\\"q\\""  # c\n');
-  const ml = edit('toml', 'm = """\nold\n"""\n', ['m'], 'new\ntext\n');
-  assert.equal(ml.node.value, 'new\ntext\n');
 });
 
 test('YAML block scalars: the lines are re-indented under the key, the header is kept', () => {

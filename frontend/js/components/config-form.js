@@ -70,7 +70,7 @@ function sectionsOf(root) {
 const crumb = (path) => path.map((p) => (typeof p === 'number' ? `#${p + 1}` : p));
 
 /**
- * @param o.format   'yaml' | 'env' (TOML is parsed too, but no file here uses it)
+ * @param o.format   'yaml' | 'env'
  * @param o.getText / o.setText  the draft
  * @param o.baseText  the file on disk (for "changed" and Revert)
  * @param o.editable  false = every control is read-only
