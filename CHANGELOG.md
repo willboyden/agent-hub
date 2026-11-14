@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Security
+- **rusqlite 0.41.0** (was 0.40.2) brings the bundled SQLite of `libsqlite3-sys` 0.39.1, which fixes CVE-2026-119375
+  (RUSTSEC-2026-0459). Both versions pass the 14-day crate-age cooldown on their own. rusqlite 0.41 returns column
+  names as an iterator; the one caller in the store was adapted.
+
 ### Changed
 - Prettier 3.9.10 formats and checks the JS, CSS, HTML and JSON (`make fmt`, `make fmt-check` in `make all` and in
   CI). It is the frontend's only devDependency (exact version, committed `package-lock.json`); the frontend still has
