@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 ### Security
 - **A hub env draft never leaves the browser.** Settings > Config files checks hub env and knowledge drafts in the tab
