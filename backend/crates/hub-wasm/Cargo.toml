@@ -1,0 +1,22 @@
+[package]
+name = "hub-wasm"
+description = "Agent Hub: hub-core's own checks (config files, YAML, item models) compiled to WebAssembly for the browser UI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A thin wrapper: every function calls hub-core and returns JSON text. Built for the browser by `make web`
+# (wasm32-unknown-unknown, profile release-web, then wasm-bindgen --target web into frontend/wasm/). Natively it is an
+# ordinary library, so its tests run with the rest of the workspace.
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+hub-core.workspace = true
+serde_json.workspace = true
+wasm-bindgen.workspace = true
+
+[lints]
+workspace = true

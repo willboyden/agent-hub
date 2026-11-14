@@ -9,11 +9,9 @@ publish.workspace = true
 
 [dependencies]
 base64.workspace = true
-getrandom.workspace = true
 hex.workspace = true
 hmac.workspace = true
 indexmap.workspace = true
-nix.workspace = true
 regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -21,6 +19,12 @@ sha2.workspace = true
 subtle.workspace = true
 thiserror.workspace = true
 time.workspace = true
+
+# The OS-only parts (random bytes, unix file helpers, errno names) are compiled for native targets only, so the pure
+# checks (YAML, models, dotenv, settings, config checks) also build for wasm32-unknown-unknown (crates/hub-wasm).
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+getrandom.workspace = true
+nix.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true

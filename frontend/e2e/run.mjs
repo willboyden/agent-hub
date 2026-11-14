@@ -19,7 +19,11 @@
 //   * a frontend file served without `Cache-Control: no-cache` (a stale module next to a new one breaks pages),
 //   * the config editor (Settings > Config files) not loading the policy floor read-only with its (i) pop-ups, the
 //     shipped hub env template not passing the hub's own check, or a knowledge draft the hub could not check (YAML
-//     anchors) reading as a pass.
+//     anchors) reading as a pass,
+//   * hub-core's checks in the page (WebAssembly, frontend/wasm/, docs/adr/0013) not loading under the real CSP, a hub
+//     env draft (holding a secret) reaching the hub in any request while it is edited and checked, a skill with a
+//     15-character description (the server allows 1 to 1024) not saving or showing no suggestion, or a pasted client
+//     spec with an anchor and `yes` / `null` / `1.5` not reaching the hub with PyYAML's types.
 // The backend gets a minimal PATH (/usr/bin:/bin: git, nothing from ~/.local/bin), so a developer's installed tools
 // (SkillEvaluator, the knowledge service) are as absent as they are in CI and on a fresh machine.
 import { spawn, spawnSync } from 'node:child_process';
@@ -273,6 +277,8 @@ export async function main(argv = process.argv.slice(2)) {
       if (route !== '(sign-in)') failures.push(`${route}: ${msg}`);
     };
     const seenHeaders = new Map();
+    const requests = []; // every request the page sent: {method, url, body}
+    let wasmSeen = null; // the Content-Type the module was served with
     cdp.on((m) => {
       if (m.sessionId !== sessionId) return;
       if (m.method === 'Runtime.exceptionThrown') {
@@ -291,6 +297,9 @@ export async function main(argv = process.argv.slice(2)) {
         m.params.entry.source !== 'network'
       ) {
         problems(`browser error: ${m.params.entry.text.slice(0, 300)} ${m.params.entry.url || ''}`); // network: below
+      } else if (m.method === 'Network.requestWillBeSent') {
+        const q = m.params.request;
+        requests.push({ method: q.method, url: q.url, body: q.postData || '' });
       } else if (m.method === 'Network.responseReceived') {
         const r = m.params.response;
         const u = new URL(r.url);
@@ -301,6 +310,8 @@ export async function main(argv = process.argv.slice(2)) {
           return;
         }
         if (r.status >= 400) problems(`frontend file ${u.pathname} answered ${r.status}`);
+        if (u.pathname === '/wasm/hub_wasm_bg.wasm')
+          wasmSeen = Object.entries(r.headers).find(([k]) => k.toLowerCase() === 'content-type')?.[1] || '';
         seenHeaders.set(
           u.pathname,
           Object.entries(r.headers).find(([k]) => k.toLowerCase() === 'cache-control')?.[1] || ''
@@ -475,6 +486,151 @@ export async function main(argv = process.argv.slice(2)) {
       judge(st);
       await closeDialogs();
     }
+
+    // ---- hub-core's checks in the page (WebAssembly; docs/adr/0013) ----
+    // 1. A hub env draft that holds a secret is checked in the tab, live and on Check, and never sent to the hub.
+    route = '/settings › config [env draft in the browser]';
+    const SECRET = 'e2e-secret-value-7f3a9c';
+    const sentSecret = () =>
+      requests.some(
+        (q) => q.body.includes(SECRET) || q.url.includes(SECRET) || /config-files\/hub-env\/validate/.test(q.url)
+      );
+    await evaluate(`location.hash = '#/settings?tab=config'; true`);
+    await waitFor(
+      `!!document.querySelector('#main .cfg .seg-control button[data-v="hub-env"]')`,
+      'no hub-env file button'
+    );
+    await clickSel('#main .cfg .seg-control button[data-v="hub-env"]');
+    await waitFor(`!!document.querySelector('#main .cfg-load .btn')`, 'no Load template button (env)');
+    await evaluate(
+      `(() => { const b = [...document.querySelectorAll('#main .cfg-load .btn')].at(-1); b.click(); return true; })()`
+    );
+    if (
+      await waitFor(
+        `!!document.querySelector('#main .cfg textarea.code-edit')`,
+        'the empty env draft did not open as text'
+      )
+    ) {
+      await evaluate(
+        `(() => { const ta = document.querySelector('#main .cfg textarea.code-edit'); ta.value = 'HUB_KNOWLEDGE_ADMIN_KEY=${SECRET}\\nHUB_PORT=not-a-port\\n'; ta.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`
+      );
+      // the live check (no button pressed) shows the server's own diagnostics
+      if (
+        await waitFor(
+          `/HUB_PORT: Input should be a valid integer/.test(document.querySelector('#main .cfg .cfg-diags')?.innerText || '')`,
+          'the env draft was not checked in the browser while typing'
+        )
+      ) {
+        await clickSel('#main .cfg-toolbar .btn.primary'); // and Check: still nothing is sent
+        await sleep(600);
+        if (
+          !(await evaluate(
+            `/HUB_KNOWLEDGE_ADMIN_KEY is a secret/.test(document.querySelector('#main .cfg .cfg-diags')?.innerText || '')`
+          ))
+        )
+          problems('the in-browser env check did not name the secret key');
+      }
+      if (sentSecret()) problems('a hub env draft (or its secret) reached the hub in a request');
+      const st = await settle();
+      judge(st);
+    }
+    if (!/^application\/wasm\b/.test(wasmSeen || ''))
+      problems(`the WebAssembly module was not loaded as application/wasm (got ${wasmSeen})`);
+    const ws = await evaluate(`import('/js/hubwasm.js').then((m) => m.wasmStatus().state)`);
+    if (ws !== 'ready') problems(`the in-browser checks are ${ws}, not ready`);
+
+    // 2. A skill with a 15-character description saves (the server allows 1..1024), with a suggestion, not an error.
+    route = '/edit/skill/e2e-short?create=1 [15-character description]';
+    await evaluate(`location.hash = '#/edit/skill/e2e-short?create=1'; true`);
+    await sleep(150);
+    judge(await settle());
+    await evaluate(
+      `(() => { const ta = document.querySelector('#ed-desc'); ta.value = 'Fifteen chars!!'; ta.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`
+    );
+    if (
+      await waitFor(
+        `[...document.querySelectorAll('#main .issues .note.warn')].some((n) => /Suggestion/.test(n.innerText))`,
+        'no suggestion for a 15-character description'
+      )
+    ) {
+      if (await evaluate(`!!document.querySelector('#main .issues .note.bad')`))
+        problems('a 15-character description shows an error');
+      if (await evaluate(`!!document.querySelector('#main .editor-head .btn.primary')?.disabled`))
+        problems('Save is disabled for a 15-character description');
+      await clickSel('#main .editor-head .btn.primary');
+      await waitFor(
+        `location.hash === '#/edit/skill/e2e-short'`,
+        'the skill with a 15-character description did not save'
+      );
+      const got = await fetch(`${backend.base}/api/v1/skills/e2e-short`, {
+        headers: { Authorization: `Bearer ${backend.key}` },
+      });
+      const body = got.ok ? await got.json() : null;
+      if (JSON.stringify(body).indexOf('Fifteen chars!!') < 0)
+        problems(`the saved skill is not there (HTTP ${got.status})`);
+    }
+    judge(await settle());
+
+    // 3. A pasted client spec is read by the hub's own YAML loader: an anchor, `yes`, `null` and `1.5` reach the hub
+    //    as PyYAML types them (the dry run may refuse the made-up keys; the types of what was sent are the point).
+    route = '/clients › add › generic spec [PyYAML types]';
+    await evaluate(`location.hash = '#/clients'; true`);
+    await sleep(150);
+    judge(await settle());
+    await evaluate(
+      `(() => { const b = [...document.querySelectorAll('#main button')].find((x) => /Add a client/.test(x.textContent)); b?.click(); return !!b; })()`
+    );
+    const nextBtn = `[...document.querySelectorAll('dialog[open] .wiz-nav .btn.primary')].pop()`;
+    if (
+      await waitFor(
+        `!!document.querySelector('dialog[open] .pick-card input[value="generic"]')`,
+        'the wizard has no generic adapter'
+      )
+    ) {
+      await clickSel('dialog[open] .pick-card input[value="generic"]');
+      await evaluate(`${nextBtn}.click(); true`);
+      await waitFor(`!!document.querySelector('dialog[open] #cw-name')`, 'the wizard did not reach the name step');
+      await evaluate(
+        `(() => { const n = document.querySelector('dialog[open] #cw-name'); n.value = 'E2E Generic'; n.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`
+      );
+      await evaluate(`${nextBtn}.click(); true`);
+      if (
+        await waitFor(`!!document.querySelector('dialog[open] #spec-in')`, 'the wizard did not reach the spec step')
+      ) {
+        const before = requests.length;
+        const yaml =
+          'x-root: &r home\\nskills:\\n  root: *r\\n  dir: skills\\ne2e_flag: yes\\ne2e_none: null\\ne2e_ratio: 1.5\\n';
+        await evaluate(
+          `(() => { const ta = document.querySelector('dialog[open] #spec-in'); ta.value = '${yaml}'; ta.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`
+        );
+        let sent = null;
+        for (let i = 0; i < 60 && !sent; i++) {
+          sent = requests
+            .slice(before)
+            .reverse()
+            .find(
+              (q) =>
+                q.method === 'POST' && q.url.endsWith('/api/v1/clients/validate-spec') && q.body.includes('e2e_flag')
+            );
+          if (!sent) await sleep(100);
+        }
+        const spec = sent ? JSON.parse(sent.body).spec : null;
+        if (
+          !spec ||
+          spec.e2e_flag !== true ||
+          spec.e2e_none !== null ||
+          spec.e2e_ratio !== 1.5 ||
+          spec.skills?.root !== 'home'
+        )
+          problems(
+            `the pasted spec did not reach the hub with PyYAML types: ${sent ? sent.body.slice(0, 300) : 'no request'}`
+          );
+        await sleep(400);
+      }
+    }
+    await closeDialogs();
+    judge(await settle());
+
     route = '(static files)';
     for (const [p, cc] of seenHeaders)
       if (!/\bno-cache\b/.test(cc)) problems(`${p} served without Cache-Control: no-cache (got '${cc}')`);

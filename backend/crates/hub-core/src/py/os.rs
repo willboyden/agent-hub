@@ -23,6 +23,7 @@ pub fn error_name(e: &io::Error) -> &'static str {
 }
 
 /// CPython's errno -> OSError subclass mapping (Objects/exceptions.c).
+#[cfg(not(target_arch = "wasm32"))]
 pub fn errno_name(code: i32) -> &'static str {
     use nix::errno::Errno as E;
     match E::from_raw(code) {
@@ -42,6 +43,12 @@ pub fn errno_name(code: i32) -> &'static str {
         E::EPIPE | E::ESHUTDOWN => "BrokenPipeError",
         _ => "OSError",
     }
+}
+
+/// Without the OS errno table (wasm32, where no OS error ever occurs): the base class.
+#[cfg(target_arch = "wasm32")]
+pub fn errno_name(_code: i32) -> &'static str {
+    "OSError"
 }
 
 /// `os.strerror(code)` (the libc text, without Rust's " (os error N)" suffix).

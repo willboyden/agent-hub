@@ -1,8 +1,8 @@
-// cfg-parse.js: TOML 1.0, the block-YAML subset and env files. Expected values are what tomllib and PyYAML 6 load
-// (ported from Nemo Console, where they were checked by hand against both). The hub's own check is the authority.
+// cfg-parse.js: the block-YAML subset and env files. Expected values are what PyYAML 6 loads (ported from Nemo Console,
+// where they were checked by hand). The hub's own check is the authority.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseConfig, parseToml, parseYaml, yamlPlainType, entryOf } from '../js/cfg-parse.js';
+import { parseConfig, parseYaml, yamlPlainType, entryOf } from '../js/cfg-parse.js';
 
 const val = (n) =>
   n.kind === 'map'
@@ -28,53 +28,6 @@ const unsup = (text) => {
   assert.equal(r.errors.length, 0, 'a valid file must never be reported broken');
   return r.unsupported;
 };
-
-test('TOML: tables, dotted keys, arrays of tables, inline tables, every scalar kind', () => {
-  assert.deepEqual(
-    ok(
-      'toml',
-      `title = "x"\n[a.b]\nc = 1\nd.e = true\n[[r]]\nn = 1\n[[r]]\nn = 2\n[t]\ni = { x = 1, y = "z" }\narr = [ 1, 2,\n  3, # c\n]\n`
-    ),
-    {
-      title: 'x',
-      a: { b: { c: 1, d: { e: true } } },
-      r: [{ n: 1 }, { n: 2 }],
-      t: { i: { x: 1, y: 'z' }, arr: [1, 2, 3] },
-    }
-  );
-  assert.deepEqual(
-    ok('toml', `s = "tab\\there \\u00e9"\nl = 'C:\\\\no\\\\escape'\nm = """\nline1\nline2"""\nml = '''\nraw\\n'''\n`),
-    { s: 'tab\there é', l: 'C:\\\\no\\\\escape', m: 'line1\nline2', ml: 'raw\\n' }
-  );
-  assert.deepEqual(
-    ok(
-      'toml',
-      `i = 1_000\nh = 0xff\no = 0o17\nb = 0b101\nf = 3.5e2\nn = -0.5\ninf = inf\nd = 1979-05-27\ndt = 1979-05-27T07:32:00Z\n`
-    ),
-    { i: 1000, h: 255, o: 15, b: 5, f: 350, n: -0.5, inf: Infinity, d: '1979-05-27', dt: '1979-05-27T07:32:00Z' }
-  );
-  const r = parseToml('[x]\nk = "v"  # note\n');
-  const k = entryOf(entryOf(r.root, 'x').node, 'k').node;
-  assert.equal(r.root.entries[0].node.line, 1);
-  assert.equal(k.line, 2);
-  assert.equal(k.raw, '"v"');
-  assert.equal(k.style, 'basic');
-  ok('toml', '[a.b.c]\nx = 1\n[a]\ny = 2\n'); // an implicit table may be defined later
-});
-
-test('TOML: errors carry the line and say what to do', () => {
-  assert.match(err('toml', 'a = 1\na = 2\n').message, /duplicate key 'a' \(already defined on line 1\)/);
-  assert.equal(err('toml', 'a = 1\na = 2\n').line, 2);
-  assert.match(err('toml', '[t]\nx = 1\n[t]\n').message, /defined twice/);
-  assert.match(err('toml', 'name = hello\n').message, /strings need quotes: "hello"/);
-  assert.match(err('toml', 's = "open\n').message, /never closed on its line/);
-  assert.match(err('toml', 'n = 012\n').message, /leading zeros/);
-  assert.match(err('toml', 'k 1\n').message, /expected = after the key 'k'/);
-  assert.match(err('toml', 'a = 1 b = 2\n').message, /one key = value per line/);
-  assert.match(err('toml', 'a.b = 1\n[a]\n').message, /defined twice/);
-  assert.match(err('toml', 'x = { a = 1,\n b = 2 }\n').message, /close with } on the same line/);
-  assert.equal(err('toml', '\n\n[x\n').line, 3);
-});
 
 test('YAML: block mappings and lists, list-of-mappings, flow collections, quoting', () => {
   assert.deepEqual(ok('yaml', 'a: 1\nb:\n  c: x\n  d: [1, two, "3"]\nlist:\n- p\n- q: 1\n  r: 2\nnested:\n  - 1\n'), {
@@ -161,14 +114,14 @@ test('YAML: valid files it does not model are "unsupported", never an error', ()
   assert.match(unsup('t: !!str 1\n'), /tags/);
 });
 
-test('other formats are not parsed', () => {
+test('other formats are not parsed (no file here is TOML)', () => {
   assert.deepEqual(parseConfig('text', 'anything'), { root: null, errors: [], warnings: [], unsupported: null });
+  assert.deepEqual(parseConfig('toml', 'a = 1'), { root: null, errors: [], warnings: [], unsupported: null });
 });
 
 test('0.9.0 audit: absurd nesting is "unsupported", never a crash; real depth is fine', () => {
   for (const [fmt, text] of [
     ['yaml', `a: ${'['.repeat(20000)}`],
-    ['toml', `a = ${'['.repeat(20000)}${']'.repeat(20000)}`],
     ['yaml', `a: ${'['.repeat(100)}${']'.repeat(100)}`],
   ]) {
     const r = parseConfig(fmt, text);

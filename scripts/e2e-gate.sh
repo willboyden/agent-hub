@@ -30,7 +30,9 @@ case "${1:-}" in
   run)
     # A Chrome that is not on PATH can be named once per checkout: git config agent-hub.chrome /path/to/chrome
     if [ -z "${CHROME_BIN:-}" ] && chrome=$(git config --get agent-hub.chrome); then export CHROME_BIN="$chrome"; fi
-    # the suite runs backend/target/debug/{agent-hub,hubctl}: build them from the working tree it is about to test
+    # the suite runs backend/target/debug/{agent-hub,hubctl} and the page loads frontend/wasm/ (hub-core's checks,
+    # docs/adr/0013): build both from the working tree it is about to test
+    make --no-print-directory web || { echo "e2e-gate: make web failed" >&2; exit 1; }
     (cd backend && cargo build --locked -p agent-hub --bins) || { echo "e2e-gate: cargo build failed" >&2; exit 1; }
     node frontend/e2e/run.mjs || exit 1
     # The suite tested the working tree, so a pass only counts for a commit when the app directories match it.

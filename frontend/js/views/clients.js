@@ -24,7 +24,8 @@ import {
 import { openModal, confirmDialog } from '../components/dialog.js';
 import { wizard } from '../components/wizard.js';
 import { diffView, statsText } from '../components/diff-view.js';
-import { mapSpecResult, parseSpec, specErrorResult } from '../spec.js';
+import { defaultSpecText, mapSpecResult, parseSpec, specErrorResult } from '../spec.js';
+import { hubWasm, hubWasmWithin } from '../hubwasm.js';
 import { editHref } from '../data.js';
 import { validName, slug, debounce, timeAgo } from '../util.js';
 import { driftProblems, clientDoc } from '../adapt.js';
@@ -793,7 +794,12 @@ class AhClients extends AhView {
         defaults = a.default_config || {};
         st.roots = { ...(defaults.roots || {}) };
         st.strict = defaults.strict ?? true;
-        if (st.adapter === 'generic' && !st.spec) st.spec = defaultSpecText(defaults.spec);
+        if (st.adapter === 'generic' && !st.spec) {
+          // YAML when the hub's YAML reader loaded, JSON otherwise (readable without it, so Next is not blocked)
+          const w = await hubWasmWithin(3000);
+          st.specDefault = defaults.spec;
+          st.spec = defaultSpecText(defaults.spec, !!w);
+        }
       } catch {
         defaults = {};
       }
@@ -1020,7 +1026,20 @@ class AhClients extends AhView {
     };
     const check = async () => {
       const mine = ++seq;
-      const p = parseSpec(ta.value);
+      // read with the hub's own YAML loader, in the tab (hubwasm.js); JSON still works without it
+      const w = await hubWasm();
+      if (mine !== seq) return;
+      const p = parseSpec(ta.value, w?.yamlLoad);
+      // the reader went away after the YAML default was filled in (it trapped, or loaded too late): the same default
+      // as JSON, so the wizard's own text never blocks Next
+      if (
+        p.error?.code === 'yaml_unavailable' &&
+        st.specDefault &&
+        ta.value === defaultSpecText(st.specDefault, true)
+      ) {
+        ta.value = st.spec = defaultSpecText(st.specDefault, false);
+        return check();
+      }
       if (p.empty) {
         st.specResult = null;
         st.specObject = null;
@@ -1068,8 +1087,4 @@ class AhClients extends AhView {
     );
   }
 }
-const defaultSpecText = (spec) =>
-  spec
-    ? `skills:\n  root: ${spec.skills?.root || 'home'}\n  dir: ${spec.skills?.dir || 'skills'}\n  layout: ${spec.skills?.layout || 'dir/SKILL.md'}\ninstructions:\n  root: ${spec.instructions?.root || 'home'}\n  target: ${spec.instructions?.target || 'INSTRUCTIONS.md'}\n  merge: ${spec.instructions?.merge || 'block'}\n`
-    : '';
 customElements.define('ah-clients', AhClients);

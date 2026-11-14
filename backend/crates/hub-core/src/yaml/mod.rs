@@ -24,6 +24,13 @@ use crate::value::PyValue;
 
 pub use error::Mark;
 
+/// The tag PyYAML's implicit resolver gives a plain (unquoted) scalar, e.g. `tag:yaml.org,2002:bool` for `yes` and
+/// `tag:yaml.org,2002:str` for `1e3` (YAML 1.1 needs a dot and a signed exponent). Used by the browser-side form
+/// (crates/hub-wasm `yaml_scalar_type`).
+pub fn plain_scalar_tag(value: &str) -> String {
+    resolver::resolve_scalar(value, true)
+}
+
 /// A YAML error. `problem` is PyYAML's `str(exc).splitlines()[0]` (yamlsafe surfaces only that line); `full` is the
 /// whole PyYAML message (context + marks).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]

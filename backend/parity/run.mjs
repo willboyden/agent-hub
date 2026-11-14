@@ -214,6 +214,18 @@ const ALLOWED = {
   'wsd.body-over-cap': { what: 'all', deviation: 'flaky on the Python side; D-K-OVERCAP-DRAIN' },
 };
 
+// A-19 (deliberate, PORTING.md): the Rust hub's Content-Security-Policy adds 'wasm-unsafe-eval' to script-src, so the
+// page can compile its own same-origin WebAssembly module (the browser-side checks, docs/adr/0013). When a Rust answer
+// carries EXACTLY that header and the other side is Python, the header is compared as Python's; any other CSP on the
+// Rust side is still a difference. Counted and reported on every run.
+const CSP_PYTHON =
+  "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'";
+const CSP_RUST = CSP_PYTHON.replace("script-src 'self';", "script-src 'self' 'wasm-unsafe-eval';");
+function cspAsPython(rec) {
+  if (rec?.headers?.['content-security-policy'] !== CSP_RUST) return [rec, false];
+  return [{ ...rec, headers: { ...rec.headers, 'content-security-policy': CSP_PYTHON } }, true];
+}
+
 // The DeepSeek Harness adapter is new in 0.3.0 (PORTING.md A-15): the default reference c419f1e does not have it. When
 // exactly ONE side's own /adapters answer lacks it, that one entry is dropped from both sides' adapter lists before
 // comparing (every other field is still compared) and the dsh.* cases are reported as allowed. When both sides have it
@@ -314,8 +326,18 @@ export async function main(argv = process.argv.slice(2)) {
     const diffs = [];
     const allowed = [];
     const newAdapterGap = hasNewAdapter(A) !== hasNewAdapter(B);
-    for (const ra of A) {
-      const rb = byId.get(ra.id);
+    const pyVsRust = (x, y) => x.startsWith('python') && y === 'rust';
+    let cspA19 = 0;
+    // the Rust side's A-19 CSP is compared as Python's (only when the other side is Python)
+    const asPython = (rec, rustSide) => {
+      if (!rustSide || !rec) return rec;
+      const [out, hit] = cspAsPython(rec);
+      if (hit) cspA19++;
+      return out;
+    };
+    for (const ra0 of A) {
+      const ra = asPython(ra0, pyVsRust(o.b, o.a));
+      const rb = asPython(byId.get(ra0.id), pyVsRust(o.a, o.b));
       const { id, ...ca } = newAdapterGap ? withoutNewAdapter(ra) : ra;
       const { id: _id, ...cb } = (newAdapterGap && rb ? withoutNewAdapter(rb) : rb) ?? {};
       const d = firstDiff(ca, cb);
@@ -397,6 +419,7 @@ export async function main(argv = process.argv.slice(2)) {
       b: o.b,
       cases: A.length,
       equal: equal.length,
+      csp_a19: cspA19,
       unported,
       allowed,
       diffs,
@@ -409,6 +432,10 @@ export async function main(argv = process.argv.slice(2)) {
     console.log(
       `parity ${o.app}: ${o.a} vs ${o.b}: ${A.length} cases, ${equal.length} equal, ${unported.length} not ported on ${o.b}, ${allowed.length} allowed deviations, ${diffs.length} differences; routes ${cov.routes}, uncovered ${cov.uncovered.length}`
     );
+    if (cspA19)
+      console.log(
+        `  A-19: ${cspA19} Rust answers carry script-src 'self' 'wasm-unsafe-eval' (compared as Python's CSP)`
+      );
     for (const x of allowed) console.log(`  ALLOWED ${x.id} (${x.deviation}): ${x.diff}`);
     for (const u of cov.uncovered) console.log(`  UNCOVERED ${u}`);
     for (const d of diffs) console.log(`  DIFF ${d.id}: ${d.diff}`);

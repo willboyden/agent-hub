@@ -11,7 +11,7 @@ flowchart TB
       api["API routes<br/>content, clients, organize, changes, system, knowledge proxy"]
       svc["services<br/>Hub, ContentStore, Resolver, Planner, Applier, Inbox, KnowledgeProxy"]
       reg["adapter registry<br/>claude-code, opencode, hermes, generic"]
-      ui["static UI<br/>index.html, css, js, i18n"]
+      ui["static UI<br/>index.html, css, js, i18n, wasm (make web)"]
       mw --> api --> svc --> reg
       mw --> ui
     end

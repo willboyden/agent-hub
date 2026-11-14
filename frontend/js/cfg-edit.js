@@ -7,16 +7,12 @@
 //   flattenFields(root) -> [{ path, key, node, depth }]  (every scalar, in document order)
 import { yamlPlainType } from './cfg-parse.js';
 
-const TOML_INT = /^[+-]?(?:0|[1-9](?:_?\d)*)$/;
-const TOML_FLOAT = /^[+-]?(?:0|[1-9](?:_?\d)*)(?:\.\d(?:_?\d)*)?(?:[eE][+-]?\d(?:_?\d)*)?$|^[+-]?(?:inf|nan)$/;
-const TOML_DATE =
-  /^\d{4}-\d{2}-\d{2}(?:[Tt ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})?)?$|^\d{2}:\d{2}:\d{2}(?:\.\d+)?$/;
 const DEC_INT = /^[-+]?(?:0|[1-9][0-9_]*)$/;
 const DEC_FLOAT =
   /^[-+]?(?:\d[\d_]*)?\.\d[\d_]*(?:[eE][-+]?\d+)?$|^[-+]?\d[\d_]*\.(?:[eE][-+]?\d+)?$|^[-+]?\d[\d_]*[eE][-+]?\d+$/;
 
 /**
- * JSON string escaping is valid in TOML basic strings and YAML double-quoted strings alike. JSON leaves DEL, NEL and the
+ * JSON string escaping is valid in YAML double-quoted strings. JSON leaves DEL, NEL and the
  * Unicode line/paragraph separators raw; YAML folds NEL/LS/PS into spaces and refuses DEL, so they are escaped too.
  */
 const dq = (s) =>
@@ -25,16 +21,6 @@ const dq = (s) =>
     (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`
   );
 const YAML_SQ_BAD = /[\n\r\t\u0000-\u001f\u007f\u0085\u2028\u2029]/; // what a YAML single-quoted string cannot carry as typed
-
-function tomlString(node, v) {
-  if (/[\u0000-\u0008\u000b-\u001f\u007f]/.test(v) && !/\n/.test(v)) return dq(v);
-  if (node.style === 'literal' && !/['\n\r]/.test(v)) return `'${v}'`;
-  if (node.style === 'ml-literal' && !v.includes("'''") && !/[\u0000-\u0008\u000b-\u001f\u007f]/.test(v))
-    return `'''\n${v}'''`;
-  if (node.style === 'ml-basic' || v.includes('\n'))
-    return `"""\n${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\t/g, '\\t').replace(/\r/g, '\\r')}"""`;
-  return dq(v);
-}
 
 /** Can v be written as a YAML plain scalar that PyYAML reads back as exactly this string? */
 export function yamlPlainSafe(v) {
@@ -85,12 +71,11 @@ export function encodeValue(format, node, input, spec = null) {
     type = spec?.t === 'int' ? 'int' : spec?.t === 'num' ? 'float' : spec?.t === 'bool' ? 'bool' : 'string';
   if (typeof input === 'boolean') {
     if (type !== 'bool') return { error: 'not a true/false field' };
-    return { raw: format === 'toml' ? String(input) : yamlBool(node.type === 'bool' ? node.raw : 'true', input) };
+    return { raw: yamlBool(node.type === 'bool' ? node.raw : 'true', input) };
   }
   const s = String(input);
   if (node.type === 'null' && s.trim() === '' && format === 'yaml') return { raw: node.raw }; // still empty
   if (type === 'string') {
-    if (format === 'toml') return { raw: tomlString(node, s) };
     if (node.style === 'block') {
       // PyYAML takes a block's indentation from its first non-blank line: an indented first line would lose its
       // indentation (or break the file), so it is refused rather than written.
@@ -104,8 +89,8 @@ export function encodeValue(format, node, input, spec = null) {
   let v = s.trim();
   if (format === 'yaml') v = v.replace(/^([-+])\.(?=\d)/, '$10.'); // PyYAML reads -.5 as text, -0.5 as a number
   if (type === 'int' || type === 'float') {
-    const intOk = format === 'toml' ? TOML_INT.test(v) : DEC_INT.test(v);
-    const floatOk = format === 'toml' ? TOML_FLOAT.test(v) && /[.eEn]/.test(v) : DEC_FLOAT.test(v);
+    const intOk = DEC_INT.test(v);
+    const floatOk = DEC_FLOAT.test(v);
     if (type === 'int' && !isNumSpec(spec)) {
       if (intOk && Number.isSafeInteger(Number(v.replace(/_/g, '')))) return { raw: v };
       if (/^[-+]?\d+\.0*$/.test(v)) return { error: 'a whole number, without a decimal point' };
@@ -133,7 +118,7 @@ export function encodeValue(format, node, input, spec = null) {
     return { error: 'true or false' };
   }
   if (type === 'date') {
-    if (format === 'toml' ? TOML_DATE.test(v) : yamlPlainType(v).type === 'date') return { raw: v };
+    if (yamlPlainType(v).type === 'date') return { raw: v };
     return { error: 'a date like 2026-11-04' };
   }
   return { error: 'this value cannot be edited here; use the Text view' };

@@ -57,8 +57,8 @@ test('matchScore and lookupHelp: literal beats wildcard, # matches list indexes,
   assert.equal(lookupHelp(null, ['x']), null);
 });
 
-test('every setting the hub reads from its env file has help (config.rs settings_model)', () => {
-  const src = repo('backend/crates/agent-hub/src/config.rs');
+test('every setting the hub reads from its env file has help (hub_core::settings settings_model)', () => {
+  const src = repo('backend/crates/hub-core/src/settings.rs');
   const names = [...src.matchAll(/optional\("([a-z_]+)"/g)].map((m) => m[1]);
   assert.ok(names.length >= 30, `${names.length} settings parsed`);
   const cat = catalogFor(doc, 'hub-env');

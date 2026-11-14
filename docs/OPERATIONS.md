@@ -8,17 +8,26 @@ delivery scripts) is opt-in; nothing here is started or enabled by any script in
 
 ## 1. Install
 
-Requirements: `git`, `rustup` (it installs the exact toolchain pinned in `backend/rust-toolchain.toml`) and a C linker
-(`cc`). protoc for the knowledge service's Lance engine is vendored (`backend/tools/protoc`). No Node and no Python are
-needed to run the hub (`deploy/turnstone-deliver.py` alone uses `python3`).
+Requirements: `git`, `rustup` (it installs the exact toolchain pinned in `backend/rust-toolchain.toml`; a fresh install
+includes the `wasm32-unknown-unknown` target, but rustup does not add it to a toolchain that is already installed, so
+then run `cd backend && rustup target add wasm32-unknown-unknown` once), a C linker (`cc`) and the `wasm-bindgen` CLI at
+the exact version of the crate in `Cargo.lock` (`cargo install --locked wasm-bindgen-cli@0.2.129`, once). `make web`
+stops with the command to run when either is missing. protoc for the knowledge service's Lance engine
+is vendored (`backend/tools/protoc`). No Node and no Python are needed to run the hub (`deploy/turnstone-deliver.py`
+alone uses `python3`).
 
 ```bash
-make release            # backend/target/release/{agent-hub,hubctl,agent-knowledge}; Cargo.lock is used as is (--locked)
+make release            # backend/target/release/{agent-hub,hubctl,agent-knowledge} and frontend/wasm/ (make web);
+                        # Cargo.lock is used as is (--locked)
 hubctl init             # content repo + first commit + bootstrap admin key
 ```
 
 The first build compiles the Lance engine of the knowledge service and takes several minutes; later builds are
-incremental. `make setup` builds the debug binaries instead and enables the git hooks (for development).
+incremental. `make web` (run by `make release`) compiles the hub's own checks to WebAssembly into `frontend/wasm/`,
+which the UI loads for the editor, the client wizard and Settings > Config files (docs/adr/0013). Without it the UI
+still works: those pages say the in-browser checks are unavailable, and the hub checks every save as always. After an
+update, run `make release` again so the module matches the hub. `make setup` builds the debug binaries and the module
+instead and enables the git hooks (for development).
 
 `hubctl init` creates `HUB_CONTENT_DIR` (default `~/.local/share/agent-hub/content`, outside your project tree, its own git repo; older builds defaulted to an in-tree `content/`),
 seeds `hub.yaml`, `endpoints.yaml` and `.gitkeep` files, commits, and writes

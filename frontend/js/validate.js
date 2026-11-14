@@ -1,7 +1,8 @@
-// Client-side validation that mirrors the server's rules, so the editor can explain problems before the round-trip.
-// The server stays authoritative; these only produce early, friendly hints. Messages are i18n keys with variables.
-import { NAME_RE } from './util.js';
-
+// Editor checks. Blocking ERRORS come only from the hub's own content models: hub-core compiled to WebAssembly
+// (hubwasm.js `validateMeta`, the same rules the server applies when the item is saved). Without the module, or when it
+// trapped (validateMeta answers null), there are none here: a `wasm.editor_unavailable` warning says so, and Save shows
+// the server's answer. WARNINGS are UX hints with no server rule: they never block Save. Messages are i18n keys with
+// variables.
 export const CAPABILITIES = [
   'read',
   'write',
@@ -17,15 +18,42 @@ export const CAPABILITIES = [
   'image',
 ];
 export const MODEL_TIERS = ['fast', 'standard', 'deep'];
+/** A description shorter than this gets a (non-blocking) suggestion: the server accepts 1 to 1024 characters. */
+export const DESC_HINT_MIN = 20;
 const issue = (severity, key, vars = {}, field = '') => ({ severity, key, vars, field });
 
-export function validateSkill({ name, description, body }) {
-  const out = [];
-  if (!NAME_RE.test(name || '')) out.push(issue('error', 'val.name_bad', {}, 'name'));
+/** The model's errors ([{loc, msg, type}], FastAPI's shape) as editor issues, with the editor's own words where it
+ *  has them (`val.model` with the field and pydantic's message otherwise). */
+export function modelIssues(errors) {
+  return (Array.isArray(errors) ? errors : []).map((e) => {
+    const field = String(e?.loc?.[0] ?? '');
+    const where = (e?.loc || []).join('.');
+    const type = String(e?.type || '');
+    if (field === 'name' && type !== 'missing') return issue('error', 'val.name_bad', {}, 'name');
+    if (field === 'description' && (type === 'missing' || type === 'string_too_short'))
+      return issue('error', 'val.desc_required', {}, 'description');
+    if (field === 'description' && type === 'string_too_long')
+      return issue('error', 'val.desc_long', { max: 1024 }, 'description');
+    if (field === 'model_tier' && type === 'literal_error') return issue('error', 'val.tier_bad', {}, 'model_tier');
+    return issue('error', 'val.model', { field: where || '-', msg: String(e?.msg || type) }, field);
+  });
+}
+
+/** The item model's issues, or one "the in-browser checks are unavailable" warning when there is no module or it
+ *  answered null (a trap): never a silent clean state. */
+function modelCheck(validateMeta, kind, fields) {
+  const errors = validateMeta ? validateMeta(kind, fields) : null;
+  return Array.isArray(errors) ? modelIssues(errors) : [issue('warn', 'wasm.editor_unavailable')];
+}
+
+/** `validateMeta` is hubwasm's (or null when the module is unavailable). */
+export function validateSkill({ name, description, body }, validateMeta = null) {
+  const out = modelCheck(validateMeta, 'skill', { name, description: description ?? '' });
   const d = String(description ?? '').trim();
-  if (!d) out.push(issue('error', 'val.desc_required', {}, 'description'));
-  else if (d.length < 20) out.push(issue('error', 'val.desc_short', { min: 20, n: d.length }, 'description'));
-  if (String(description ?? '').length > 1024) out.push(issue('error', 'val.desc_long', { max: 1024 }, 'description'));
+  // only blanks: the server accepts it (1..1024 characters), but it says nothing; an empty one is the model's error
+  if (!d && String(description ?? '') !== '') out.push(issue('warn', 'val.desc_blank', {}, 'description'));
+  if (d && d.length < DESC_HINT_MIN)
+    out.push(issue('warn', 'val.desc_short', { min: DESC_HINT_MIN, n: d.length }, 'description'));
   if (/\n/.test(String(description ?? '').trim())) out.push(issue('warn', 'val.desc_multiline', {}, 'description'));
   if (!String(body ?? '').trim()) out.push(issue('warn', 'val.body_empty', {}, 'body'));
   // A body that starts with '---' would look like a second frontmatter block to some clients.
@@ -33,12 +61,20 @@ export function validateSkill({ name, description, body }) {
     out.push(issue('warn', 'val.body_frontmatter', {}, 'body'));
   return out;
 }
-export function validateAgent({ name, description, capabilities, model_tier }) {
-  const out = [];
-  if (!NAME_RE.test(name || '')) out.push(issue('error', 'val.name_bad', {}, 'name'));
-  if (!String(description ?? '').trim()) out.push(issue('error', 'val.desc_required', {}, 'description'));
+export function validateAgent(
+  { name, description, capabilities, model_tier, mode, read_only, tags },
+  validateMeta = null
+) {
+  const out = modelCheck(validateMeta, 'agent', {
+    name,
+    description: description ?? '',
+    capabilities: capabilities ?? [],
+    model_tier: model_tier || null,
+    mode,
+    read_only,
+    tags,
+  });
   if (!capabilities?.length) out.push(issue('warn', 'val.agent_no_caps', {}, 'capabilities'));
-  if (model_tier && !MODEL_TIERS.includes(model_tier)) out.push(issue('error', 'val.tier_bad', {}, 'model_tier'));
   return out;
 }
 export function validateFilePath(p, existing = []) {

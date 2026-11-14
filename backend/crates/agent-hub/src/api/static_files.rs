@@ -1,5 +1,5 @@
 //! main.py `_mount_frontend`: static files at `/` with an SPA fallback to index.html. Serves ONLY index.html and
-//! css/, js/, i18n/ (no `..`/symlink escape), a missing asset is a 404 (never the SPA), `/api/...` is a 404 problem.
+//! css/, js/, i18n/ and wasm/ (`make web`'s output, PORTING.md A-19) (no `..`/symlink escape), a missing asset is a 404 (never the SPA), `/api/...` is a 404 problem.
 //! Every file is served `Cache-Control: no-cache` with Starlette's FileResponse headers (content-length, last-modified,
 //! etag = md5("<st_mtime>-<st_size>"), accept-ranges) and a matching `If-None-Match` answers 304. `Range` requests are
 //! answered like Starlette's FileResponse: 206 for one range or several (`multipart/byteranges`), 400 for a malformed
@@ -18,7 +18,7 @@ use super::errors::problem_parts;
 use super::{AppState, Req};
 use hub_core::py::{float, os::realpath};
 
-pub const STATIC_DIRS: [&str; 3] = ["css", "js", "i18n"];
+pub const STATIC_DIRS: [&str; 4] = ["css", "js", "i18n", "wasm"];
 pub const STATIC_CACHE: &str = "no-cache";
 
 fn not_found(detail: &str) -> Response<Body> {
@@ -46,6 +46,8 @@ pub fn content_type(path: &Path) -> String {
         "woff" => "font/woff",
         "woff2" => "font/woff2",
         "md" => "text/markdown",
+        // WebAssembly.instantiateStreaming refuses any other type (A-19)
+        "wasm" => "application/wasm",
         _ => "text/plain",
     };
     if t.starts_with("text/") {
