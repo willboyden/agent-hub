@@ -1,5 +1,4 @@
 // REST client for /api/v1 (ARCHITECTURE §5). RFC 7807 problem+json errors become ApiError; every non-GET sends X-Agent-Hub: 1.
-import { maskEnvSecrets } from './cfg-parse.js';
 import {
   normalizeItem,
   normalizeMatrix,
@@ -256,11 +255,17 @@ export function createClient({ base = '/api/v1', getKey = () => null, onUnauthor
     configTemplate: (file, name) =>
       get(`/config-files/${encodeURIComponent(file)}/templates/${encodeURIComponent(name)}`),
     configCurrent: (file) => get(`/config-files/${encodeURIComponent(file)}/current`),
-    // an env draft goes with its secret values replaced (same lines), so a pasted key never leaves the browser
+    // The hub's check of a draft. An env draft (it can hold secrets) is checked in the browser only (hubwasm.js) and
+    // is never sent: this refuses it before any request is made.
     validateConfig: (file, text) =>
-      post(`/config-files/${encodeURIComponent(file)}/validate`, {
-        text: file === 'hub-env' ? maskEnvSecrets(text) : text,
-      }),
+      file === 'hub-env'
+        ? Promise.reject(
+            new ApiError(400, {
+              code: 'env_checked_in_browser',
+              detail: 'an env draft is checked in the browser and never sent to the hub',
+            })
+          )
+        : post(`/config-files/${encodeURIComponent(file)}/validate`, { text }),
     keys: () => get('/keys'),
     createKey: (body) => post('/keys', body),
     deleteKey: (id) => del(`/keys/${enc(id)}`),

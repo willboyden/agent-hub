@@ -1,7 +1,6 @@
 // Client-spec helpers: parse pasted YAML/JSON into an object (the backend wants `spec` as a mapping), and map validate-spec results to
 // display-ready issues. Real backend: 200 {ok, artifacts:[{root,path,kind,merge,size,preview}], diagnostics:[{severity,code,message,item}]},
 // 422 problem {errors:[{path,message,fix_hint}]} when the spec does not fit the ClientDoc schema.
-import { parseYamlLite, YamlLiteError } from './yaml-lite.js';
 
 const KNOWN = new Set([
   'missing_field',
@@ -10,6 +9,7 @@ const KNOWN = new Set([
   'bad_value',
   'bad_path',
   'yaml_syntax',
+  'yaml_unavailable',
   'unsafe_path',
   'no_skills_root',
   'unsupported',
@@ -22,26 +22,31 @@ export function issueMessage(issue) {
   return { key: null, vars, fallback: vars.message || code || 'invalid', hint: issue?.fix_hint || '' };
 }
 
-// text -> {spec} | {error: {code:'yaml_syntax', message, line}}. Never throws.
-export function parseSpec(text) {
+// text -> {spec} | {error: {code, message, line}} | {empty: true}. Never throws. `yamlLoad` is hub-core's YAML loader
+// (hubwasm.js: the server's own PyYAML port, so `yes`, `null`, `1.5`, anchors and block scalars read exactly as the hub
+// reads them); without it (the module did not load) only JSON can be read, and YAML gets code `yaml_unavailable`.
+export function parseSpec(text, yamlLoad = null) {
   const s = String(text ?? '').trim();
   if (!s) return { empty: true };
-  try {
-    if (s.startsWith('{')) {
-      const v = JSON.parse(s);
-      return { spec: v };
+  if (s.startsWith('{')) {
+    try {
+      return { spec: JSON.parse(s) };
+    } catch (e) {
+      if (!yamlLoad) return { error: { code: 'yaml_syntax', message: e.message, line: null } };
+      // not JSON: a YAML flow mapping, read below
     }
-    const spec = parseYamlLite(s);
-    return { spec };
-  } catch (e) {
+  }
+  const r = yamlLoad ? yamlLoad(String(text)) : null;
+  if (!r)
     return {
       error: {
-        code: 'yaml_syntax',
-        message: e instanceof YamlLiteError || e instanceof SyntaxError ? e.message : String(e),
-        line: e.line ?? null,
+        code: 'yaml_unavailable',
+        message: 'the YAML reader did not load: reload the page (Ctrl+Shift+R), or paste the spec as JSON',
+        line: null,
       },
     };
-  }
+  if (!r.ok) return { error: { code: 'yaml_syntax', message: r.message, line: r.line ?? null } };
+  return { spec: r.value };
 }
 
 const sev = (d) => (d.severity === 'error' ? 'error' : 'warn');

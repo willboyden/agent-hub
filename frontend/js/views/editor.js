@@ -36,6 +36,7 @@ import { validName } from '../util.js';
 import { parseUnified } from '../diff.js';
 import { detailDraft, toPutBody, validTag, floorRows, isFloorKey } from '../adapt.js';
 import { diffView } from '../components/diff-view.js';
+import { hubWasm } from '../hubwasm.js';
 
 const CONCERN = {
   skill: 'skills',
@@ -132,11 +133,13 @@ class AhEditor extends AhView {
     await this.loadInto(
       this.body,
       async () => {
-        const [clients, collections, item] = await Promise.all([
+        const [clients, collections, item, checks] = await Promise.all([
           this.api.clients(),
           this.api.collections(),
           this.creating ? null : this.api.item(this.kind, this.name),
+          hubWasm(), // the hub's own item models, in the tab (null = unavailable: Save still checks on the hub)
         ]);
+        this.validateMeta = checks ? checks.validateMeta : null;
         this.clients = clients;
         this.collections = collections;
         this.item = item;
@@ -217,8 +220,10 @@ class AhEditor extends AhView {
   // ---- validation ----
   localIssues() {
     const d = this.d;
-    if (this.kind === 'skill') return validateSkill(d);
-    if (this.kind === 'agent') return validateAgent(d);
+    // without the in-browser checks, say so once: problems are then reported by the hub on Save
+    const noChecks = this.validateMeta ? [] : [{ severity: 'warn', key: 'wasm.editor_unavailable', vars: {} }];
+    if (this.kind === 'skill') return [...validateSkill(d, this.validateMeta), ...noChecks];
+    if (this.kind === 'agent') return [...validateAgent(d, this.validateMeta), ...noChecks];
     if (this.kind === 'rule')
       return [
         ...(!d.match.trim() ? [{ severity: 'error', key: 'val.rule_match', vars: {} }] : []),

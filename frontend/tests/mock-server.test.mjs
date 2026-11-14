@@ -5,7 +5,8 @@ import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { server } from '../dev/mock-server.mjs';
-import { miniYaml, unifiedDiff } from '../dev/mock-core.mjs';
+import { unifiedDiff } from '../dev/mock-core.mjs';
+import { SKIP_WASM } from './wasm-helper.mjs';
 import { parseUnified } from '../js/diff.js';
 import {
   normalizeMatrix,
@@ -78,7 +79,8 @@ test('static host: strict CSP, no traversal, dev/ tests/ package.json hidden', a
   const csp = (await j('/index.html')).r.headers.get('content-security-policy');
   assert.match(csp, /default-src 'self'/);
   assert.match(csp, /style-src 'self'(?!.*unsafe)/);
-  assert.doesNotMatch(csp, /unsafe-inline|unsafe-eval/);
+  assert.doesNotMatch(csp, /unsafe-inline|(?<!wasm-)unsafe-eval/);
+  assert.match(csp, /script-src 'self' 'wasm-unsafe-eval'/, 'compiles only its own same-origin module');
 });
 
 test('seed is at scale: 48 skills, 11 agents, several MCP servers with mixed scan states, 5 clients (one generic), collections', async () => {
@@ -606,11 +608,7 @@ test('settings/keys/audit follow the backend: editable ints + info; secrets show
   );
 });
 
-test('mock helper modules: mini YAML and unified diff round-trip through the frontend parser; secret-looking values are redacted in diffs', () => {
-  assert.deepEqual(JSON.parse(JSON.stringify(miniYaml('a:\n  b: 1\n  c: [x, y]\nd:\n  - p\n  - q\n'))), {
-    a: { b: 1, c: ['x', 'y'] },
-    d: ['p', 'q'],
-  });
+test('mock helper modules: unified diff round-trips through the frontend parser; secret-looking values are redacted in diffs', () => {
   const d = unifiedDiff('a\nb\nc\n', 'a\nB\nc\nd\n', 'f', 'f');
   assert.deepEqual(
     parseUnified(d)
@@ -702,16 +700,31 @@ test('config editor contract: list, templates, the floor only as current, checks
   }
   assert.match((await get('/config-files/floor/current')).b.text, /deny_path_read/);
   assert.equal((await get('/config-files/hub-env/current')).b.code, 'not_served');
-  const bad = (await post('/config-files/hub-env/validate', { text: 'HUB_PORT=x\nHUB_PROT=1\n' })).b;
-  assert.equal(bad.ok, false);
-  assert.deepEqual(
-    bad.diagnostics.map((d) => [d.severity, d.line]),
-    [
-      ['error', 1],
-      ['warn', 2],
-    ]
-  );
   assert.equal((await post('/config-files/floor/validate', { text: 'x: 1' })).b.code, 'floor_locked');
   assert.equal((await post('/config-files/knowledge/validate', {})).b.code, 'text_required');
   for (const f of ['i18n/help.en.json', 'i18n/fields.en.json']) assert.equal((await j(`/${f}`)).r.status, 200, f);
 });
+
+test(
+  "the mock checks config drafts with the hub's own code (the WebAssembly module): same answers as the hub",
+  { skip: SKIP_WASM },
+  async () => {
+    const bad = (await post('/config-files/hub-env/validate', { text: 'HUB_PORT=x\nHUB_PROT=1\n' })).b;
+    assert.equal(bad.ok, false);
+    assert.deepEqual(
+      bad.diagnostics.map((d) => [d.severity, d.line]),
+      [
+        ['warn', 2],
+        ['error', 1],
+      ]
+    );
+    assert.match(bad.diagnostics[1].message, /^HUB_PORT: Input should be a valid integer/);
+    const k = (await post('/config-files/knowledge/validate', { text: 'port: &p 8795\nother: *p\n' })).b;
+    assert.equal(k.ok, false);
+    assert.equal(k.summary.checked, false, 'anchors: not checked, not a pass');
+    const big = await post('/config-files/hub-env/validate', { text: '#'.repeat(64 * 1024 + 1) });
+    assert.equal(big.r.status, 413);
+    const wasm = await j('/wasm/hub_wasm_bg.wasm');
+    assert.equal(wasm.r.headers.get('content-type'), 'application/wasm');
+  }
+);

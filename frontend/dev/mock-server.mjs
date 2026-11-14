@@ -15,8 +15,14 @@ import { fileURLToPath } from 'node:url';
 import * as D from './mock-data.mjs';
 import * as C from './mock-core.mjs';
 import { installEval } from './mock-eval.mjs';
+import { loadHubWasm } from '../js/hubwasm.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// The config checks are hub-core's own, compiled to WebAssembly (`make web` -> frontend/wasm/, docs/adr/0013): the
+// same module the browser loads, so this route answers exactly like the hub. Without it the route answers 503.
+const WASM_FILE = path.join(ROOT, 'wasm', 'hub_wasm_bg.wasm');
+const HUB_WASM = fs.existsSync(WASM_FILE) ? await loadHubWasm(fs.readFileSync(WASM_FILE)) : null;
+if (!HUB_WASM) console.warn('mock: frontend/wasm/ is not built (run `make web`): config-file checks answer 503');
 const args = process.argv.slice(2);
 const argv = (n, d) => {
   const i = args.indexOf(`--${n}`);
@@ -193,12 +199,14 @@ const MIME = {
   '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
+  '.wasm': 'application/wasm',
   '.json': 'application/json',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
 };
+// 'wasm-unsafe-eval': the page compiles hub-core's checks (frontend/wasm/), as on the real hub (PORTING.md A-19)
 const CSP =
-  "default-src 'self'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
+  "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 const json = (res, code, obj) => {
   res.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(obj));
@@ -798,7 +806,7 @@ const KIND_OF = {
 route('GET', '/health', (r) =>
   r.json(200, {
     status: 'ok',
-    version: '0.1.0-mock',
+    version: HUB_WASM?.version ?? '0.1.0-mock', // the module's own version, so the page's version check passes
     content_initialised: true,
     adapters: D.ADAPTERS.map((a) => a.id),
     trust_loopback: TRUST,
@@ -1856,61 +1864,17 @@ route('POST', '/config-files/:file/validate', (r) => {
   if (!CFG_FILES.includes(f)) return nf(r, 'no such config file');
   if (typeof r.body?.text !== 'string')
     return r.problem(422, 'Unprocessable', '`text` (a string) is required', 'text_required');
-  const lines = text.split('\n');
-  if (f === 'hub-env')
-    lines.forEach((l, i) => {
-      const m = /^\s*(?:export\s+)?([^=#\s]+)\s*=\s*(.*)$/.exec(l);
-      if (!m) {
-        if (l.trim() && !l.trim().startsWith('#'))
-          d.push({
-            severity: 'warn',
-            message: 'this line is not KEY=value, so it is skipped when the file is read',
-            line: i + 1,
-          });
-        return;
-      }
-      if (/^HUB_PORT$/i.test(m[1]) && !/^\d+$/.test(m[2].trim()))
-        d.push({
-          severity: 'error',
-          message: 'HUB_PORT: Input should be a valid integer, unable to parse string as an integer',
-          line: i + 1,
-          path: [m[1]],
-        });
-      else if (
-        /^HUB_/i.test(m[1]) &&
-        !/^HUB_(HOST|PORT|CONTENT_DIR|DATA_DIR|POLICY_FILE|FRONTEND_DIR|GIT_\w+|ALLOWED_HOSTS|TRUST_LOOPBACK|\w*_BYTES|MAX_SSE_CONNECTIONS|SSE_IDLE_TIMEOUT_S|KNOWLEDGE_\w+|DISCOVER_EXTRA_ROOTS|INBOX_\w+|PLAN_RETENTION|EVAL_\w+|ENABLE_METRICS)$/i.test(
-          m[1]
-        )
-      )
-        d.push({
-          severity: 'warn',
-          message: `${m[1]} is not a setting the hub reads, so it is ignored (check the spelling)`,
-          line: i + 1,
-          path: [m[1]],
-        });
-    });
-  if (f === 'knowledge')
-    lines.forEach((l, i) => {
-      if (/^port:\s*\D/.test(l))
-        d.push({
-          severity: 'error',
-          message: 'port: Input should be a valid integer, unable to parse string as an integer',
-          line: i + 1,
-          path: ['port'],
-        });
-    });
-  if (f === 'client-spec' && !/^id:\s*\S/m.test(text))
-    d.push({
-      severity: 'error',
-      message: 'id is required: it must equal the file name (clients/<id>.yaml)',
-      path: ['id'],
-    });
-  r.json(200, {
-    file: f,
-    ok: !d.some((x) => x.severity === 'error'),
-    diagnostics: d,
-    summary: f === 'client-spec' ? { id: (/^id:\s*(\S+)/m.exec(text) || [])[1] || null, artifacts: [] } : {},
-  });
+  if (!HUB_WASM)
+    return r.problem(503, 'Unavailable', 'run `make web`: the mock checks drafts with hub-core', 'wasm_missing');
+  const out = HUB_WASM.checkConfig(f, text);
+  if (!out) return r.problem(503, 'Unavailable', 'the WebAssembly checks trapped', 'wasm_trapped');
+  if (!('diagnostics' in out)) return r.problem(out.status, out.title, out.detail, out.code);
+  // client-spec: the hub adds the adapter, roots and dry-run checks; the mock has no adapters, so it stops here
+  if (f === 'client-spec') {
+    delete out.server_check;
+    out.summary = { ...out.summary, artifacts: [] };
+  }
+  r.json(200, out);
 });
 const DOCTOR = [
   {

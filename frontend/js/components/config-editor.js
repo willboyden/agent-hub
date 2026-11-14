@@ -3,12 +3,18 @@
 //   Load:     a template that ships with the hub, the policy floor (read-only, the only current file served), a local
 //             file (read in the browser, never uploaded except to the check), or an empty draft / a paste.
 //   Edit:     Form (a typed control and an (i) pop-up per value, config-form.js) and Text (code-area.js), one draft.
-//   Validate: POST /config-files/{file}/validate runs the hub's real loader on the draft and returns diagnostics.
+//   Validate: the hub's own checks. hub-env and knowledge run fully in this tab (hub-core compiled to WebAssembly,
+//             hubwasm.js; the same function as POST /config-files/{file}/validate, so the same diagnostics), live while
+//             typing and on Check. An env draft is NEVER sent to the hub: without the module it is not checked at all.
+//             A knowledge draft falls back to the server's route. client-spec: the YAML, the client model and the id
+//             live in the tab; Check asks the hub for the rest (adapter, roots, the generic dry run).
 //   Export:   the diff against what was loaded, Copy, Download, and the install commands as text.
 // Drafts are kept in memory for this tab only (an env draft can hold a secret, so never in browser storage).
 import { h, clear, icon, download, copyText, append } from '../dom.js';
 import { t } from '../i18n.js';
 import { api, onApiKeyDropped } from '../app-context.js';
+import { ApiError } from '../api.js';
+import { hubWasm } from '../hubwasm.js';
 import { btn, badge, card, errorBox, skeleton, fixBlock, seg } from './ui.js';
 import { toast, toastError } from './toast.js';
 import { diffView } from './diff-view.js';
@@ -21,6 +27,10 @@ import { paras } from './help-panel.js';
 
 /** Largest file the editor opens (the server refuses bigger drafts too). */
 export const MAX_DRAFT = 64 * 1024;
+/** The files whose check (or part of it) runs in the browser. */
+export const LOCAL_CHECK = new Set(['hub-env', 'knowledge', 'client-spec']);
+/** A problem+json body (what the check returns for a refused draft, as the route would). */
+export const isProblem = (r) => !!r && typeof r === 'object' && 'status' in r && 'code' in r && !('diagnostics' in r);
 const ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 export { shq, shPath } from '../cfg-edit.js';
 /** The `id:` of a client file draft, when it is a valid id (anything else never reaches a command line). */
@@ -106,7 +116,7 @@ export function configEditor(view) {
     .finally(() => {
       help.loading = false;
     });
-  const st = { files: [], file: null, view: 'form', busy: false };
+  const st = { files: [], file: null, view: 'form', busy: false, liveTimer: null };
   const alive = () => view._alive;
   const cur = () => (st.file ? drafts.get(st.file.id) : null);
   for (const e of [...liveEditors]) if (!e.alive()) liveEditors.delete(e);
@@ -269,6 +279,7 @@ export function configEditor(view) {
       d.draft = v;
       stale.hidden = !d.result || d.checked === v;
       paintExport();
+      if (editable && LOCAL_CHECK.has(f.id)) liveCheck();
     };
     const getHelp = () => ({
       cat: catalogFor(help.doc, f.id),
@@ -380,22 +391,24 @@ export function configEditor(view) {
     showEditor();
     paintDiags();
     paintExport();
+    if (editable && LOCAL_CHECK.has(f.id) && !d.result && d.draft) liveCheck();
 
-    async function check() {
-      if (!editable || st.busy) return;
-      st.busy = true;
-      checkBtn.disabled = true;
-      clear(diagHost).append(skeleton(2));
-      const text = d.draft;
-      try {
-        const r = await api.validateConfig(f.id, text);
-        if (!alive()) return;
-        d.result = r;
-        d.checked = text;
-        stale.hidden = d.draft === text;
-        paintDiags();
-        form?.refresh(r.diagnostics || []);
-        code?.setMarkers(r.diagnostics || []);
+    /** The in-browser check of `text`: its result, or null when the module is unavailable. A refused draft (too
+     *  large) throws the same ApiError the route's answer would. */
+    async function localResult(text) {
+      const w = await hubWasm();
+      const r = w ? w.checkConfig(f.id, text) : null;
+      if (isProblem(r)) throw new ApiError(r.status, r);
+      return r;
+    }
+    function apply(r, text, announce) {
+      d.result = r;
+      d.checked = text;
+      stale.hidden = d.draft === text;
+      paintDiags();
+      form?.refresh(r.diagnostics || []);
+      code?.setMarkers(r.diagnostics || []);
+      if (announce) {
         if (uncheckedResult(r)) toast(t('cfgx.check_unchecked'), { kind: 'warn' });
         else
           toast(
@@ -404,7 +417,58 @@ export function configEditor(view) {
               : t('cfgx.check_bad', { count: (r.diagnostics || []).filter((x) => x.severity === 'error').length }),
             { kind: r.ok ? 'ok' : 'bad' }
           );
-        paintExport();
+      }
+      paintExport();
+    }
+    /** Why there is no in-browser result (shown instead of one; an env draft is then not checked at all). */
+    function unavailable() {
+      clear(diagHost).append(
+        h(
+          'p',
+          { class: 'note warn', role: 'status' },
+          h('strong', t('cfgx.result_unchecked')),
+          ' ',
+          t(f.id === 'hub-env' ? 'cfgx.wasm_env_unavailable' : 'wasm.unavailable')
+        )
+      );
+    }
+    // While typing: the in-browser check, a moment after the last key (nothing goes to the hub). Function
+    // declarations, so the first paint (above) can already schedule one; the timer lives in `st`.
+    function liveCheck() {
+      clearTimeout(st.liveTimer);
+      st.liveTimer = setTimeout(runLive, 300);
+    }
+    async function runLive() {
+      const text = d.draft;
+      try {
+        const r = await localResult(text);
+        if (!alive() || d.draft !== text || st.busy) return;
+        if (r) apply(r, text, false);
+        else if (f.id === 'hub-env') unavailable();
+      } catch (e) {
+        if (alive() && d.draft === text) clear(diagHost).append(errorBox(e, check));
+      }
+    }
+
+    async function check() {
+      if (!editable || st.busy) return;
+      st.busy = true;
+      checkBtn.disabled = true;
+      const text = d.draft;
+      try {
+        // client-spec: the hub's full check (adapter, roots, dry run); the others: in the tab first
+        let r = f.id === 'client-spec' ? null : await localResult(text);
+        if (!alive()) return;
+        if (!r && f.id === 'hub-env') {
+          unavailable(); // never sent: an env draft can hold secrets
+          return;
+        }
+        if (!r) {
+          clear(diagHost).append(skeleton(2));
+          r = await api.validateConfig(f.id, text);
+          if (!alive()) return;
+        }
+        apply(r, text, true);
       } catch (e) {
         if (alive()) {
           clear(diagHost).append(errorBox(e, check));
@@ -426,6 +490,8 @@ export function configEditor(view) {
       const ds = r.diagnostics || [];
       const count = (s) => ds.filter((x) => x.severity === s).length;
       const unchecked = uncheckedResult(r);
+      if (r.server_check)
+        diagHost.append(h('p', { class: 'note info', role: 'note' }, icon('shield', 14), ' ', t('cfgx.local_part')));
       diagHost.append(
         h(
           'p',
@@ -505,7 +571,8 @@ export function configEditor(view) {
       clear(exportHost);
       const diff = unifiedText(d.base, d.draft, { from: t('cfgx.diff_from'), to: t('cfgx.diff_to') });
       const name = downloadName(f.id, d.draft);
-      const checkedNow = d.result && d.checked === d.draft;
+      // a client file checked only in the tab is not checked yet: the adapter, the roots and the dry run need Check
+      const checkedNow = d.result && d.checked === d.draft && !d.result.server_check;
       append(exportHost, [
         !checkedNow
           ? h('p', { class: 'note warn' }, t('cfgx.export_unchecked'))

@@ -88,9 +88,6 @@ export const redact = (s) =>
     /^\$\{|^\[/.test(v) ? m : `${p}[redacted]`
   );
 
-import { parseYamlLite as miniYaml } from '../js/yaml-lite.js';
-export { miniYaml };
-
 export function toYaml(v, ind = 0) {
   const pad = ' '.repeat(ind);
   const sc = (x) =>

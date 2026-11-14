@@ -2,7 +2,7 @@
 // as exactly what was typed, and change nothing else in the file.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseConfig, entryOf, maskEnvSecrets, isSecretEnvKey, SECRET_PLACEHOLDER } from '../js/cfg-parse.js';
+import { parseConfig, entryOf, isSecretEnvKey } from '../js/cfg-parse.js';
 import {
   encodeValue,
   spliceValue,
@@ -164,53 +164,11 @@ test('parseEnv stays linear on a long run of spaces (no regex backtracking)', ()
   assert.equal(parseConfig('env', 'A=x#y\n').root.entries[0].node.value, 'x#y');
 });
 
-test('maskEnvSecrets keeps secret values in the browser and every line where it was', () => {
-  const text =
-    "# c\nHUB_PORT=9000\nHUB_KNOWLEDGE_ADMIN_KEY=s3cret-one # note\nexport HUB_API_KEY=\"two\nlines\"\nHUB_KNOWLEDGE_TOKEN='q\\'x'\nKNOWLEDGE_ADMIN_KEY_FILE=/p/admin.key\nMY_PASSWORD=\nX=1\n";
-  const m = maskEnvSecrets(text);
-  for (const s of ['s3cret-one', 'two', 'lines', "q\\'x"]) assert.ok(!m.includes(s), `${s} leaked: ${m}`);
-  assert.equal(m.split('\n').length, text.split('\n').length, 'same line count');
-  const lines = m.split('\n');
-  assert.equal(lines[1], 'HUB_PORT=9000');
-  assert.equal(lines[2], `HUB_KNOWLEDGE_ADMIN_KEY=${SECRET_PLACEHOLDER} # note`);
-  assert.equal(lines[3], `export HUB_API_KEY=${SECRET_PLACEHOLDER}`);
-  assert.equal(lines[4], '');
-  assert.equal(lines[5], `HUB_KNOWLEDGE_TOKEN=${SECRET_PLACEHOLDER}`);
-  assert.equal(lines[6], 'KNOWLEDGE_ADMIN_KEY_FILE=/p/admin.key', 'a path to a key file is not a secret');
-  assert.equal(lines[7], 'MY_PASSWORD=', 'an empty value stays empty');
-  assert.equal(lines[8], 'X=1');
-  assert.equal(maskEnvSecrets('A=1\n'), 'A=1\n');
-  assert.ok(
-    isSecretEnvKey('hub_knowledge_token') &&
-      !isSecretEnvKey('HUB_PORT') &&
-      !isSecretEnvKey('HUB_KNOWLEDGE_ADMIN_KEY_FILE')
-  );
-});
-
-test("maskEnvSecrets reads keys with the hub reader's grammar: quoted keys, any whitespace, \\r line breaks", () => {
-  const S = SECRET_PLACEHOLDER;
-  // a 'single-quoted' key, also over two lines
-  assert.equal(maskEnvSecrets("'HUB_API_KEY'=abc\n"), `'HUB_API_KEY'=${S}\n`);
-  assert.equal(maskEnvSecrets("'MY\nTOKEN'=abc # c\nA=1\n"), `'MY\nTOKEN'=${S} # c\nA=1\n`);
-  // whitespace the reader accepts: NBSP, form feed, vertical tab, a byte order mark at the start
-  for (const ws of [' ', '\f', '\v', ' ']) {
-    assert.equal(
-      maskEnvSecrets(`${ws}MY_TOKEN${ws}=${ws}abc${ws}#c\n`),
-      `${ws}MY_TOKEN${ws}=${ws}${S}${ws}#c\n`,
-      JSON.stringify(ws)
-    );
-  }
-  assert.equal(maskEnvSecrets('﻿MY_TOKEN=abc\n'), `﻿MY_TOKEN=${S}\n`);
-  assert.equal(maskEnvSecrets('export MY_TOKEN=abc\n'), `export MY_TOKEN=${S}\n`);
-  // \r and \r\n line breaks, also inside a quoted value (kept, so line numbers still match)
-  assert.equal(
-    maskEnvSecrets('A=1\rMY_TOKEN=abc\rB=2\r\nC_SECRET=d\r\n'),
-    `A=1\rMY_TOKEN=${S}\rB=2\r\nC_SECRET=${S}\r\n`
-  );
-  assert.equal(maskEnvSecrets('MY_TOKEN="a\r\nb\rc"\r\nX=1'), `MY_TOKEN=${S}\r\n\r\r\nX=1`);
-  // an unclosed quote: the reader skips that line only, so the next lines are still read (and masked)
-  assert.equal(maskEnvSecrets('MY_TOKEN="open\nB_SECRET=two\nX=1\n'), `MY_TOKEN=${S}\nB_SECRET=${S}\nX=1\n`);
+// The env draft is no longer masked and sent (0.5.0): it is checked in the browser by hub-core (hubwasm.test.mjs proves
+// no value leaves the tab). The name heuristic stays: it decides which Form fields are password fields.
+test('isSecretEnvKey: which env keys the Form shows as password fields', () => {
   for (const k of [
+    'hub_knowledge_token',
     'DB_PASSWD',
     'GPG_PASSPHRASE',
     'AUTH_HEADER',
@@ -225,26 +183,17 @@ test("maskEnvSecrets reads keys with the hub reader's grammar: quoted keys, any 
     'GH_TOKEN',
     'CLIENT_SECRET',
     'MY_PASSWORD',
-  ]) {
+  ])
     assert.ok(isSecretEnvKey(k), k);
-    assert.ok(!maskEnvSecrets(`${k}=hunter2\n`).includes('hunter2'), k);
-  }
   for (const k of [
     'HUB_GIT_AUTHOR_NAME',
     'HUB_GIT_AUTHOR_EMAIL',
     'HUB_KNOWLEDGE_ADMIN_KEY_FILE',
     'GPG_PASSPHRASE_FILE',
     'HUB_PORT',
-  ]) {
+  ])
     assert.ok(!isSecretEnvKey(k), k);
-    assert.equal(maskEnvSecrets(`${k}=v\n`), `${k}=v\n`, k);
-  }
   assert.ok(isSecretEnvKey('GIT_AUTHOR_TOKEN'), 'AUTHOR does not hide another secret word');
-  // a long draft stays linear
-  const big = 'MY_TOKEN=x\r'.repeat(5000);
-  const t0 = performance.now();
-  assert.equal(maskEnvSecrets(big), `MY_TOKEN=${S}\r`.repeat(5000));
-  assert.ok(performance.now() - t0 < 500, `${performance.now() - t0} ms`);
 });
 
 test("encodeValue(env) writes a value python-dotenv reads back unchanged, in the node's own style when it can", () => {

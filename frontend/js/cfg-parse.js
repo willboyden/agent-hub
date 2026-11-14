@@ -1112,7 +1112,7 @@ function bareEnd(rest) {
 
 /**
  * Env keys whose values are probably secrets, by name (a heuristic, not a proof): the editor shows them as password
- * fields and never sends their values to the hub. `AUTHOR` (`HUB_GIT_AUTHOR_NAME`) is not `AUTH`, and a `*_FILE` key
+ * fields. (No env draft is ever sent to the hub: it is checked in the browser, hubwasm.js.) `AUTHOR` (`HUB_GIT_AUTHOR_NAME`) is not `AUTH`, and a `*_FILE` key
  * names a file, not a secret.
  */
 export const SECRET_ENV_KEY = /KEY|TOKEN|SECRET|PASSW|PASSPHRASE|AUTH|CRED|BEARER|COOKIE|SESSION|PRIVATE|PWD/i;
@@ -1120,99 +1120,6 @@ export const isSecretEnvKey = (key) => {
   const k = String(key).replace(/AUTHORS?(?=_|$)/gi, '');
   return SECRET_ENV_KEY.test(k) && !/_FILE$/i.test(key);
 };
-/** What a secret value is replaced with before a draft goes to the hub's check (a plain word every check accepts). */
-export const SECRET_PLACEHOLDER = 'value-kept-in-the-browser';
-
-// The hub's reader (a port of python-dotenv) splits lines at \r\n, \n or \r and treats every character of Python's
-// str.isspace() as whitespace; `HWS` is that set without CR and LF. A byte order mark is skipped at the start of a line
-// (the reader skips it at the start of the file; anywhere else it is part of the key, which the name test still sees).
-const WS_SET = '\\t\\n\\x0B\\x0C\\r\\x1C-\\x1F \\x85\\xA0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000';
-const HWS_SET = '\\t\\x0B\\x0C\\x1C-\\x1F \\x85\\xA0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000';
-const HWS_RE = new RegExp(`[${HWS_SET}]`);
-/** A binding's start as the hub reads it: optional `export`, a 'quoted' or bare key, `=`; sticky (matched at a line start). */
-const MASK_LINE = new RegExp(
-  `[${HWS_SET}\\uFEFF]*(?:export[${HWS_SET}]+)?(?:'([^']+)'|([^=#'${WS_SET}][^=#${WS_SET}]*))[${HWS_SET}]*=[${HWS_SET}]*`,
-  'y'
-);
-
-/** Line starts and ends (end = before the line break) with the hub reader's line breaks: \r\n, \n or \r. */
-function envLines(text) {
-  const starts = [0],
-    ends = [];
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (c !== '\n' && c !== '\r') continue;
-    ends.push(i);
-    if (c === '\r' && text[i + 1] === '\n') i++;
-    starts.push(i + 1);
-  }
-  ends.push(text.length);
-  return { starts, ends };
-}
-
-/**
- * The draft with the value of every key named like a secret (see {@link isSecretEnvKey}) replaced by
- * {@link SECRET_PLACEHOLDER}, every line where it was: a quoted value that runs over several lines keeps its line
- * breaks after the placeholder, so the hub's line numbers still match the draft. Keys are read with the hub reader's
- * own grammar ('quoted' keys, any whitespace, \r line breaks). Only the check's copy is masked, never the draft itself.
- */
-export function maskEnvSecrets(text) {
-  let out = '',
-    pos = 0;
-  const { starts, ends } = envLines(text);
-  for (let k = 0; k < starts.length; k++) {
-    const ls = starts[k];
-    if (ls < pos) continue; // inside a value masked already
-    MASK_LINE.lastIndex = ls;
-    const m = MASK_LINE.exec(text);
-    if (!m || !isSecretEnvKey(m[1] ?? m[2])) continue;
-    const vs = ls + m[0].length;
-    let le = ends[k];
-    if (vs > le) {
-      // a 'quoted' key over several lines: the value's own line
-      le = text.length;
-      for (let j = vs; j < text.length; j++)
-        if (text[j] === '\n' || text[j] === '\r') {
-          le = j;
-          break;
-        }
-    }
-    let ve;
-    const q = text[vs];
-    if (q === "'" || q === '"') {
-      let j = vs + 1;
-      for (; j < text.length; j++) {
-        if (text[j] === '\\') {
-          j++;
-          continue;
-        }
-        if (text[j] === q) break;
-      }
-      // an unclosed quote: the hub skips this line and reads on from the next one, so mask the rest of this line
-      ve = j >= text.length ? le : j + 1;
-    } else {
-      ve = vs + bareEndWs(text.slice(vs, le));
-      if (ve === vs) continue; // an empty value: nothing to keep back
-    }
-    const breaks = text.slice(vs, ve).match(/\r\n|\n|\r/g) || [];
-    out += text.slice(pos, vs) + SECRET_PLACEHOLDER + breaks.join('');
-    pos = ve;
-  }
-  return out + text.slice(pos);
-}
-
-/** {@link bareEnd} with the hub reader's whitespace: before the first `#` that follows whitespace, then trimmed. */
-function bareEndWs(rest) {
-  let end = rest.length;
-  for (let j = 1; j < rest.length; j++)
-    if (rest[j] === '#' && HWS_RE.test(rest[j - 1])) {
-      end = j;
-      break;
-    }
-  while (end > 0 && HWS_RE.test(rest[end - 1])) end--;
-  return end;
-}
-
 /**
  * A KEY=value file the way python-dotenv reads one line (the hub's own reader is a port of it): optional `export `,
  * 'single' quotes (only \\ and \' are escapes), "double" quotes (C-style escapes), or a bare value that ends at

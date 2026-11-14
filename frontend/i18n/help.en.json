@@ -587,7 +587,7 @@
       },
       {
         "q": "Why does Config files not load my env file?",
-        "a": "It can hold secrets (the knowledge admin key, `HUB_API_KEY`), so the hub never sends it to a browser. Open your copy from disk in the editor instead: it is read in the browser, and only the check sees it. Before a draft goes to the check, the browser replaces the values of keys named like a secret, a heuristic on the name (KEY, TOKEN, SECRET, PASSWORD, AUTH, CRED, SESSION and the like; never a path ending in `_FILE`), so give a secret such a name. The check never writes, and its findings name the key and the line, not a value.",
+        "a": "It can hold secrets (the knowledge admin key, `HUB_API_KEY`), so the hub never sends it to a browser. Open your copy from disk in the editor instead: it is read in the browser and checked there, by the hub's own loader compiled to WebAssembly, so the draft, secrets included, never leaves the tab and every value is checked. If the in-browser check cannot load, the draft is not checked at all (it is still never sent). The check never writes, and its findings name the key and the line, not a value.",
         "tab": "config"
       },
       {
@@ -605,7 +605,7 @@
       },
       {
         "q": "What does the audit log record for a config check?",
-        "a": "Only the size and the field names of the request, never the draft, because a draft env file can hold a secret.",
+        "a": "Only the size and the field names of the request, never the draft. A hub env draft is not sent at all: it is checked in the browser. A knowledge draft or a client file sent for a check is recorded the same way.",
         "tab": "audit"
       }
     ]

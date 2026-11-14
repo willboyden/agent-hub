@@ -25,6 +25,7 @@ import { openModal, confirmDialog } from '../components/dialog.js';
 import { wizard } from '../components/wizard.js';
 import { diffView, statsText } from '../components/diff-view.js';
 import { mapSpecResult, parseSpec, specErrorResult } from '../spec.js';
+import { hubWasm } from '../hubwasm.js';
 import { editHref } from '../data.js';
 import { validName, slug, debounce, timeAgo } from '../util.js';
 import { driftProblems, clientDoc } from '../adapt.js';
@@ -1020,7 +1021,10 @@ class AhClients extends AhView {
     };
     const check = async () => {
       const mine = ++seq;
-      const p = parseSpec(ta.value);
+      // read with the hub's own YAML loader, in the tab (hubwasm.js); JSON still works without it
+      const w = await hubWasm();
+      if (mine !== seq) return;
+      const p = parseSpec(ta.value, w?.yamlLoad);
       if (p.empty) {
         st.specResult = null;
         st.specObject = null;
