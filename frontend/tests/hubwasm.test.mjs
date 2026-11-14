@@ -145,7 +145,8 @@ test("cfg-parse's yamlPlainType agrees with hub-core's YAML resolver", { skip: S
   const { yamlPlainType } = await import('../js/cfg-parse.js');
   const js = { string: 'str', date: 'timestamp', null: 'null', bool: 'bool', int: 'int', float: 'float' };
   const corpus = [
-    ...['', '~', 'null', 'Null', 'NULL', 'nULL', 'yes', 'Yes', 'YES', 'yEs', 'no', 'on', 'OFF', 'true', 'False', 'y', 'n'],
+    ...['', '~', 'null', 'Null', 'NULL', 'nULL', 'yes', 'Yes', 'YES', 'yEs'],
+    ...['no', 'on', 'OFF', 'true', 'False', 'y', 'n'],
     ...['0', '-0', '+1', '007', '0o7', '08', '0b101', '0b2', '0x1F', '0xg', '1_000', '1:30', '-1:30:00', '190:20:30'],
     ...['1.5', '-1.5', '.5', '-.5', '1.', '1e3', '1.0e3', '1.0e+3', '1.0E-3', '.inf', '-.Inf', '+.INF', '.nan', '.NaN'],
     ...['1:30.5', '1_0.5', '2026-11-04', '2026-1-4', '2026-11-04T10:00:00Z', '2026-11-04 10:00:00.5 +02:00', '2026-11'],

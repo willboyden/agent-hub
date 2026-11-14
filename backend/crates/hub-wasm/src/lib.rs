@@ -148,7 +148,7 @@ mod tests {
         ] {
             let text = std::fs::read_to_string(app_root().join(rel)).unwrap_or_default();
             assert!(!text.is_empty(), "{rel}");
-            let route = config_check::check(file, &text).map_or_else(|p| p.body(), |v| v);
+            let route = config_check::check(file, &text).unwrap_or_else(|p| p.body());
             assert_eq!(check_config(file, &text), route.to_string(), "{rel}");
             assert_eq!(parse(&check_config(file, &text))["ok"], true, "{rel}");
         }
@@ -157,7 +157,7 @@ mod tests {
             ("knowledge", "port: &p 8795\nother: *p\n"),
             ("knowledge", "port: x\n"),
         ] {
-            let route = config_check::check(file, text).map_or_else(|p| p.body(), |v| v);
+            let route = config_check::check(file, text).unwrap_or_else(|p| p.body());
             assert_eq!(check_config(file, text), route.to_string(), "{text}");
         }
         // refusals are the route's problem bodies
