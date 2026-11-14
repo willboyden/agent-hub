@@ -4,7 +4,9 @@
 //! it checks again on every write.
 //!
 //! Export contract (docs/adr/0013-shared-rust-checks-in-the-browser.md):
-//! * [`version`]: the workspace version, for the page's stale-module check.
+//! * [`version`]: the workspace version the module was built from (shown by the mock's `/health` and checked by the
+//!   node tests; the hub's own `/health` reports a fixed parity version, so the page does not compare them: a stale
+//!   glue file is caught by its missing exports instead, and every static file is served `no-cache`).
 //! * [`check_config`]: for `hub-env` and `knowledge`, exactly the body `POST /config-files/{file}/validate` answers
 //!   (a problem+json body for a refused draft, as the route sends). For `client-spec`, the local half (YAML, client
 //!   model, id) plus `"server_check": true` when the server still has checks to add (adapter, roots, dry run).
@@ -24,7 +26,8 @@ use wasm_bindgen::prelude::wasm_bindgen;
 /// Largest input any export accepts (the config editor's draft cap).
 pub const MAX_INPUT: usize = config_check::MAX_TEXT;
 
-/// The workspace version (the page compares it with the hub's `/health` version).
+/// The workspace version the module was built from (see the module documentation: the page does not compare it with
+/// the hub's `/health`).
 #[wasm_bindgen]
 pub fn version() -> String {
     env!("CARGO_PKG_VERSION").to_string()

@@ -53,7 +53,10 @@ The JavaScript UI stays (ADR-0008): `js/hubwasm.js` loads the module once and wr
 * The dev mock server and the node tests load the same module from its bytes.
 
 The server stays authoritative: it checks again on every write. If the module does not load or traps (a panic aborts),
-the UI says so, saving still goes through the server, and the next use loads a fresh instance.
+the UI says so (the editor shows a note rather than a clean state), saving still goes through the server, and the next
+use loads a fresh instance; a failed load is tried again at most every 5 seconds. A view waits at most 3 seconds for
+the module, so a stalled fetch never holds it, and the client wizard's starting spec is JSON when the YAML reader is
+not there, so its own default never blocks Next.
 
 The Content-Security-Policy gains one token, `script-src 'self' 'wasm-unsafe-eval'`: the page may compile its own
 same-origin module; JavaScript `eval` and inline scripts stay blocked (`backend/PORTING.md` A-19). The module imports

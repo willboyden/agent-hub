@@ -17,7 +17,7 @@ RELEASE  := $(BACKEND)/target/release
 help:  ## list targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | sed 's/:.*## /\t/'
 
-setup:  ## build the backend (debug, locked dependencies) and enable the git hooks
+setup: web  ## build the backend (debug, locked dependencies) and the browser checks (web), and enable the git hooks
 	cd $(BACKEND) && $(CARGO) build --locked --workspace
 	if git rev-parse --git-dir >/dev/null 2>&1; then $(MAKE) --no-print-directory hooks; fi
 
@@ -45,6 +45,8 @@ WASM_TARGET := wasm32-unknown-unknown
 WASM_OUT := $(FRONTEND)/wasm
 WASM_TMP := $(FRONTEND)/wasm.tmp
 WASM_MAX_BYTES := 1572864
+# what wasm-bindgen --target web --no-typescript writes (the staging folder holds nothing else)
+WASM_STAGED := $(WASM_TMP)/hub_wasm.js $(WASM_TMP)/hub_wasm_bg.wasm
 
 web:  ## hub-core's checks for the browser: frontend/wasm/hub_wasm.js + hub_wasm_bg.wasm (needs wasm-bindgen-cli 0.2.129)
 	v=$$($(WASM_BINDGEN) --version 2>/dev/null | awk '{print $$2}') || v=; \
@@ -53,17 +55,27 @@ web:  ## hub-core's checks for the browser: frontend/wasm/hub_wasm.js + hub_wasm
 	fi
 	crate=$$(grep -A1 '^name = "wasm-bindgen"$$' $(BACKEND)/Cargo.lock | sed -n 's/^version = "\(.*\)"$$/\1/p'); \
 	if [ "$$crate" != "$(WASM_BINDGEN_VERSION)" ]; then echo "web: Cargo.lock has wasm-bindgen $$crate, the CLI is $(WASM_BINDGEN_VERSION)" >&2; exit 1; fi
+	@# rustup adds a toolchain's targets only when it installs that toolchain: an already-installed 1.99.1 lacks wasm32
+	cd $(BACKEND) && t=$$(rustup target list --installed 2>/dev/null) || t=; \
+	case " $$(echo $$t) " in *" $(WASM_TARGET) "*) ;; *) \
+	  echo "web: the Rust target $(WASM_TARGET) is not installed for this toolchain; run: (cd $(BACKEND) && rustup target add $(WASM_TARGET))" >&2; exit 1;; \
+	esac
+	@# The staging folder never outlives a run: emptied before the build and on any failure below (only the two files
+	@# wasm-bindgen writes, then the empty folder), so glue that failed a gate is never left behind. Only a module that
+	@# passed every gate reaches $(WASM_OUT).
+	rm -f $(WASM_STAGED); rmdir $(WASM_TMP) 2>/dev/null || true
 	cd $(BACKEND) && RUSTFLAGS="$(strip $(RUSTFLAGS) $(REMAP))" $(CARGO) build --locked -p hub-wasm --target $(WASM_TARGET) --profile release-web
 	mkdir -p $(WASM_TMP) $(WASM_OUT)
-	$(WASM_BINDGEN) --target web --no-typescript --out-dir $(WASM_TMP) $(BACKEND)/target/$(WASM_TARGET)/release-web/hub_wasm.wasm
-	for f in $(WASM_TMP)/hub_wasm.js $(WASM_TMP)/hub_wasm_bg.wasm; do \
+	trap 'rm -f $(WASM_STAGED); rmdir $(WASM_TMP) 2>/dev/null || true' EXIT; \
+	$(WASM_BINDGEN) --target web --no-typescript --out-dir $(WASM_TMP) $(BACKEND)/target/$(WASM_TARGET)/release-web/hub_wasm.wasm; \
+	for f in $(WASM_STAGED); do \
 	  for p in "$(CURDIR)/" "$(HOME)/"; do \
 	    if [ "$$p" != "//" ] && grep -aqF "$$p" "$$f"; then echo "web: $$f still contains the path $$p" >&2; exit 1; fi; \
 	  done; \
-	done
-	size=$$(stat -c %s $(WASM_TMP)/hub_wasm_bg.wasm); gz=$$(gzip -9c $(WASM_TMP)/hub_wasm_bg.wasm | wc -c); \
+	done; \
+	size=$$(wc -c < $(WASM_TMP)/hub_wasm_bg.wasm); gz=$$(gzip -9c $(WASM_TMP)/hub_wasm_bg.wasm | wc -c); \
 	if [ "$$size" -gt $(WASM_MAX_BYTES) ]; then echo "web: hub_wasm_bg.wasm is $$size bytes, over the $(WASM_MAX_BYTES)-byte budget" >&2; exit 1; fi; \
-	mv -f $(WASM_TMP)/hub_wasm.js $(WASM_TMP)/hub_wasm_bg.wasm $(WASM_OUT)/ && rmdir $(WASM_TMP); \
+	mv -f $(WASM_STAGED) $(WASM_OUT)/; \
 	echo "web: $(WASM_OUT)/hub_wasm_bg.wasm $$size bytes ($$gz gzipped), no build path in it"
 
 release: web  ## optimised binaries for real use: backend/target/release/{agent-hub,hubctl,agent-knowledge}, and web

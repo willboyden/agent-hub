@@ -33,9 +33,11 @@ Shared content drifts, and nothing shows what a client is allowed to do. The hub
 
 ## Quickstart
 
-Prerequisites: `git`, `rustup` (it installs the exact toolchain pinned in `backend/rust-toolchain.toml`, with the
-`wasm32-unknown-unknown` target), a C linker (`cc`) and the `wasm-bindgen` CLI at the exact version of the crate
-(`cargo install --locked wasm-bindgen-cli@0.2.129`, once). protoc, which the knowledge service's Lance engine needs at
+Prerequisites: `git`, `rustup` (it installs the exact toolchain pinned in `backend/rust-toolchain.toml`; with a fresh
+install that includes the `wasm32-unknown-unknown` target, but if that toolchain was already installed, add the target
+once: `cd backend && rustup target add wasm32-unknown-unknown`), a C linker (`cc`) and the `wasm-bindgen` CLI at the
+exact version of the crate (`cargo install --locked wasm-bindgen-cli@0.2.129`, once). `make web` says which is
+missing. protoc, which the knowledge service's Lance engine needs at
 build time, is vendored; nothing else is installed. No Node is needed to run anything (the UI has no bundler and zero
 runtime dependencies; its one generated folder, `frontend/wasm/`, is the hub's own checks compiled to WebAssembly by
 `make release`; Node is only for the frontend tests, the browser suite and the Prettier formatter), and

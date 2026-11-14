@@ -15,14 +15,14 @@ inline scripts or styles (CSS classes and CSSOM only); all strings from `i18n/en
 
 Amendment (2026-11-06): zero *runtime* npm dependencies. `package.json` also pins one devDependency, the Prettier
 formatter (exact version, committed `package-lock.json`, `make fmt` / `make fmt-check`, checked in CI). It is a
-development tool only: nothing of it is served (the hub serves `index.html`, `css/`, `js/` and `i18n/` only) or built
-into a binary, and nothing is needed to run the app.
+development tool only: nothing of it is served (the hub serves `index.html`, `css/`, `js/`, `i18n/` and, since
+ADR-0013, the generated `wasm/` only) or built into a binary, and nothing is needed to run the app.
 
 Amendment (2026-11-14, ADR-0013): one generated folder. `make web` compiles the backend's own `hub-core` checks to a
-WebAssembly module with cargo and `wasm-bindgen` (both pinned) into `frontend/wasm/` (gitignored, never committed), which
-the hub serves next to `js/`. The JavaScript is still served as written: no bundler, no npm runtime dependency, no CDN.
-The CSP gains `'wasm-unsafe-eval'` for that same-origin module only. The hand-rolled YAML reader for pasted client specs
-(`yaml-lite.js`) is gone: the hub's own loader runs in the page instead.
+WebAssembly module with cargo and `wasm-bindgen` (both pinned) into `frontend/wasm/` (gitignored, never committed),
+which the hub serves next to `js/`. The JavaScript is still served as written: no bundler, no npm runtime dependency,
+no CDN. The CSP gains `'wasm-unsafe-eval'` for that same-origin module only. The hand-rolled YAML reader for pasted
+client specs (`yaml-lite.js`) is gone: the hub's own loader runs in the page instead.
 
 ## Consequences
 

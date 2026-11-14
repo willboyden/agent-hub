@@ -197,8 +197,10 @@ impl PyValue {
 
     /// JSON for the API (FastAPI `jsonable_encoder` + `json.dumps`) and for pydantic `mode="json"` dumps of `Any`
     /// fields: date/datetime -> ISO text, bytes -> UTF-8 text (lossy), set -> list, dict keys -> their JSON-key text
-    /// (`True` -> "true", `None` -> "null", `1.5` -> "1.5", strings as is). Non-finite floats stay floats (the API
-    /// encoder writes `Infinity`/`NaN` like `json.dumps`).
+    /// (`True` -> "true", `None` -> "null", `1.5` -> "1.5", strings as is). A `serde_json::Value` cannot hold a
+    /// non-finite number, so `inf`/`-inf`/`nan` (and an int beyond f64's range) become `null` here; code that must write
+    /// `Infinity`/`NaN` like `json.dumps` encodes the float itself (`py::float::json`). The browser's `yaml_load`
+    /// (crates/hub-wasm) goes through this too, so a pasted `.inf` reads as null there.
     pub fn to_json(&self) -> Value {
         match self {
             PyValue::None => Value::Null,

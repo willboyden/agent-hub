@@ -30,12 +30,18 @@
   a check that no path of the build machine is left in it and a 1.5 MB budget; `build`, `release`, `frontend-test`
   and `e2e` run it first. The hub serves it as `application/wasm`, `no-cache`. The editor's blocking errors are now the
   item models' own; the dev mock server and the node tests load the same module. If the module does not load or traps,
-  the pages say so, keep working, and the hub checks every save as before.
+  the pages say so, keep working, and the hub checks every save as before: the editor shows a note instead of a
+  clean state, a view waits at most 3 seconds for the module, a failed load is retried later, and the client
+  wizard starts from a JSON spec when the YAML reader is missing.
+- The editor suggests (without blocking Save) a better description when a skill's description is only spaces, which
+  the server accepts.
 
 ### Changed
-- **Build requirement:** `make release` now needs the `wasm32-unknown-unknown` target (installed by rustup from
-  `backend/rust-toolchain.toml`) and the `wasm-bindgen` CLI at the crate's exact version:
-  `cargo install --locked wasm-bindgen-cli@0.2.129`.
+- **Build requirement:** `make release` (and `make setup`) now need the `wasm32-unknown-unknown` target and the
+  `wasm-bindgen` CLI at the crate's exact version. rustup adds the target from `backend/rust-toolchain.toml` only
+  when it installs the toolchain; if 1.99.1 is already installed, run `cd backend && rustup target add
+  wasm32-unknown-unknown` once. Then `cargo install --locked wasm-bindgen-cli@0.2.129`. `make web` checks both
+  first and prints the command to run.
 - The settings model and the config editor's checks that need no hub state moved to `hub_core::settings` and
   `hub_core::config_check` (re-exported under their old paths); `getrandom` and `nix` are native-only dependencies of
   `hub-core`. No route, response or file changes.
