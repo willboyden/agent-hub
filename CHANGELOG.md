@@ -3,11 +3,44 @@
 ## Unreleased
 
 ### Security
+- **A hub env draft never leaves the browser.** Settings > Config files checks hub env and knowledge drafts in the tab
+  with the hub's own check (`hub_core::config_check`, compiled to WebAssembly), live while you type and on Check, so
+  every value is checked, secrets included. 0.4.0 sent the env draft to the hub after replacing the values of keys
+  *named* like a secret, so a secret under another name was sent as written. The API client now refuses to post an
+  env draft; without the module the draft is not checked (a note says so). The `validate` route itself is unchanged.
+- The Content-Security-Policy gains exactly one token, `script-src 'self' 'wasm-unsafe-eval'`, so the page can compile
+  its own same-origin module (`backend/PORTING.md` A-19). JavaScript `eval` and inline scripts stay blocked; every
+  other header is unchanged.
 - **rusqlite 0.41.0** (was 0.40.2) brings the bundled SQLite of `libsqlite3-sys` 0.39.1, which fixes CVE-2026-119375
   (RUSTSEC-2026-0459). Both versions pass the 14-day crate-age cooldown on their own. rusqlite 0.41 returns column
   names as an iterator; the one caller in the store was adapted.
 
+### Fixed
+- The editor no longer refuses to save a skill whose description is shorter than 20 characters. The server, `hubctl`
+  and the importer accept 1 to 1024 characters; the 20-character rule was a JavaScript copy that had drifted. A
+  description under 20 characters now gets a suggestion that does not block Save.
+- A pasted client spec in the add-client wizard is read by the hub's own YAML loader (the PyYAML port): `yes`/`on` are
+  booleans, `null`/`~` are null, `1.5` is a float, and anchors, merge keys, block scalars and flow maps work. The old
+  45-line reader (`yaml-lite.js`) kept those as strings or refused them.
+
+### Added
+- The hub's own checks in the browser (docs/adr/0013): `backend/crates/hub-wasm` compiles `hub-core`'s config, YAML
+  and item-model checks to a WebAssembly module (about 1.2 MB, about 430 KB gzipped). `make web` builds it into
+  `frontend/wasm/` (generated, gitignored, never committed) with `wasm-bindgen` 0.2.129, the release path rewrites,
+  a check that no path of the build machine is left in it and a 1.5 MB budget; `build`, `release`, `frontend-test`
+  and `e2e` run it first. The hub serves it as `application/wasm`, `no-cache`. The editor's blocking errors are now the
+  item models' own; the dev mock server and the node tests load the same module. If the module does not load or traps,
+  the pages say so, keep working, and the hub checks every save as before.
+
 ### Changed
+- **Build requirement:** `make release` now needs the `wasm32-unknown-unknown` target (installed by rustup from
+  `backend/rust-toolchain.toml`) and the `wasm-bindgen` CLI at the crate's exact version:
+  `cargo install --locked wasm-bindgen-cli@0.2.129`.
+- The settings model and the config editor's checks that need no hub state moved to `hub_core::settings` and
+  `hub_core::config_check` (re-exported under their old paths); `getrandom` and `nix` are native-only dependencies of
+  `hub-core`. No route, response or file changes.
+- Removed from the frontend: `yaml-lite.js`, the JavaScript copy of the hub's dotenv grammar that masked secret
+  values before a draft was sent (`maskEnvSecrets`), and the unused TOML parser of the config Form view.
 - Prettier 3.9.10 formats and checks the JS, CSS, HTML and JSON (`make fmt`, `make fmt-check` in `make all` and in
   CI). It is the frontend's only devDependency (exact version, committed `package-lock.json`); the frontend still has
   zero runtime dependencies and nothing of Prettier is served or built into a binary. Markdown, YAML, goldens,

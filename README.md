@@ -33,16 +33,18 @@ Shared content drifts, and nothing shows what a client is allowed to do. The hub
 
 ## Quickstart
 
-Prerequisites: `git`, `rustup` (it installs the exact toolchain pinned in `backend/rust-toolchain.toml`) and a C linker
-(`cc`). protoc, which the knowledge service's Lance engine needs at build time, is vendored; nothing else is installed.
-No Node is needed to run anything (the UI is zero-build with zero runtime dependencies; Node is only for the frontend tests,
-the browser suite and the Prettier formatter), and
+Prerequisites: `git`, `rustup` (it installs the exact toolchain pinned in `backend/rust-toolchain.toml`, with the
+`wasm32-unknown-unknown` target), a C linker (`cc`) and the `wasm-bindgen` CLI at the exact version of the crate
+(`cargo install --locked wasm-bindgen-cli@0.2.129`, once). protoc, which the knowledge service's Lance engine needs at
+build time, is vendored; nothing else is installed. No Node is needed to run anything (the UI has no bundler and zero
+runtime dependencies; its one generated folder, `frontend/wasm/`, is the hub's own checks compiled to WebAssembly by
+`make release`; Node is only for the frontend tests, the browser suite and the Prettier formatter), and
 no Python (only the optional delivery scripts use `python3`: `deploy/turnstone-deliver.py`, and `deploy/dsh-deliver.sh`
 to read dsh's answer when `DSH_CONTAINER` is set).
 
 ```bash
-make release                    # backend/target/release/{agent-hub,hubctl,agent-knowledge}; the first build takes
-                                # several minutes (the knowledge service compiles the Lance engine)
+make release                    # backend/target/release/{agent-hub,hubctl,agent-knowledge} and frontend/wasm/; the
+                                # first build takes several minutes (the knowledge service compiles the Lance engine)
 export PATH="$PWD/backend/target/release:$PATH"   # or call the binaries by their path
 
 hubctl init                     # creates the content repo (default ~/.local/share/agent-hub/content), seeds it,
@@ -150,7 +152,7 @@ backend/    the Rust workspace (toolchain pinned in rust-toolchain.toml):
             crates/agent-hub       the hub server (`agent-hub`, also `open`/`stop`), `hubctl`, services/, api/, adapters/
             crates/agent-knowledge agent-knowledge: separate service, Lance (embedded) + Qdrant backends
             parity/                differential harness against the last Python backend; TEST-MAP.md, PORTING.md
-frontend/   zero-build SPA (ES modules + web components), dev/mock-server.mjs
+frontend/   no-bundler SPA (ES modules + web components), dev/mock-server.mjs; wasm/ is generated (make web)
 policy/     floor.yaml (app repo, not content)
 deploy/     opt-in systemd --user templates, knowledge compose/Dockerfile/broker templates
 docs/       ARCHITECTURE, ADDING-A-CLIENT, KNOWLEDGE-PLANE, SECURITY, OPERATIONS, FEATURES, DESIGN-DECISIONS, adr/, diagrams/
@@ -162,13 +164,16 @@ optionally `~/.config/agent-hub/env`. Ports: hub 8792, knowledge service 8795. D
 
 ## Developer commands
 
-`make help` lists them: `setup`, `build`, `release`, `hooks`, `test`, `lint` (rustfmt + clippy), `fmt` / `fmt-check`,
+`make help` lists them: `setup`, `web`, `build`, `release`, `hooks`, `test`, `lint` (rustfmt + clippy), `fmt` / `fmt-check`,
 `typecheck` (clippy), `deny`, `audit`, `crate-age`, `test-map`, `parity`, `frontend-test`, `knowledge-test`, `e2e`, `mock`, `all`.
 `make fmt` formats in place (rustfmt for the backend, Prettier for the JS, CSS, HTML and JSON) and `make fmt-check` (part of
 `make all`) checks the Prettier half. Prettier is the frontend's only devDependency, pinned to an exact version: run
 `cd frontend && npm ci` once. Markdown, YAML and files whose exact bytes matter (goldens, fixtures, generated files) are
 listed in `.prettierignore`. The reformat commit is in `.git-blame-ignore-revs` (`git config blame.ignoreRevsFile
 .git-blame-ignore-revs`).
+`make web` compiles `backend/crates/hub-wasm` (the hub's own config, YAML and item-model checks) to WebAssembly into
+`frontend/wasm/` (gitignored); `build`, `release`, `frontend-test` and `e2e` run it first, and it fails if the module
+holds a path of the build machine or exceeds 1.5 MB (docs/adr/0013). `make clippy` also lints the wasm32 build.
 `make install-desktop` adds an app-menu launcher (Linux, after `make release`); see `docs/OPERATIONS.md` section 2.
 CI (`.github/workflows/ci.yml`) runs rustfmt, clippy, the tests, the test-map check, cargo-deny and cargo-audit, the
 14-day dependency cooldown (`crate-age`, which queries the crates.io API), the frontend tests, the Prettier check and the

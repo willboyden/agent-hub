@@ -26,7 +26,7 @@ their Python form. They map one to one: `adapters/<m>.py` is `backend/crates/age
 | 5 | **Progressive adoption, no clobbering.** Per client, per concern (`skills, agents, instructions, mcp, permissions, memory`) a `manage` flag decides *managed* (hub writes) vs *advisory* (plan shows what would change; `audit` checks the live config against the floor). Defaults: skills/agents/instructions managed, mcp/permissions advisory for clients whose config another sync process owns. A lock manifest records the hash of every delivered file; apply refuses to overwrite a file whose current hash differs from the last applied one unless the path is explicitly adopted. | Existing sync scripts or tools that own a file stay authoritative until the operator opts in. |
 | 6 | **Secrets never live in the hub.** MCP items carry env var *names* only. API/plan/audit output is redacted. | Standard practice for a control plane. |
 | 7 | **Host-run HTTP server on 127.0.0.1:8792** (Rust on hyper, since 0.3.0; FastAPI before), hardened loopback-service pattern (Host allowlist, same-origin Origin, `X-Agent-Hub: 1` CSRF header on non-GET, strict CSP, no CORS, role enforcement on every router, body caps, SSE caps). Knowledge service on 127.0.0.1:8795 (separate process). | Proven pattern; these controls came from two audits. |
-| 8 | **Zero-build frontend with zero runtime npm dependencies** (ES modules + web components, no CDN; the only devDependency is the Prettier formatter). | No supply-chain surface in what is served. |
+| 8 | **Zero-build frontend with zero runtime npm dependencies** (ES modules + web components, no CDN; the only devDependency is the Prettier formatter). One generated folder since ADR-0013: `frontend/wasm/`, the hub's own `hub-core` checks compiled to WebAssembly by `make web`. | No supply-chain surface in what is served; one copy of each server rule. |
 | 9 | **Knowledge plane is a separate component** with a `VectorStore` port and **two backends: Qdrant (service) and LanceDB (embedded)**. Untrusted agents reach it only through per-client scoped tokens / broker sidecars; default read-only. | Isolation; both are wanted: Qdrant for scale, LanceDB for zero-service use. |
 | 10 | **Curated memory**: agents write to a per-client *inbox*; only a human promotes to `content/memory/`. | Memory poisoning defence. |
 
@@ -165,6 +165,9 @@ First-run **checklist** ("Import what you have → Organise into collections →
 8. **Memory inbox** — cards to edit/promote/reject. 9. **Knowledge** — namespaces, backend health, ingest form, **query playground**, tokens per client with scopes, indexes registry.
 10. **Settings / audit**.
 No inline scripts/styles (CSS classes and CSSOM only), all strings via i18n, charts/bars with text alternatives, a `dev/mock-server.mjs` that is contract-faithful.
+The server's own checks run in the page where they need no hub state (ADR-0013, `js/hubwasm.js` over `frontend/wasm/`): the editor's blocking
+errors are the item models' (`validate_meta`), the client wizard reads a pasted spec with the hub's YAML loader, and Settings > Config files checks
+hub env and knowledge drafts in the tab (an env draft is never sent). The hub re-checks every write; without the module the pages say so and keep working.
 
 ## 9. Extension model (other clients)
 Add a client by (a) `content/clients/<id>.yaml` with `adapter: generic` and a `spec:` (skills root + layout + filename, agent format + frontmatter/tool map,

@@ -19,7 +19,7 @@
 //! [`MAX_DIAGS`] findings are returned.
 //!
 //! The checks that need no hub state (`hub-env`, `knowledge`, and the YAML/model/id half of `client-spec`) live in
-//! `hub_core::config_check`, which the browser also runs (crates/hub-wasm, 0.5.0); this module serves the templates
+//! `hub_core::config_check`, which the browser also runs (crates/hub-wasm, ADR-0013); this module serves the templates
 //! and the floor and adds the client-spec checks that need the hub (adapter registry, roots, the generic dry run).
 
 use std::path::Path;

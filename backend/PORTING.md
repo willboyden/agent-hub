@@ -1033,3 +1033,37 @@ finding (`tests/test_audit_0_3_0.rs` unless stated).
   slot), `dotenv::tests::bounded_values_stop_an_expansion_chain`, `tests/test_config_files_api.rs` (3, through the real
   pipeline: roles, Origin, the audit row, nothing written), `routes::rust_only_routes_sit_just_before_metrics`; the browser suite
   (`frontend/e2e/run.mjs`) loads the floor read-only, opens an (i) pop-up and checks the env template on the real hub.
+
+### A-19 (2026-11-14, hub-core's checks in the browser; ADR-0013)
+- **One deliberate difference (security headers):** the Content-Security-Policy gains exactly one token,
+  `script-src 'self' 'wasm-unsafe-eval'` (`api::security::CSP`). It lets the page compile the hub's own same-origin
+  WebAssembly module; JavaScript `eval`, inline scripts and every other origin stay blocked. Every other header is
+  unchanged. `tests/api_security.rs` pins the token and the absence of `'unsafe-eval'` and `'unsafe-inline'`. The parity
+  harness (`parity/run.mjs`) compares a Rust answer that carries exactly this CSP as Python's (any other CSP is still a
+  difference) and prints how many answers it did that for; `parity/expect/rust-dsh.json` was re-recorded with the new
+  header only.
+- **Static files:** `static_files::STATIC_DIRS` gains `wasm` (`make web`'s output, `frontend/wasm/`, generated and
+  gitignored) and `content_type` maps `.wasm` to `application/wasm` (`WebAssembly.instantiateStreaming` refuses any
+  other type). Same rules as `js/`: `no-cache` + ETag, no `..` or symlink escape, a missing file is a 404.
+  `tests/api_security.rs::test_wasm_module_is_served_as_application_wasm`.
+- **Moves (no behaviour change):** the `HUB_*` settings model and its pure loader (`config.rs` -> `hub_core::settings`)
+  and the config editor's checks that need no hub state (`check_hub_env`, `check_knowledge`, the YAML/model/id half of
+  the client-spec check and the diagnostic helpers; `services/config_files.rs` -> `hub_core::config_check`), verbatim,
+  as `knowledge_config` moved in A-18. `agent-hub` re-exports them under their old paths; the routes call the same
+  functions. `yaml::plain_scalar_tag` exposes the implicit resolver, `yamlsafe::check_limits` the strict loader's depth
+  and node limits.
+- **wasm32:** `getrandom` and `nix` are native-only dependencies of `hub-core`; the unix file helpers, random ids, the
+  clock and the errno table are `#[cfg(not(target_arch = "wasm32"))]` (a stub `errno_name` returns `OSError` there,
+  where no OS error occurs). The native build and every native test are unchanged.
+- **`crates/hub-wasm`** (not a default member): a cdylib with no logic of its own over `hub-core`, `wasm-bindgen
+  =0.2.129`. Exports `version`, `check_config` (for `hub-env` and `knowledge` exactly the body of
+  `POST /config-files/{file}/validate`; for `client-spec` the local half plus `server_check`), `yaml_load`,
+  `yaml_scalar_type`, `validate_meta`. Each returns JSON text, never throws and caps its input at 64 KiB. Native tests
+  prove `check_config` byte-equal to the route body on the shipped templates and on refused drafts.
+- **Build:** `make web` (profile `release-web`: `opt-level = "z"`, `panic = "abort"`, the release path rewrites;
+  `wasm-bindgen --target web`, the CLI must equal the crate in `Cargo.lock`) refuses a module that contains a path of
+  the build machine or is larger than 1.5 MB. `build`, `release`, `frontend-test` and `e2e` depend on it; `clippy` also
+  runs for `wasm32-unknown-unknown` (`hub-core`, `hub-wasm`); `deny.toml` checks the wasm32 graph too.
+- **Supersedes the last sentence of A-18:** the browser no longer masks an env draft and sends it. A hub env draft is
+  checked in the tab by `hub_core::config_check` and never sent (`frontend/js/api.js` refuses it before any request);
+  `maskEnvSecrets` is deleted. The route still accepts env drafts from scripts, unchanged.

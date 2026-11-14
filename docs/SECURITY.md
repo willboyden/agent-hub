@@ -44,7 +44,7 @@ B3 is the one the design leans on and the one it cannot enforce by itself: it de
 | Tampering with the **floor** | `policy/floor.yaml` | Lives in the app repo, not content; no API writes it; `GET /policy/floor` is read-only; invalid or missing floor means the app does not start (`floor_unavailable`, fail closed) | Anyone who can write the checkout can weaken it. It is a security control: change it in git with review. |
 | Tampering with **stored state** | `hub.db`, locks | DB and locks are 0600 in a 0700 dir; audit table rejects UPDATE/DELETE via the DB | A same-user process can edit the SQLite file or the lock manifests directly; the audit trail is not tamper-evident against that. |
 | **Repudiation** | Audit | Every mutating API call is recorded (actor key id, role, method, path, status, redacted params); apply/commit/revert/discard also write domain events. Memory and knowledge bodies, and config-file drafts (`/api/v1/config-files`), are audited as metadata only | `hubctl import` is **not** audited (it does not go through the API middleware); commit and apply from `hubctl` are, as actor `hubctl`. The log is only as trustworthy as the disk (above). |
-| **Information disclosure**: secrets | API, plans, diffs, audit, logs | MCP items carry env var *names* only; responses, plans, diffs and audit params are redacted (`redact`/`scrub`: key-name and token-shape patterns); the bootstrap key path is logged, never the key; `/metrics` needs auth | Redaction is heuristic (pattern-based). A secret in an unusual shape, pasted into a skill body, can still land in a diff or a rendered file. Imports do not scan bodies for secrets. The config editor never serves the env file and masks secret-named values in the browser before a check (section 7). |
+| **Information disclosure**: secrets | API, plans, diffs, audit, logs | MCP items carry env var *names* only; responses, plans, diffs and audit params are redacted (`redact`/`scrub`: key-name and token-shape patterns); the bootstrap key path is logged, never the key; `/metrics` needs auth | Redaction is heuristic (pattern-based). A secret in an unusual shape, pasted into a skill body, can still land in a diff or a rendered file. Imports do not scan bodies for secrets. The config editor never serves the env file, and the browser checks an env draft in the tab and never sends it (section 7). |
 | Disclosure of **state dir** to agents | Agents' file tools | The floor lists `~/.config/agent-hub/**`, `~/.local/share/agent-hub/**`, the knowledge equivalents, `**/bootstrap-admin.key`, `**/admin.key`, `**/.env` as deny-read | **Not delivered by default**: `manage.permissions` is advisory unless you opt in, so the floor's read-deny is audited, not written (M5, section 4). Add the paths to each client's own sandbox or permission config (section 4) and run `hubctl doctor`. |
 | **Denial of service** | API, knowledge | Body caps (1 MiB; 4 MiB import/discover), 413 also for chunked bodies; SSE connection cap and idle timeout; inbox rate limit and per-client cap; plan retention; knowledge: per-token rate limit and daily quotas, chunk and file caps, response cap on the proxy (`upstream_too_large`); the four `/api/v1/config-files` routes (admin only): 64 KiB per draft, template and floor file, at most four checks at once (429), an env draft of at most 2000 lines, `${...}` expansion capped at 256 KiB, YAML anchors and aliases not expanded, at most 200 findings | Per-file, per-skill and plan-snapshot size caps exist; there is no global quota on the content repo. |
 | **Elevation of privilege** via roles | API | Roles admin / viewer / client. The middleware and `enforce_roles` (attached to every router) both check: viewer may only POST `policy/check`, `clients/validate-spec`, and knowledge namespace queries; client tokens may only POST `/memory/inbox` for their own client | A route-table test on the knowledge service proves no route is left unauthenticated. |
@@ -151,13 +151,21 @@ via `systemctl show`, so keep secrets in the 0600 env file (`~/.config/agent-hub
 Redaction is pattern-based, so a secret pasted into a skill body may not be caught (section 3).
 
 The config editor (Settings > Config files, four admin-only routes under `/api/v1/config-files`) never serves the hub
-env file or the knowledge config. Before an env draft goes to the check, the browser replaces the values of keys named
-like a secret: a heuristic on the key name (KEY, TOKEN, SECRET, PASSW, PASSPHRASE, AUTH, CRED, BEARER, COOKIE, SESSION,
-PRIVATE or PWD; names ending in `_FILE` and the `AUTHOR` of `HUB_GIT_AUTHOR_NAME` excepted), with keys read by the
-hub's own env-file grammar. A secret under a key named otherwise is sent to the check as written: the check never
-quotes a value back, but give secrets names like these. Drafts are kept in the tab's memory only and are dropped when
-the API key is removed. A draft body is held in memory for the check only: it is never written to disk, and its audit
-row records the body's size and field names.
+env file or the knowledge config. Since ADR-0013 an env draft never leaves the browser: the page checks it with the
+hub's own check (`hub_core::config_check`, compiled to WebAssembly, `frontend/wasm/`), so every value is checked and
+none is sent; the API client refuses to post one, and without the module the draft is simply not checked. (Before,
+the browser replaced the values of keys *named* like a secret and sent the rest to the hub: a secret under another name
+was sent as written.) Knowledge and client-file drafts, which hold no secrets by design, are still checked by the hub
+when needed. The `validate` route keeps accepting env drafts from scripts; it never quotes a value back. Drafts are
+kept in the tab's memory only and are dropped when the API key is removed. A draft body that reaches the hub is held in
+memory for the check only: it is never written to disk, and its audit row records the body's size and field names.
+
+The page's Content-Security-Policy adds one token for that module, `'wasm-unsafe-eval'` in `script-src`
+(`backend/PORTING.md` A-19). It lets the page's own scripts compile WebAssembly; the bytes can only be fetched from the
+hub itself (`connect-src 'self'`), and JavaScript `eval`, `new Function`, inline scripts and other origins stay
+blocked. The module is built from this repository by `make web` (never committed) and refused if it contains a path of
+the build machine. It imports nothing from the page (no network, DOM or storage access; `WebAssembly.Module.imports` is
+empty): it takes text and returns JSON. The hub checks every write again; the browser's check is advisory.
 
 ## 8. Memory-inbox poisoning defence
 
@@ -284,6 +292,7 @@ An independent review of the Rust code before release (rated nothing critical or
 | Delivery targets (Low) | Login-shell files, git, Docker, Kubernetes and package-registry configs were not on the target denylist. | Refused like `.bashrc`; the floor also denies reading their credentials. |
 | HTTP server (Low) | No header, idle or body deadline and no connection cap; a body that broke off was handed on as a shorter one; a handler panic dropped the connection. | 30 s header/idle timeout, at most 256 connections, a 60 s body deadline (408), a broken body is a 400, a panic is a 500 with an audit row. Knowledge calls have a total deadline; a stream slot is released when the client leaves early. The knowledge service's server has the same limits and body rules. |
 | Release binaries (publication) | Built-in paths of the build machine. | The app root is found from the binary's location; `make release` rewrites source paths and checks that none remains. |
+| Config editor env drafts (0.4.0) | An env draft went to the hub with only the values of secret-*named* keys replaced (a name heuristic in JavaScript), so a secret under another name was sent. | The hub's own check runs in the page (WebAssembly, ADR-0013); env drafts are never sent. Release WebAssembly is built with the same path rewrites and path check as the binaries. |
 
 `attest.key` sits in the state dir and has the same same-user-readable limit as the admin key (M5): whoever can read it can
 forge an attestation.
